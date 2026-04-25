@@ -1,96 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* NyayaAI design system — premium navy + gold, calm and authoritative. All colors MUST be HSL. */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Deep navy canvas */
+    --background: 215 56% 9%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Surfaces */
+    --card: 215 50% 12%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 215 50% 12%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Gold primary */
+    --primary: 43 53% 54%;
+    --primary-foreground: 215 56% 9%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 215 40% 16%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 215 35% 18%;
+    --muted-foreground: 215 15% 70%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 43 53% 54%;
+    --accent-foreground: 215 56% 9%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 215 35% 22%;
+    --input: 215 35% 22%;
+    --ring: 43 53% 54%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Brand semantics */
+    --navy: 215 56% 9%;
+    --navy-deep: 215 60% 6%;
+    --navy-soft: 215 45% 14%;
+    --gold: 43 53% 54%;
+    --gold-soft: 43 53% 54% / 0.18;
+    --gold-bright: 43 70% 64%;
+    --ink: 215 35% 22%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --gradient-hero: linear-gradient(140deg, hsl(215 60% 6%) 0%, hsl(215 56% 11%) 50%, hsl(215 50% 14%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(43 53% 54%) 0%, hsl(43 70% 64%) 100%);
+    --shadow-gold: 0 12px 32px -12px hsl(43 53% 54% / 0.35);
+    --shadow-card: 0 8px 28px -10px hsl(215 60% 4% / 0.5);
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 215 60% 7%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 43 53% 54%;
+    --sidebar-primary-foreground: 215 56% 9%;
+    --sidebar-accent: 215 50% 12%;
+    --sidebar-accent-foreground: 43 53% 54%;
+    --sidebar-border: 215 35% 18%;
+    --sidebar-ring: 43 53% 54%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 215 56% 9%;
+    --foreground: 0 0% 100%;
+    --card: 215 50% 12%;
+    --card-foreground: 0 0% 100%;
+    --popover: 215 50% 12%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 43 53% 54%;
+    --primary-foreground: 215 56% 9%;
+    --secondary: 215 40% 16%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 215 35% 18%;
+    --muted-foreground: 215 15% 70%;
+    --accent: 43 53% 54%;
+    --accent-foreground: 215 56% 9%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 35% 22%;
+    --input: 215 35% 22%;
+    --ring: 43 53% 54%;
   }
 }
 
@@ -100,6 +94,39 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
   }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-hero { background: var(--gradient-hero); }
+  .bg-gradient-gold { background: var(--gradient-gold); }
+  .shadow-gold { box-shadow: var(--shadow-gold); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .text-balance { text-wrap: balance; }
+  .border-gold { border-color: hsl(var(--gold)); }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--gold) / 0.4); }
+
+  /* Markdown content */
+  .prose-legal { @apply text-foreground/90 leading-relaxed text-[15px]; }
+  .prose-legal h3 { @apply font-display text-base font-semibold text-foreground mt-4 mb-2; }
+  .prose-legal strong { @apply text-[hsl(var(--gold))] font-semibold; }
+  .prose-legal ul { @apply pl-5 my-2 space-y-1; }
+  .prose-legal ol { @apply pl-5 my-2 space-y-1 list-decimal; }
+  .prose-legal li { @apply marker:text-[hsl(var(--gold))]; }
+  .prose-legal em { @apply text-muted-foreground not-italic; }
+
+  @keyframes pulse-soft { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .animate-pulse-soft { animation: pulse-soft 1.4s ease-in-out infinite; }
 }
