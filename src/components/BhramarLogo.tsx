@@ -11,7 +11,7 @@ export function BhramarLogo({ className, showText = true, size = "md" }: { class
       </div>
       {showText && (
         <span className={cn("font-display font-bold tracking-tight text-foreground", textSize)}>
-          Bhramar<span className="text-gold">AI</span>
+          Bhramar<span className="text-gold">.ai</span>
         </span>
       )}
     </div>
