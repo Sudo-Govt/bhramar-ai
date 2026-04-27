@@ -1,129 +1,112 @@
-# NyayaAI — Full Build Plan
+# Plan — Bhramar.ai RAG (Lovable AI + pgvector)
 
-A premium, production-ready AI legal assistant for Indian advocates. Pixel-perfect 3-panel desktop layout, mobile-responsive, with real authentication, persistent cases/chats/notes, and an AI layer designed so you can swap from Lovable AI (Gemini) to your own Groq/Llama backend later by changing one variable.
+Turn Bhramar.ai into a true grounded Indian legal agent. The LLM stays Lovable AI (Gemini); we add a retrieval layer that fetches relevant chunks from (a) pre-loaded bare acts and (b) the user's own uploaded case files, then injects them into the prompt with real citations.
 
----
+## Architecture
 
-## 1. Branding & Design System
+```text
+                ┌───────────────────────────────────────────┐
+                │           User asks a question            │
+                └──────────────────┬────────────────────────┘
+                                   ▼
+                  ┌────────────────────────────────┐
+                  │  chat()  edge function         │
+                  │  1. embed question (Lovable AI)│
+                  │  2. pgvector similarity search │
+                  │     (corpus + user docs)       │
+                  │  3. build grounded prompt      │
+                  │  4. stream Gemini response     │
+                  └──────────────────┬─────────────┘
+                                     ▼
+                          Streamed answer + citations
+                                     ▲
+              ┌──────────────────────┴──────────────────────┐
+              │        document_chunks (pgvector)            │
+              │   ┌─────────────────┐  ┌─────────────────┐  │
+              │   │ source='corpus' │  │ source='user'   │  │
+              │   │ IPC, CrPC, CPC, │  │ uploaded PDFs   │  │
+              │   │ Evidence,       │  │ scoped per user │  │
+              │   │ Constitution,   │  │ + per case      │  │
+              │   │ Contract Act    │  │                 │  │
+              │   └─────────────────┘  └─────────────────┘  │
+              └──────────────────────────────────────────────┘
+                          ▲                       ▲
+                          │                       │
+                  one-time seed             ingest-document()
+                  (admin script)            edge function
+```
 
-- **Palette** (HSL tokens in `index.css`): deep navy `#0A1628` background, ink/card surfaces, pure white text, gold `#C9A84C` accent for CTAs, borders, citations.
-- **Fonts**: Playfair Display (headings) + Inter (body), loaded from Google Fonts.
-- **Feel**: calm, authoritative, premium. Subtle 200–250ms transitions only — no bouncy animations.
-- Tailwind config extended with semantic tokens (`navy`, `gold`, `ink`, `surface`, `border-gold`, etc.) and Playfair/Inter font families.
-- Custom scrollbars, gold focus rings, soft gold glow on hover for primary actions.
+## What gets built
 
-## 2. Pages & Routes
+### 1. Database (migration)
+- Enable `vector` extension.
+- New table `document_chunks`:
+  - `id uuid pk`, `source text` (`'corpus'` or `'user'`), `user_id uuid null`, `case_id uuid null`, `document_id uuid null` (FK to `documents`), `act_name text` (e.g. "IPC"), `section_label text` (e.g. "Section 302"), `chunk_index int`, `content text`, `embedding vector(768)`, `created_at`.
+- HNSW index on `embedding` for fast cosine similarity.
+- RLS: corpus chunks readable by all authenticated users; user chunks readable only by owner (`auth.uid() = user_id`).
+- SQL function `match_chunks(query_embedding vector, user_id uuid, case_id uuid, match_count int)` returning the top-K rows mixing corpus + that user's docs.
 
-| Route | Purpose |
-|---|---|
-| `/` | Landing page (hero, features, testimonials, footer) |
-| `/auth` | Login + Signup tabs, email/password + Google |
-| `/app` | Main 3-panel dashboard (protected) |
-| `/pricing` | Free / Pro / Firm tier cards |
-| `/profile` | User details, subscription, usage stats, danger zone |
+### 2. New edge function: `ingest-document`
+Called when the user clicks "Index for AI" on an uploaded document.
+- Downloads the file from the `case-documents` storage bucket.
+- Extracts text (PDF → text via `pdf-parse` from esm.sh; .txt/.md handled directly).
+- Splits into ~500-token overlapping chunks.
+- Calls Lovable AI embeddings (`text-embedding-004`, 768-dim) in batches.
+- Inserts rows into `document_chunks` with `source='user'`, `user_id`, `case_id`, `document_id`.
 
-### Landing Page
-- Full-screen navy hero, scales-of-justice mark, **"The AI co-pilot for every Indian advocate"**, sub: *"Research faster. Draft smarter. Win more."*
-- Two CTAs: **Get Started Free** (gold) and **See How It Works** (outlined gold).
-- Three feature cards: *Lightning Fast Research*, *Smart Document Analysis*, *Drafted in Seconds*.
-- "Trusted by" section with placeholder advocate testimonials.
-- Minimal footer.
+### 3. Updated edge function: `chat`
+Before calling the LLM:
+- Embed the latest user message.
+- `rpc('match_chunks', …)` → top 6 chunks (mix of corpus + user's docs).
+- Build augmented system prompt:
 
-### Authentication
-- Centered card on dark navy. Login / Signup tabs.
-- Email + password fields, **Continue with Google** button, gold submit.
-- Includes `/reset-password` page for the recovery flow.
+  ```text
+  Use ONLY the following sources to answer. Cite each fact as [S1], [S2]…
+  S1 — IPC §302 (corpus): "Whoever commits murder…"
+  S2 — User doc "FIR_Sharma.pdf" p.3: "…"
+  ```
+- Stream response as today. Parse `[S#]` markers and return a `citations` array (id, label, source type, snippet) alongside the SSE stream via a final `data: {"citations":[…]} ` event.
 
-### Dashboard (`/app`) — 3-Panel Layout
+### 4. New edge function: `seed-corpus` (run once)
+- Hard-coded list of bare-act source URLs (indiacode.nic.in / official PDFs):
+  IPC, CrPC, CPC, Indian Evidence Act, Constitution of India, Indian Contract Act.
+- For each: fetch text, split per Section, embed, insert with `source='corpus'`, `act_name`, `section_label`.
+- Idempotent — skips acts already present.
+- Triggered by you clicking a hidden "Seed corpus" button in Profile (admin-only via your user id) or by me invoking it once after deploy.
 
-**Left sidebar (collapsible)**
-- NyayaAI logo + scales icon at top
-- Gold **+ New Case** button
-- Sectioned chat history (Today / Yesterday / Last 7 Days) grouped under the active case
-- List of cases with status badges (Active / Closed / Draft)
-- User avatar + name + subscription tier chip at the bottom
+### 5. Frontend changes (`src/pages/Dashboard.tsx`)
+- **Right panel → Documents tab**: each uploaded file gets an **"Index for AI"** button (calls `ingest-document`). Status badge: *Not indexed / Indexing… / Indexed (N chunks)*.
+- **Right panel → Research tab**: now populated from real citations returned by chat (clickable chips opening a popover with the source snippet).
+- **Chat bubbles**: assistant messages render `[S1] [S2]` as gold citation chips; hovering shows the snippet, clicking jumps to Research tab.
+- **Composer**: small toggle "Ground in my documents" (default on). When off, falls back to plain LLM answer.
 
-**Center panel**
-- Top bar: current case name + actions (rename, archive)
-- Empty state: centered logo + tagline *"Your AI powered legal companion. Ask anything about Indian law."* + 3 suggestion cards (*Explain Section 302 IPC*, *Draft a legal notice*, *Bail conditions under CrPC 437*)
-- Chat thread:
-  - User messages: navy bubble, right-aligned
-  - AI messages: white card with subtle gold left border, small NyayaAI mark
-  - Markdown rendered (headings, lists, bold)
-  - **Cited sections highlighted in gold** (e.g. *IPC §302*, *CrPC §438*)
-  - Source citation chips below each AI message (Perplexity-style, clickable)
-  - Action row: Copy / Save to Notes / Bookmark / Share
-- Bottom input: large textarea, attach + voice icons on left, gold send button on right, disclaimer line beneath: *"NyayaAI provides legal information, not legal advice. Always consult a qualified advocate."*
+### 6. New table column on `documents`
+- Add `indexed_at timestamptz null` and `chunk_count int default 0` so the UI can show indexing status.
 
-**Right panel (collapsible, tabbed)**
-- **Documents**: drag-and-drop zone for PDFs/DOCX/images, list of uploaded files for the active case
-- **Research**: relevant statutes & landmark judgements pulled from the latest AI response
-- **Notes**: free-text per-case notepad with autosave
+## Cost estimate (Lovable AI)
+- Seeding all six bare acts: ~5–10M tokens of embeddings ≈ **one-time $0.10–$0.20**.
+- Per question: 1 embedding (negligible) + 1 chat call with ~3K tokens of context ≈ **<$0.001 per query** on Gemini Flash.
+- Storage: free at this scale inside Lovable Cloud.
 
-### Pricing Page
-- Three cards on dark background:
-  - **Free** — basic Q&A, 10 queries/day
-  - **Pro ₹1,999/month** — unlimited queries, document upload, case folders, *Most Popular*
-  - **Firm ₹9,999/month** — multi-user, priority support, custom branding
+## Security
+- Corpus chunks: `SELECT` allowed for any authenticated user, no writes.
+- User chunks: full RLS — only owner reads/writes.
+- `match_chunks` is `SECURITY DEFINER` but always filters by the passed `user_id` (validated server-side from JWT in the edge function, never trusted from the client).
+- Storage bucket `case-documents` already private; ingestion uses the service role key.
 
-### Profile Page
-- User details, subscription status, usage stats (queries this month, documents uploaded, cases created), Danger Zone (delete account)
+## Files touched
+- `supabase/migrations/<new>.sql` — extension, table, index, RLS, `match_chunks` function, `documents` columns.
+- `supabase/functions/chat/index.ts` — add embed + retrieve + grounded prompt steps.
+- `supabase/functions/ingest-document/index.ts` — new.
+- `supabase/functions/seed-corpus/index.ts` — new.
+- `src/pages/Dashboard.tsx` — index buttons, citation chips, Research tab wiring.
+- `src/lib/markdown.tsx` — render `[S#]` chips.
+- `supabase/config.toml` — register new functions.
 
-## 3. Mobile Responsive
-- Single-column stack
-- Bottom tab bar: **Cases / Chat / Documents / Profile**
-- Sidebar becomes a slide-out drawer (Sheet)
-- Right panel becomes a tabbed sheet that slides up
+## Out of scope (for this pass)
+- OCR for scanned PDFs (we'll add `pytesseract`-equivalent later if needed; for now scanned PDFs will index whatever embedded text exists).
+- Re-ranking model (top-K cosine is enough at this scale).
+- Per-section deep-link navigation to bare-act source PDFs.
 
-## 4. Backend (Lovable Cloud)
-
-Tables (all with strict RLS — only the owner can read/write their rows):
-- `profiles` — name, avatar, subscription tier, query counters
-- `cases` — name, status (Active/Closed/Draft), client name, timestamps
-- `conversations` — belongs to a case, title, last_message_at
-- `messages` — role (user/assistant), content, citations (jsonb), conversation_id
-- `documents` — case_id, storage path, filename, mime, size
-- `notes` — case_id, body
-- `usage_logs` — per-user query counts for daily limit enforcement
-
-Storage: private `case-documents` bucket with per-user RLS.
-Auth: email/password + Google sign-in, profile auto-created via signup trigger.
-
-## 5. AI Layer — Swappable Provider (Key Requirement)
-
-Built so you can move from Lovable AI to your own Groq/Llama instance by flipping a single env var.
-
-- **Edge function `chat`** is the only place that talks to an AI provider.
-- Inside it, a small **`provider` abstraction** reads `AI_PROVIDER` (default `lovable`, future `groq`).
-  - `lovable` → calls `https://ai.gateway.lovable.dev/v1/chat/completions` using the auto-provisioned `LOVABLE_API_KEY` (Gemini, OpenAI-compatible API).
-  - `groq` → calls `https://api.groq.com/openai/v1/chat/completions` using a `GROQ_API_KEY` secret you'll add later. Same OpenAI-compatible request/response, so streaming, tool-calls, and message format stay identical.
-- Indian-law specialist **system prompt** lives only in the edge function (so you can tune it without redeploying the frontend). It locks the model to:
-  - IPC, CrPC, Constitution, Evidence Act, Contract Act, landmark SC/HC judgements
-  - Always returns: structured answer → cited sections → disclaimer
-  - Refuses non-legal questions politely
-- **Streaming** SSE responses to the client for token-by-token rendering.
-- Citation extraction: model is instructed to emit a `citations` JSON block we parse and render as gold chips and into the Research tab.
-- Daily-limit middleware checks `usage_logs` for Free tier (10/day) and returns a friendly upgrade prompt when exceeded.
-- 429 / 402 errors from the gateway are surfaced as toasts.
-
-When you're ready to switch to your Groq model, you'll just: add `GROQ_API_KEY` secret, set `AI_PROVIDER=groq` and optionally `GROQ_MODEL=llama-3.3-70b-versatile`. Zero frontend changes.
-
-## 6. Dummy / Seed Data
-On first login, the user gets three sample cases pre-populated so the UI feels alive:
-- *Bail Application — Sharma vs State*
-- *Property Dispute — Kumar Family*
-- *Employment Termination — Ravi vs TechCorp*
-
-Plus one sample conversation in the first case showing a detailed AI response with cited IPC/CrPC sections.
-
-## 7. Polish
-- Smooth panel collapse/expand transitions
-- Skeleton loaders while messages stream
-- Toast notifications via Sonner
-- Keyboard shortcuts: `⌘/Ctrl + K` new chat, `Enter` send, `Shift+Enter` newline
-- Empty states for every panel
-- Full a11y: focus rings, aria labels, semantic HTML
-
----
-
-**Outcome**: a production-ready, responsive NyayaAI app with auth, persistent cases/chats/notes/documents, and a clean AI provider seam ready for your Groq/Llama swap.
+## After approval, you do nothing
+I'll run the migration, deploy the three functions, invoke `seed-corpus` once (takes ~3–5 min), and verify a sample question like *"What is the punishment under Section 302 IPC?"* returns a grounded answer with `[S1] IPC §302 (corpus)` citation.
