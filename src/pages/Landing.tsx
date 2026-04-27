@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { NyayaLogo } from "@/components/NyayaLogo";
+import { BhramarLogo } from "@/components/BhramarLogo";
 import { Zap, FileSearch, PenLine, Sparkles, ArrowRight, Quote } from "lucide-react";
 
 const features = [
@@ -10,7 +10,7 @@ const features = [
 ];
 
 const testimonials = [
-  { name: "Adv. Kavita Iyer", firm: "Bombay High Court", quote: "NyayaAI has cut my research time by 70%. The citation accuracy is remarkable." },
+  { name: "Adv. Kavita Iyer", firm: "Bombay High Court", quote: "Bhramar.ai has cut my research time by 70%. The citation accuracy is remarkable." },
   { name: "Adv. Arjun Malhotra", firm: "Delhi District Courts", quote: "It's like having a senior junior who has read every reported judgement." },
   { name: "Adv. Sneha Reddy", firm: "Hyderabad", quote: "The drafting workflows alone justify the subscription. Truly built for Indian advocates." },
 ];
@@ -21,7 +21,7 @@ export default function Landing() {
       {/* Nav */}
       <header className="absolute top-0 inset-x-0 z-20">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
-          <NyayaLogo />
+          <BhramarLogo />
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <Link to="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
@@ -45,7 +45,7 @@ export default function Landing() {
             The AI co-pilot for every <span className="text-gold">Indian advocate</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 text-balance">
-            Research faster. Draft smarter. Win more. NyayaAI brings the entire Indian legal corpus to your fingertips.
+            Research faster. Draft smarter. Win more. Bhramar.ai brings the entire Indian legal corpus to your fingertips.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/auth">
@@ -109,7 +109,7 @@ export default function Landing() {
       <section className="py-24">
         <div className="container mx-auto px-6 text-center max-w-2xl">
           <h2 className="font-display text-3xl md:text-5xl font-bold mb-5">Ready to practise smarter?</h2>
-          <p className="text-muted-foreground mb-8">Join hundreds of advocates already winning with NyayaAI.</p>
+          <p className="text-muted-foreground mb-8">Join hundreds of advocates already winning with Bhramar.ai.</p>
           <Link to="/auth">
             <Button size="lg" className="bg-gold hover:bg-gold-bright text-primary-foreground shadow-gold h-12 px-8">
               Start Free <ArrowRight className="ml-1 h-4 w-4" />
@@ -121,8 +121,8 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-border py-10">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <NyayaLogo size="sm" />
-          <div>© {new Date().getFullYear()} NyayaAI. All rights reserved.</div>
+          <BhramarLogo size="sm" />
+          <div>© {new Date().getFullYear()} Bhramar.ai. All rights reserved.</div>
           <div className="flex gap-6">
             <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
             <a href="#" className="hover:text-foreground">Privacy</a>

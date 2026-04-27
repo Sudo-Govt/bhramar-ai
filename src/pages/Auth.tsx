@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { NyayaLogo } from "@/components/NyayaLogo";
+import { BhramarLogo } from "@/components/BhramarLogo";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -35,7 +35,7 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        toast.success("Account created. Welcome to NyayaAI.");
+        toast.success("Account created. Welcome to Bhramar.ai.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -59,7 +59,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        <Link to="/" className="flex justify-center mb-8"><NyayaLogo size="lg" /></Link>
+        <Link to="/" className="flex justify-center mb-8"><BhramarLogo size="lg" /></Link>
         <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
           <h1 className="font-display text-2xl font-bold text-center mb-1">Welcome back</h1>
           <p className="text-sm text-muted-foreground text-center mb-6">The AI co-pilot for Indian advocates</p>
@@ -104,7 +104,7 @@ export default function Auth() {
           </Tabs>
         </div>
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing you agree to our terms. NyayaAI provides legal information, not legal advice.
+          By continuing you agree to our terms. Bhramar.ai provides legal information, not legal advice.
         </p>
       </div>
     </div>

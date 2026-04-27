@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { NyayaLogo } from "@/components/NyayaLogo";
+import { BhramarLogo } from "@/components/BhramarLogo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -209,7 +209,7 @@ export default function Dashboard() {
   const Sidebar = () => (
     <aside className={`bg-sidebar border-r border-sidebar-border flex flex-col h-full ${leftOpen ? "w-72" : "w-16"} transition-[width] duration-200`}>
       <div className="p-3 border-b border-sidebar-border flex items-center justify-between">
-        {leftOpen ? <NyayaLogo /> : <Scale className="h-5 w-5 text-gold mx-auto" />}
+        {leftOpen ? <BhramarLogo /> : <Scale className="h-5 w-5 text-gold mx-auto" />}
         <Button variant="ghost" size="icon" className="hidden md:flex h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setLeftOpen(!leftOpen)}>
           {leftOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
         </Button>
@@ -353,7 +353,7 @@ export default function Dashboard() {
           <div className="rounded-2xl bg-gold/10 border border-gold/40 p-5 mb-6">
             <Scale className="h-10 w-10 text-gold" />
           </div>
-          <h2 className="font-display text-3xl font-bold mb-2">NyayaAI</h2>
+          <h2 className="font-display text-3xl font-bold mb-2">Bhramar.ai</h2>
           <p className="text-muted-foreground mb-10 text-balance">Your AI powered legal companion. Ask anything about Indian law.</p>
           <div className="grid sm:grid-cols-3 gap-3 w-full">
             {SUGGESTIONS.map((s) => (
@@ -435,7 +435,7 @@ export default function Dashboard() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Ask NyayaAI anything about your case..."
+            placeholder="Ask Bhramar.ai anything about your case..."
             rows={1}
             className="flex-1 min-h-[40px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-1 py-2 text-sm"
           />
@@ -447,7 +447,7 @@ export default function Dashboard() {
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground text-center mt-2">
-          NyayaAI provides legal information, not legal advice. Always consult a qualified advocate.
+          Bhramar.ai provides legal information, not legal advice. Always consult a qualified advocate.
         </p>
       </div>
     </div>

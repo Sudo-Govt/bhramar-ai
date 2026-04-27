@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { NyayaLogo } from "@/components/NyayaLogo";
+import { BhramarLogo } from "@/components/BhramarLogo";
 import { ArrowLeft, MessageSquare, FileText, FolderClosed, LogOut, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,7 +41,7 @@ export default function Profile() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/app"><NyayaLogo /></Link>
+          <Link to="/app"><BhramarLogo /></Link>
           <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5">
             <ArrowLeft className="h-4 w-4" /> Back to app
           </Link>
