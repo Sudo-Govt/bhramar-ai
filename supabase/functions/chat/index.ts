@@ -1,7 +1,10 @@
 // Bhramar.ai chat — streaming SSE.
-// Provider abstraction: switch from Lovable AI (Gemini, default) to Groq/Llama
-// later by setting AI_PROVIDER=groq and adding GROQ_API_KEY (optionally GROQ_MODEL).
-// No frontend changes required.
+// Provider abstraction: switch between providers with the AI_PROVIDER env var.
+//   - "lovable"      (default) — Lovable AI Gateway (Gemini)
+//   - "groq"         — Groq (Llama). Needs GROQ_API_KEY, optional GROQ_MODEL.
+//   - "anythingllm"  — Self-hosted AnythingLLM (OpenAI-compatible). Needs
+//                      ANYTHINGLLM_BASE_URL, ANYTHINGLLM_API_KEY, ANYTHINGLLM_WORKSPACE.
+// No frontend changes required when switching providers.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.104.1/cors";
 
 const SYSTEM_PROMPT = `You are Bhramar.ai, an expert AI legal assistant trained exclusively on Indian law.
@@ -33,6 +36,19 @@ function getProviderConfig() {
       model: Deno.env.get("GROQ_MODEL") || "llama-3.3-70b-versatile",
     };
   }
+  if (provider === "anythingllm") {
+    // AnythingLLM exposes an OpenAI-compatible endpoint per workspace:
+    //   {BASE}/api/v1/openai/chat/completions
+    // The "model" field must be the workspace slug.
+    const base = (Deno.env.get("ANYTHINGLLM_BASE_URL") || "").replace(/\/+$/, "");
+    const workspace = Deno.env.get("ANYTHINGLLM_WORKSPACE") || "";
+    return {
+      provider,
+      url: base ? `${base}/api/v1/openai/chat/completions` : "",
+      apiKey: Deno.env.get("ANYTHINGLLM_API_KEY") || "",
+      model: workspace,
+    };
+  }
   return {
     provider: "lovable",
     url: "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -54,8 +70,8 @@ Deno.serve(async (req) => {
     }
 
     const cfg = getProviderConfig();
-    if (!cfg.apiKey) {
-      return new Response(JSON.stringify({ error: `${cfg.provider.toUpperCase()} API key not configured` }), {
+    if (!cfg.apiKey || !cfg.url || !cfg.model) {
+      return new Response(JSON.stringify({ error: `${cfg.provider.toUpperCase()} provider is not fully configured` }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
