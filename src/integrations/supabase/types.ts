@@ -79,12 +79,64 @@ export type Database = {
           },
         ]
       }
+      document_chunks: {
+        Row: {
+          act_name: string | null
+          case_id: string | null
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string | null
+          embedding: string
+          id: string
+          section_label: string | null
+          source: Database["public"]["Enums"]["chunk_source"]
+          user_id: string | null
+        }
+        Insert: {
+          act_name?: string | null
+          case_id?: string | null
+          chunk_index?: number
+          content: string
+          created_at?: string
+          document_id?: string | null
+          embedding: string
+          id?: string
+          section_label?: string | null
+          source: Database["public"]["Enums"]["chunk_source"]
+          user_id?: string | null
+        }
+        Update: {
+          act_name?: string | null
+          case_id?: string | null
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string | null
+          embedding?: string
+          id?: string
+          section_label?: string | null
+          source?: Database["public"]["Enums"]["chunk_source"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           case_id: string | null
+          chunk_count: number
           created_at: string
           filename: string
           id: string
+          indexed_at: string | null
           mime_type: string | null
           size_bytes: number | null
           storage_path: string
@@ -92,9 +144,11 @@ export type Database = {
         }
         Insert: {
           case_id?: string | null
+          chunk_count?: number
           created_at?: string
           filename: string
           id?: string
+          indexed_at?: string | null
           mime_type?: string | null
           size_bytes?: number | null
           storage_path: string
@@ -102,9 +156,11 @@ export type Database = {
         }
         Update: {
           case_id?: string | null
+          chunk_count?: number
           created_at?: string
           filename?: string
           id?: string
+          indexed_at?: string | null
           mime_type?: string | null
           size_bytes?: number | null
           storage_path?: string
@@ -246,10 +302,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_chunks: {
+        Args: {
+          corpus_weight?: number
+          match_count?: number
+          match_user_id: string
+          query_embedding: string
+        }
+        Returns: {
+          act_name: string
+          content: string
+          document_id: string
+          id: string
+          section_label: string
+          similarity: number
+          source: Database["public"]["Enums"]["chunk_source"]
+        }[]
+      }
     }
     Enums: {
       case_status: "Active" | "Closed" | "Draft"
+      chunk_source: "corpus" | "user"
       message_role: "user" | "assistant" | "system"
       subscription_tier: "Free" | "Pro" | "Firm"
     }
@@ -380,6 +453,7 @@ export const Constants = {
   public: {
     Enums: {
       case_status: ["Active", "Closed", "Draft"],
+      chunk_source: ["corpus", "user"],
       message_role: ["user", "assistant", "system"],
       subscription_tier: ["Free", "Pro", "Firm"],
     },
