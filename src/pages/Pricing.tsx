@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { NyayaLogo } from "@/components/NyayaLogo";
+import { BhramarLogo } from "@/components/BhramarLogo";
 import { Check, ArrowLeft, Crown } from "lucide-react";
 
 const tiers = [
@@ -8,7 +8,7 @@ const tiers = [
     name: "Free",
     price: "₹0",
     period: "forever",
-    desc: "Try NyayaAI for everyday research",
+    desc: "Try Bhramar.ai for everyday research",
     features: ["10 queries per day", "Basic IPC & CrPC research", "1 active case", "Email support"],
     cta: "Get Started",
     highlight: false,
@@ -38,7 +38,7 @@ export default function Pricing() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/"><NyayaLogo /></Link>
+          <Link to="/"><BhramarLogo /></Link>
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5">
             <ArrowLeft className="h-4 w-4" /> Back home
           </Link>
