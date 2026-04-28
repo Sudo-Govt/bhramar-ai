@@ -47,12 +47,14 @@ type SidebarProps = {
   tier: Tier;
   freeChatHistory: ConvRow[];
   setActiveFreeConv: (c: ConvRow) => void;
+  isDevAccount?: boolean;
+  openPicker?: () => void;
 };
 
 function Sidebar(props: SidebarProps) {
   const { leftOpen, setLeftOpen, cases, activeCaseId, setActiveCaseId,
     conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail,
-    tier, freeChatHistory, setActiveFreeConv } = props;
+    tier, freeChatHistory, setActiveFreeConv, isDevAccount, openPicker } = props;
 
   const isPremium = tier === "Pro" || tier === "Firm";
 
@@ -163,7 +165,15 @@ function Sidebar(props: SidebarProps) {
             {leftOpen && (
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{profile?.full_name || "Advocate"}</div>
-                <div className="text-[11px] text-gold">{tier} Plan</div>
+                <div className="text-[11px] text-gold">
+                  {tier} Plan
+                  {isDevAccount && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPicker?.(); }}
+                      className="ml-2 underline opacity-70 hover:opacity-100"
+                    >switch</button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -636,6 +646,7 @@ export default function Dashboard() {
           conversations={conversations} activeConvId={activeConvId} setActiveConvId={setActiveConvId}
           newCase={newCase} newChat={newChat} profile={profile} userEmail={user?.email}
           tier={tier} freeChatHistory={freeChatHistory} setActiveFreeConv={setActiveFreeConv}
+          isDevAccount={isDevAccount} openPicker={() => setPickerOpen(true)}
         />
       </div>
 
@@ -652,6 +663,7 @@ export default function Dashboard() {
             profile={profile} userEmail={user?.email}
             tier={tier} freeChatHistory={freeChatHistory}
             setActiveFreeConv={(cv) => { setActiveFreeConv(cv); setMobileLeft(false); }}
+            isDevAccount={isDevAccount} openPicker={() => { setMobileLeft(false); setPickerOpen(true); }}
           />
         </SheetContent>
       </Sheet>
