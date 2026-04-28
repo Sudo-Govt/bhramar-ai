@@ -351,8 +351,8 @@ function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyP
                   </div>
                 ) : (
                   <div className="flex gap-3">
-                    <div className="h-8 w-8 rounded-xl bg-gradient-aurora flex items-center justify-center shrink-0 shadow-gold">
-                      <Scale className="h-4 w-4 text-primary-foreground" />
+                    <div className="h-8 w-8 rounded-xl bg-gradient-aurora flex items-center justify-center shrink-0 shadow-gold p-1">
+                      <img src={logoIcon} alt="" className="h-full w-full object-contain" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="rounded-2xl rounded-tl-sm glass px-5 py-4 border-l-2 border-l-gold">
