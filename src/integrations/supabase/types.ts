@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_training_logs: {
+        Row: {
+          case_id: string | null
+          citations: Json | null
+          content: string
+          conversation_id: string | null
+          created_at: string
+          id: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          case_id?: string | null
+          citations?: Json | null
+          content: string
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          case_id?: string | null
+          citations?: Json | null
+          content?: string
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      case_deletion_logs: {
+        Row: {
+          ai_summary: string | null
+          case_name: string | null
+          case_number: string | null
+          client_name: string | null
+          complaint: string | null
+          conversations_text: string | null
+          deleted_at: string
+          documents_summary: string | null
+          id: string
+          notes_text: string | null
+          original_case_id: string
+          payments_summary: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          case_name?: string | null
+          case_number?: string | null
+          client_name?: string | null
+          complaint?: string | null
+          conversations_text?: string | null
+          deleted_at?: string
+          documents_summary?: string | null
+          id?: string
+          notes_text?: string | null
+          original_case_id: string
+          payments_summary?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_summary?: string | null
+          case_name?: string | null
+          case_number?: string | null
+          client_name?: string | null
+          complaint?: string | null
+          conversations_text?: string | null
+          deleted_at?: string
+          documents_summary?: string | null
+          id?: string
+          notes_text?: string | null
+          original_case_id?: string
+          payments_summary?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       case_payments: {
         Row: {
           case_id: string
@@ -53,6 +134,7 @@ export type Database = {
       cases: {
         Row: {
           ai_summary: string | null
+          archived_at: string | null
           case_number: string | null
           client_name: string | null
           complaint: string | null
@@ -65,6 +147,7 @@ export type Database = {
         }
         Insert: {
           ai_summary?: string | null
+          archived_at?: string | null
           case_number?: string | null
           client_name?: string | null
           complaint?: string | null
@@ -77,6 +160,7 @@ export type Database = {
         }
         Update: {
           ai_summary?: string | null
+          archived_at?: string | null
           case_number?: string | null
           client_name?: string | null
           complaint?: string | null
@@ -301,6 +385,8 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          subscription_expires_at: string | null
+          subscription_started_at: string | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           updated_at: string
         }
@@ -310,6 +396,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          subscription_expires_at?: string | null
+          subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
         }
@@ -319,6 +407,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          subscription_expires_at?: string | null
+          subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
         }
@@ -392,6 +482,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      archive_case: { Args: { _case_id: string }; Returns: undefined }
+      delete_case_with_log: { Args: { _case_id: string }; Returns: undefined }
       generate_case_number: { Args: never; Returns: string }
       match_chunks: {
         Args: {
@@ -410,6 +502,7 @@ export type Database = {
           source: Database["public"]["Enums"]["chunk_source"]
         }[]
       }
+      unarchive_case: { Args: { _case_id: string }; Returns: undefined }
     }
     Enums: {
       case_status: "Active" | "Closed" | "Draft"
