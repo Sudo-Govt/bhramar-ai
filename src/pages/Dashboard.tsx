@@ -866,6 +866,25 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete-case confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="glass-strong border-destructive/30 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Delete case forever?</DialogTitle>
+            <DialogDescription>
+              <span className="text-foreground font-medium">{deleteTarget?.name}</span> and all its conversations,
+              documents, payments and notes will be permanently removed from your account. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={onConfirmDelete}>
+              <Trash2 className="h-4 w-4" /> Delete forever
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
