@@ -464,6 +464,8 @@ export default function Dashboard() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [createCaseOpen, setCreateCaseOpen] = useState(false);
   const [freeChatHistory, setFreeChatHistory] = useState<ConvRow[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CaseRow | null>(null);
 
   // Dev role override for bhramar123@gmail.com
   const isDevAccount = (user?.email || "").toLowerCase() === "bhramar123@gmail.com";
