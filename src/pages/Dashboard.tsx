@@ -240,6 +240,11 @@ function RightPanel(props: RightPanelProps) {
               />
               <p className="text-xs text-muted-foreground mt-2">{activeCaseId ? "Auto-saved" : "Select a case to take notes"}</p>
             </TabsContent>
+            {isPremium && (
+              <TabsContent value="payments" className="mt-0">
+                <PaymentTracker caseId={activeCaseId} />
+              </TabsContent>
+            )}
           </div>
         </Tabs>
       )}
