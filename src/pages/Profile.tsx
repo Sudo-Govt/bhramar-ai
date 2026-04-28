@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { BhramarLogo } from "@/components/BhramarLogo";
 import { ArrowLeft, MessageSquare, FileText, FolderClosed, LogOut, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -96,6 +97,8 @@ export default function Profile() {
             <LogOut className="h-4 w-4" /> Sign out
           </Button>
         </Card>
+
+        <TwoFactorSetup />
 
         <Card className="p-6 border-destructive/40">
           <div className="flex items-start gap-3 mb-4">
