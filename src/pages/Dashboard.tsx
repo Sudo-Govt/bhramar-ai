@@ -180,10 +180,11 @@ type RightPanelProps = {
   saveNotes: (v: string) => void;
   activeCaseId: string | null;
   handleFileUpload: (f: File) => void;
+  isPremium: boolean;
 };
 
 function RightPanel(props: RightPanelProps) {
-  const { rightOpen, setRightOpen, messages, notes, saveNotes, activeCaseId, handleFileUpload } = props;
+  const { rightOpen, setRightOpen, messages, notes, saveNotes, activeCaseId, handleFileUpload, isPremium } = props;
   return (
     <aside className={`bg-card/60 backdrop-blur-xl border-l border-border flex flex-col h-full ${rightOpen ? "w-80" : "w-12"} transition-[width] duration-200`}>
       <div className="p-2 border-b border-border flex items-center justify-between">
@@ -193,10 +194,13 @@ function RightPanel(props: RightPanelProps) {
       </div>
       {rightOpen && (
         <Tabs defaultValue="documents" className="flex-1 flex flex-col">
-          <TabsList className="grid grid-cols-3 mx-3 mt-2 glass-subtle">
+          <TabsList className={`grid ${isPremium ? "grid-cols-4" : "grid-cols-3"} mx-3 mt-2 glass-subtle`}>
             <TabsTrigger value="documents" className="text-xs"><FileText className="h-3.5 w-3.5 mr-1" /> Docs</TabsTrigger>
             <TabsTrigger value="research" className="text-xs"><Search className="h-3.5 w-3.5 mr-1" /> Research</TabsTrigger>
             <TabsTrigger value="notes" className="text-xs"><StickyNote className="h-3.5 w-3.5 mr-1" /> Notes</TabsTrigger>
+            {isPremium && (
+              <TabsTrigger value="payments" className="text-xs"><IndianRupee className="h-3.5 w-3.5 mr-1" /> Fees</TabsTrigger>
+            )}
           </TabsList>
           <div className="flex-1 overflow-y-auto p-4">
             <TabsContent value="documents" className="mt-0 space-y-3">
