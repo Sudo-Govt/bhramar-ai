@@ -12,15 +12,18 @@ import {
   Plus, Send, Paperclip, Mic, Scale, MessageSquare, FolderClosed,
   FileText, StickyNote, Search, Copy, Bookmark, Share2, Save,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
-  ChevronRight, Upload, Crown, Sparkles, Menu,
+  ChevronRight, Upload, Crown, Menu, IndianRupee, History,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { Tier } from "@/hooks/useEffectiveTier";
+import { CreateCaseDialog } from "@/components/CreateCaseDialog";
+import { PaymentTracker } from "@/components/PaymentTracker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { User, Building2 } from "lucide-react";
 
-type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft" };
+type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null };
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
 type MsgRow = { id?: string; role: "user" | "assistant"; content: string; citations?: string[] };
-
-const SUGGESTIONS = ["Explain Section 302 IPC", "Draft a legal notice", "Bail conditions under CrPC 437"];
 
 // ============================================================================
 // Sub-components are defined OUTSIDE the page component on purpose.
@@ -41,11 +44,19 @@ type SidebarProps = {
   newChat: () => void;
   profile: any;
   userEmail?: string | null;
+  tier: Tier;
+  freeChatHistory: ConvRow[];
+  setActiveFreeConv: (c: ConvRow) => void;
+  isDevAccount?: boolean;
+  openPicker?: () => void;
 };
 
 function Sidebar(props: SidebarProps) {
   const { leftOpen, setLeftOpen, cases, activeCaseId, setActiveCaseId,
-    conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail } = props;
+    conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail,
+    tier, freeChatHistory, setActiveFreeConv, isDevAccount, openPicker } = props;
+
+  const isPremium = tier === "Pro" || tier === "Firm";
 
   return (
     <aside className={`relative bg-sidebar/70 backdrop-blur-xl border-r border-sidebar-border flex flex-col h-full ${leftOpen ? "w-72" : "w-16"} transition-[width] duration-200`}>
@@ -57,45 +68,79 @@ function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="p-3">
-        <Button onClick={newCase} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
-          <Plus className="h-4 w-4" /> {leftOpen && "New Case"}
-        </Button>
-        {leftOpen && (
-          <Button onClick={newChat} variant="ghost" className="w-full mt-2 h-9 justify-start text-muted-foreground hover:text-foreground">
-            <MessageSquare className="h-4 w-4" /> New chat
+        {isPremium ? (
+          <>
+            <Button onClick={newCase} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
+              <Plus className="h-4 w-4" /> {leftOpen && "Create case"}
+            </Button>
+            {leftOpen && (
+              <Button onClick={newChat} variant="ghost" className="w-full mt-2 h-9 justify-start text-muted-foreground hover:text-foreground">
+                <MessageSquare className="h-4 w-4" /> New chat
+              </Button>
+            )}
+          </>
+        ) : (
+          <Button onClick={newChat} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
+            <MessageSquare className="h-4 w-4" /> {leftOpen && "New chat"}
           </Button>
         )}
       </div>
 
       {leftOpen && (
         <div className="flex-1 overflow-y-auto px-3 pb-3">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2">Cases</div>
-          {cases.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCaseId(c.id)}
-              className={`w-full text-left p-2.5 rounded-xl mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-sidebar-accent/60"}`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-medium truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
-                  {c.client_name && <div className="text-xs text-muted-foreground truncate mt-0.5">{c.client_name}</div>}
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                  c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
-                  c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
-                }`}>{c.status}</span>
-              </div>
-            </button>
-          ))}
-
-          {activeCaseId && conversations.length > 0 && (
+          {isPremium ? (
             <>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-5 mb-2">Conversations</div>
-              {conversations.map((cv) => (
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2">Cases</div>
+              {cases.length === 0 && (
+                <div className="text-xs text-muted-foreground px-2 py-3">No cases yet. Click <span className="text-gold">Create case</span> to start.</div>
+              )}
+              {cases.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCaseId(c.id)}
+                  className={`w-full text-left p-2.5 rounded-xl mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-sidebar-accent/60"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm font-medium truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {c.case_number && <span className="text-[10px] font-mono text-gold/80">#{c.case_number}</span>}
+                        {c.client_name && <span className="text-xs text-muted-foreground truncate">· {c.client_name}</span>}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
+                      c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
+                      c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
+                    }`}>{c.status}</span>
+                  </div>
+                </button>
+              ))}
+
+              {activeCaseId && conversations.length > 0 && (
+                <>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-5 mb-2">Conversations</div>
+                  {conversations.map((cv) => (
+                    <button
+                      key={cv.id}
+                      onClick={() => setActiveConvId(cv.id)}
+                      className={`w-full text-left text-xs p-2 rounded-md mb-0.5 truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"}`}
+                    >{cv.title}</button>
+                  ))}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2 flex items-center gap-1.5">
+                <History className="h-3 w-3" /> Chat history
+              </div>
+              {freeChatHistory.length === 0 && (
+                <div className="text-xs text-muted-foreground px-2 py-3">Your past chats will appear here.</div>
+              )}
+              {freeChatHistory.map((cv) => (
                 <button
                   key={cv.id}
-                  onClick={() => setActiveConvId(cv.id)}
+                  onClick={() => setActiveFreeConv(cv)}
                   className={`w-full text-left text-xs p-2 rounded-md mb-0.5 truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"}`}
                 >{cv.title}</button>
               ))}
@@ -120,7 +165,15 @@ function Sidebar(props: SidebarProps) {
             {leftOpen && (
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{profile?.full_name || "Advocate"}</div>
-                <div className="text-[11px] text-gold">{profile?.subscription_tier || "Free"} Plan</div>
+                <div className="text-[11px] text-gold">
+                  {tier} Plan
+                  {isDevAccount && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPicker?.(); }}
+                      className="ml-2 underline opacity-70 hover:opacity-100"
+                    >switch</button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -138,10 +191,11 @@ type RightPanelProps = {
   saveNotes: (v: string) => void;
   activeCaseId: string | null;
   handleFileUpload: (f: File) => void;
+  isPremium: boolean;
 };
 
 function RightPanel(props: RightPanelProps) {
-  const { rightOpen, setRightOpen, messages, notes, saveNotes, activeCaseId, handleFileUpload } = props;
+  const { rightOpen, setRightOpen, messages, notes, saveNotes, activeCaseId, handleFileUpload, isPremium } = props;
   return (
     <aside className={`bg-card/60 backdrop-blur-xl border-l border-border flex flex-col h-full ${rightOpen ? "w-80" : "w-12"} transition-[width] duration-200`}>
       <div className="p-2 border-b border-border flex items-center justify-between">
@@ -151,10 +205,13 @@ function RightPanel(props: RightPanelProps) {
       </div>
       {rightOpen && (
         <Tabs defaultValue="documents" className="flex-1 flex flex-col">
-          <TabsList className="grid grid-cols-3 mx-3 mt-2 glass-subtle">
+          <TabsList className={`grid ${isPremium ? "grid-cols-4" : "grid-cols-3"} mx-3 mt-2 glass-subtle`}>
             <TabsTrigger value="documents" className="text-xs"><FileText className="h-3.5 w-3.5 mr-1" /> Docs</TabsTrigger>
             <TabsTrigger value="research" className="text-xs"><Search className="h-3.5 w-3.5 mr-1" /> Research</TabsTrigger>
             <TabsTrigger value="notes" className="text-xs"><StickyNote className="h-3.5 w-3.5 mr-1" /> Notes</TabsTrigger>
+            {isPremium && (
+              <TabsTrigger value="payments" className="text-xs"><IndianRupee className="h-3.5 w-3.5 mr-1" /> Fees</TabsTrigger>
+            )}
           </TabsList>
           <div className="flex-1 overflow-y-auto p-4">
             <TabsContent value="documents" className="mt-0 space-y-3">
@@ -194,6 +251,11 @@ function RightPanel(props: RightPanelProps) {
               />
               <p className="text-xs text-muted-foreground mt-2">{activeCaseId ? "Auto-saved" : "Select a case to take notes"}</p>
             </TabsContent>
+            {isPremium && (
+              <TabsContent value="payments" className="mt-0">
+                <PaymentTracker caseId={activeCaseId} />
+              </TabsContent>
+            )}
           </div>
         </Tabs>
       )}
@@ -219,19 +281,7 @@ function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyP
               <Scale className="h-10 w-10 text-gold" />
             </div>
             <h2 className="font-display text-4xl md:text-5xl font-bold mb-3 text-gradient-aurora">Bhramar.ai</h2>
-            <p className="text-muted-foreground mb-10 text-balance">Your AI-powered legal companion. Ask anything about Indian law.</p>
-            <div className="grid sm:grid-cols-3 gap-3 w-full">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setInput(s)}
-                  className="text-left p-4 rounded-2xl glass hover:border-gold/50 hover:scale-[1.02] transition-all group"
-                >
-                  <Sparkles className="h-4 w-4 text-gold mb-2" />
-                  <div className="text-sm font-medium text-foreground group-hover:text-gold transition-colors">{s}</div>
-                </button>
-              ))}
-            </div>
+            <p className="text-muted-foreground text-balance">Your AI-powered legal companion. Ask anything about Indian law.</p>
           </div>
         ) : (
           <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
@@ -351,6 +401,29 @@ export default function Dashboard() {
   const [mobileRight, setMobileRight] = useState(false);
   const [notes, setNotes] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [createCaseOpen, setCreateCaseOpen] = useState(false);
+  const [freeChatHistory, setFreeChatHistory] = useState<ConvRow[]>([]);
+
+  // Dev role override for bhramar123@gmail.com
+  const isDevAccount = (user?.email || "").toLowerCase() === "bhramar123@gmail.com";
+  const [devTier, setDevTier] = useState<Tier | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  useEffect(() => {
+    if (!isDevAccount) { setDevTier(null); return; }
+    const saved = localStorage.getItem("bhramar.devTier") as Tier | null;
+    if (saved && ["Free", "Pro", "Firm"].includes(saved)) setDevTier(saved);
+    else setPickerOpen(true);
+  }, [isDevAccount, user?.id]);
+  const chooseTier = (t: Tier) => {
+    localStorage.setItem("bhramar.devTier", t);
+    setDevTier(t);
+    setPickerOpen(false);
+    toast.success(`Switched to ${t} view`);
+  };
+
+  const realTier: Tier = (profile?.subscription_tier as Tier) || "Free";
+  const tier: Tier = isDevAccount && devTier ? devTier : realTier;
+  const isPremium = tier === "Pro" || tier === "Firm";
 
   // Initial load
   useEffect(() => {
@@ -365,6 +438,20 @@ export default function Dashboard() {
       if (cs && cs.length) setActiveCaseId(cs[0].id);
     })();
   }, [user]);
+
+  // Free user: load all conversations as flat chat history
+  useEffect(() => {
+    if (!user || isPremium) { setFreeChatHistory([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("conversations")
+        .select("id, case_id, title, updated_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      setFreeChatHistory((data as any) || []);
+    })();
+  }, [user, isPremium, messages.length]);
 
   // Load convs + notes when case changes
   useEffect(() => {
@@ -394,14 +481,21 @@ export default function Dashboard() {
 
   const activeCase = useMemo(() => cases.find((c) => c.id === activeCaseId), [cases, activeCaseId]);
 
-  const newCase = useCallback(async () => {
+  const newCase = useCallback(() => {
+    setCreateCaseOpen(true);
+  }, []);
+
+  const onCaseCreated = useCallback(async (caseId: string) => {
     if (!user) return;
-    const { data, error } = await supabase.from("cases").insert({ user_id: user.id, name: "New case", status: "Draft" }).select().single();
-    if (error) return toast.error(error.message);
-    setCases((prev) => [data as any, ...prev]);
-    setActiveCaseId(data.id);
-    toast.success("Case created");
+    const { data: cs } = await supabase.from("cases").select("*").eq("user_id", user.id).order("updated_at", { ascending: false });
+    setCases((cs as any) || []);
+    setActiveCaseId(caseId);
   }, [user]);
+
+  const setActiveFreeConv = useCallback(async (cv: ConvRow) => {
+    setActiveCaseId(cv.case_id);
+    setActiveConvId(cv.id);
+  }, []);
 
   const newChat = useCallback(() => {
     setActiveConvId(null);
@@ -551,6 +645,8 @@ export default function Dashboard() {
           cases={cases} activeCaseId={activeCaseId} setActiveCaseId={setActiveCaseId}
           conversations={conversations} activeConvId={activeConvId} setActiveConvId={setActiveConvId}
           newCase={newCase} newChat={newChat} profile={profile} userEmail={user?.email}
+          tier={tier} freeChatHistory={freeChatHistory} setActiveFreeConv={setActiveFreeConv}
+          isDevAccount={isDevAccount} openPicker={() => setPickerOpen(true)}
         />
       </div>
 
@@ -565,6 +661,9 @@ export default function Dashboard() {
             setActiveConvId={(id) => { setActiveConvId(id); setMobileLeft(false); }}
             newCase={newCase} newChat={() => { newChat(); setMobileLeft(false); }}
             profile={profile} userEmail={user?.email}
+            tier={tier} freeChatHistory={freeChatHistory}
+            setActiveFreeConv={(cv) => { setActiveFreeConv(cv); setMobileLeft(false); }}
+            isDevAccount={isDevAccount} openPicker={() => { setMobileLeft(false); setPickerOpen(true); }}
           />
         </SheetContent>
       </Sheet>
@@ -607,7 +706,7 @@ export default function Dashboard() {
         <RightPanel
           rightOpen={rightOpen} setRightOpen={setRightOpen}
           messages={messages} notes={notes} saveNotes={saveNotes}
-          activeCaseId={activeCaseId} handleFileUpload={handleFileUpload}
+          activeCaseId={activeCaseId} handleFileUpload={handleFileUpload} isPremium={isPremium}
         />
       </div>
 
@@ -617,10 +716,53 @@ export default function Dashboard() {
           <RightPanel
             rightOpen={true} setRightOpen={() => setMobileRight(false)}
             messages={messages} notes={notes} saveNotes={saveNotes}
-            activeCaseId={activeCaseId} handleFileUpload={handleFileUpload}
+            activeCaseId={activeCaseId} handleFileUpload={handleFileUpload} isPremium={isPremium}
           />
         </SheetContent>
       </Sheet>
+
+      {/* Create case dialog (premium) */}
+      <CreateCaseDialog open={createCaseOpen} onOpenChange={setCreateCaseOpen} onCreated={onCaseCreated} />
+
+      {/* Dev role picker for bhramar123@gmail.com */}
+      {isDevAccount && (
+        <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+          <DialogContent className="glass-strong border-gold/30 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="font-display text-2xl text-gradient-aurora">Choose dashboard view</DialogTitle>
+              <DialogDescription>
+                Dev override for <span className="text-gold">{user?.email}</span>. Switch any time from your profile.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 mt-2">
+              {([
+                { tier: "Free" as Tier, title: "Free Chat", desc: "5 messages/day, chat history only", Icon: User },
+                { tier: "Pro" as Tier, title: "Advocate", desc: "Cases, payments, evidence analysis", Icon: Crown },
+                { tier: "Firm" as Tier, title: "Firm", desc: "Shared workspace, cross-case AI", Icon: Building2 },
+              ]).map(({ tier: t, title, desc, Icon }) => (
+                <button
+                  key={t}
+                  onClick={() => chooseTier(t)}
+                  className={`text-left p-4 rounded-2xl glass border transition-all hover:scale-[1.01] ${
+                    tier === t ? "border-gold/60 shadow-gold" : "border-border/60 hover:border-gold/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-aurora flex items-center justify-center shrink-0">
+                      <Icon className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold">{title}</div>
+                      <div className="text-xs text-muted-foreground">{desc}</div>
+                    </div>
+                    {tier === t && <span className="text-xs text-gold font-bold">CURRENT</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
