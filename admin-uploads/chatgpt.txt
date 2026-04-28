@@ -1,0 +1,283 @@
+That’s a sensible call. With a 5-tokens/day constraint, your bottleneck isn’t coding—it’s **decision quality per prompt**. So the right move is exactly what you said: act as the **product brain**, and feed Lovable **small, atomic, high-impact feature prompts**.
+
+I’ll give you a **prioritized feature roadmap + exact prompt sequencing** so you don’t waste tokens.
+
+---
+
+# 🧠 CORE STRATEGY (VERY IMPORTANT)
+
+You are NOT building features.
+
+You are building:
+
+> **Daily habit → dependency → lock-in**
+
+So every feature must answer:
+
+👉 “Will this make the advocate open the app tomorrow?”
+
+---
+
+# 🏗️ PRODUCT FOUNDATION (DO NOT SKIP)
+
+Everything revolves around ONE entity:
+
+> **CASE**
+
+Every feature must connect to:
+
+* case_id
+* timeline
+* documents
+* money
+
+---
+
+# 🚀 PHASE PLAN (OPTIMIZED FOR 5 TOKENS/DAY)
+
+We break into **10 days = 10 prompts = 1 feature per day**
+
+---
+
+# 🔥 PHASE 1 — CORE HABIT LOOP (Days 1–4)
+
+## ✅ Day 1 — Create Case System
+
+### Prompt to Lovable:
+
+```id="p1"
+Create a Case Management system.
+
+Each case should have:
+- Case title
+- Client name
+- Court name
+- Next hearing date
+- Status
+
+Create:
+- “Add Case” form
+- Case list page
+- Click case → open case detail page
+
+Keep UI minimal and clean.
+```
+
+---
+
+## ✅ Day 2 — Today Screen (MOST IMPORTANT)
+
+```id="p2"
+Create a “Today” screen as the default dashboard.
+
+Show:
+- All cases where hearing date = today
+- Display: case name, court, time, last note
+
+Add button: “Prepare with AI”
+
+This screen should be minimal, no charts, no extra widgets.
+```
+
+---
+
+## ✅ Day 3 — Case Notes (Memory System)
+
+```id="p3"
+Inside each case, add a Notes system.
+
+User can:
+- Add note
+- Edit note
+- Delete note
+
+Each note should store:
+- text
+- date/time
+
+Show notes as timeline (latest first).
+```
+
+---
+
+## ✅ Day 4 — Case AI Chat (BIG MOMENT)
+
+```id="p4"
+Add an AI chat inside each case.
+
+The AI should:
+- Use case notes as context
+- Answer questions about the case
+- Help summarize previous hearings
+
+Add quick buttons:
+- “Summarize last hearing”
+- “Prepare arguments”
+```
+
+---
+
+👉 After Day 4:
+You already have a **usable product**
+
+---
+
+# ⚡ PHASE 2 — REAL VALUE (Days 5–7)
+
+## ✅ Day 5 — Document Upload + RAG Hook
+
+```id="p5"
+Inside each case, allow document upload (PDF).
+
+Store documents linked to the case.
+
+AI should:
+- Use uploaded documents when answering questions
+```
+
+---
+
+## ✅ Day 6 — Fee Tracker (Money Hook)
+
+```id="p6"
+Add a simple fee tracker inside each case.
+
+User can:
+- Add payment (amount, date, note)
+
+Show:
+- Total received
+- Pending amount
+
+Keep it simple, no invoices.
+```
+
+---
+
+## ✅ Day 7 — AI Hearing Prep
+
+```id="p7"
+On Today screen, when user clicks “Prepare with AI”:
+
+Generate:
+- Case summary
+- Key arguments
+- Relevant points from notes
+
+Display in clean readable format.
+```
+
+---
+
+👉 Now your app becomes:
+**daily-use + money-connected = sticky**
+
+---
+
+# 🧠 PHASE 3 — DIFFERENTIATION (Days 8–10)
+
+## ✅ Day 8 — Multi-language Drafting
+
+```id="p8"
+Allow user to select output language for AI.
+
+Options:
+- English
+- Hindi
+- Gujarati
+
+AI responses should follow selected language.
+```
+
+---
+
+## ✅ Day 9 — Document Generator
+
+```id="p9"
+Add document generation inside case:
+
+Options:
+- Bail application
+- Legal notice
+
+Output should be:
+- Structured
+- Proper formatting
+- Ready for printing
+```
+
+---
+
+## ✅ Day 10 — Professional Insights
+
+```id="p10"
+Create a simple insights section:
+
+Show:
+- Number of cases handled this month
+- Total fees collected
+- Most active case
+
+Keep it professional, no gamification.
+```
+
+---
+
+# ⚠️ WHAT YOU MUST NOT BUILD (RIGHT NOW)
+
+Do NOT waste tokens on:
+
+❌ Billing systems
+❌ Team management
+❌ Complex dashboards
+❌ Social features (for now)
+❌ Admin panels
+
+---
+
+# 🧠 HOW TO THINK BEFORE EACH PROMPT
+
+Before spending a token, ask:
+
+1. Does this increase daily usage?
+2. Does this connect to a case?
+3. Does this improve AI usefulness?
+
+If answer ≠ YES → skip
+
+---
+
+# 🏁 FINAL PRODUCT AFTER 10 DAYS
+
+You will have:
+
+* Case system
+* Daily dashboard
+* AI-powered case memory
+* Document drafting
+* Fee tracking
+
+👉 That is already **stronger than most legal tools**
+
+---
+
+# 🔥 REALITY CHECK
+
+After this:
+
+* You don’t need Lovable anymore for core features
+* You can refine slowly
+* You’ll already have something usable
+
+---
+
+# 🚀 If you want next step
+
+I can:
+
+* Optimize each prompt to **consume minimum tokens**
+* Design exact UI flow (mobile-first)
+* Or define **v2 features after this**
+
+Just say:
+👉 **“optimize prompts for minimum tokens”**
