@@ -52,6 +52,12 @@ type SidebarProps = {
   setActiveFreeConv: (c: ConvRow) => void;
   isDevAccount?: boolean;
   openPicker?: () => void;
+  showArchived: boolean;
+  setShowArchived: (v: boolean) => void;
+  onArchiveCase: (id: string) => void;
+  onUnarchiveCase: (id: string) => void;
+  onAskDeleteCase: (c: CaseRow) => void;
+  daysLeft: number | null;
 };
 
 function Sidebar(props: SidebarProps) {
