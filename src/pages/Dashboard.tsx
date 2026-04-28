@@ -315,6 +315,9 @@ function RightPanel(props: RightPanelProps) {
               </TabsContent>
             )}
           </div>
+          <div className="px-4 pb-4">
+            <NewsPanel />
+          </div>
         </Tabs>
       )}
     </aside>
