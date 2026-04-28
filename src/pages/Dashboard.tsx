@@ -15,10 +15,11 @@ import {
   ChevronRight, Upload, Crown, Menu, IndianRupee, History,
 } from "lucide-react";
 import { toast } from "sonner";
-import { TierProvider, useEffectiveTier, Tier } from "@/hooks/useEffectiveTier";
-import { RoleSwitcherDialog } from "@/components/RoleSwitcherDialog";
+import type { Tier } from "@/hooks/useEffectiveTier";
 import { CreateCaseDialog } from "@/components/CreateCaseDialog";
 import { PaymentTracker } from "@/components/PaymentTracker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { User, Building2 } from "lucide-react";
 
 type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null };
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
@@ -390,6 +391,29 @@ export default function Dashboard() {
   const [mobileRight, setMobileRight] = useState(false);
   const [notes, setNotes] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [createCaseOpen, setCreateCaseOpen] = useState(false);
+  const [freeChatHistory, setFreeChatHistory] = useState<ConvRow[]>([]);
+
+  // Dev role override for bhramar123@gmail.com
+  const isDevAccount = (user?.email || "").toLowerCase() === "bhramar123@gmail.com";
+  const [devTier, setDevTier] = useState<Tier | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  useEffect(() => {
+    if (!isDevAccount) { setDevTier(null); return; }
+    const saved = localStorage.getItem("bhramar.devTier") as Tier | null;
+    if (saved && ["Free", "Pro", "Firm"].includes(saved)) setDevTier(saved);
+    else setPickerOpen(true);
+  }, [isDevAccount, user?.id]);
+  const chooseTier = (t: Tier) => {
+    localStorage.setItem("bhramar.devTier", t);
+    setDevTier(t);
+    setPickerOpen(false);
+    toast.success(`Switched to ${t} view`);
+  };
+
+  const realTier: Tier = (profile?.subscription_tier as Tier) || "Free";
+  const tier: Tier = isDevAccount && devTier ? devTier : realTier;
+  const isPremium = tier === "Pro" || tier === "Firm";
 
   // Initial load
   useEffect(() => {
@@ -404,6 +428,20 @@ export default function Dashboard() {
       if (cs && cs.length) setActiveCaseId(cs[0].id);
     })();
   }, [user]);
+
+  // Free user: load all conversations as flat chat history
+  useEffect(() => {
+    if (!user || isPremium) { setFreeChatHistory([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("conversations")
+        .select("id, case_id, title, updated_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      setFreeChatHistory((data as any) || []);
+    })();
+  }, [user, isPremium, messages.length]);
 
   // Load convs + notes when case changes
   useEffect(() => {
@@ -433,14 +471,21 @@ export default function Dashboard() {
 
   const activeCase = useMemo(() => cases.find((c) => c.id === activeCaseId), [cases, activeCaseId]);
 
-  const newCase = useCallback(async () => {
+  const newCase = useCallback(() => {
+    setCreateCaseOpen(true);
+  }, []);
+
+  const onCaseCreated = useCallback(async (caseId: string) => {
     if (!user) return;
-    const { data, error } = await supabase.from("cases").insert({ user_id: user.id, name: "New case", status: "Draft" }).select().single();
-    if (error) return toast.error(error.message);
-    setCases((prev) => [data as any, ...prev]);
-    setActiveCaseId(data.id);
-    toast.success("Case created");
+    const { data: cs } = await supabase.from("cases").select("*").eq("user_id", user.id).order("updated_at", { ascending: false });
+    setCases((cs as any) || []);
+    setActiveCaseId(caseId);
   }, [user]);
+
+  const setActiveFreeConv = useCallback(async (cv: ConvRow) => {
+    setActiveCaseId(cv.case_id);
+    setActiveConvId(cv.id);
+  }, []);
 
   const newChat = useCallback(() => {
     setActiveConvId(null);
@@ -590,6 +635,7 @@ export default function Dashboard() {
           cases={cases} activeCaseId={activeCaseId} setActiveCaseId={setActiveCaseId}
           conversations={conversations} activeConvId={activeConvId} setActiveConvId={setActiveConvId}
           newCase={newCase} newChat={newChat} profile={profile} userEmail={user?.email}
+          tier={tier} freeChatHistory={freeChatHistory} setActiveFreeConv={setActiveFreeConv}
         />
       </div>
 
@@ -604,6 +650,8 @@ export default function Dashboard() {
             setActiveConvId={(id) => { setActiveConvId(id); setMobileLeft(false); }}
             newCase={newCase} newChat={() => { newChat(); setMobileLeft(false); }}
             profile={profile} userEmail={user?.email}
+            tier={tier} freeChatHistory={freeChatHistory}
+            setActiveFreeConv={(cv) => { setActiveFreeConv(cv); setMobileLeft(false); }}
           />
         </SheetContent>
       </Sheet>
@@ -646,7 +694,7 @@ export default function Dashboard() {
         <RightPanel
           rightOpen={rightOpen} setRightOpen={setRightOpen}
           messages={messages} notes={notes} saveNotes={saveNotes}
-          activeCaseId={activeCaseId} handleFileUpload={handleFileUpload}
+          activeCaseId={activeCaseId} handleFileUpload={handleFileUpload} isPremium={isPremium}
         />
       </div>
 
@@ -656,10 +704,53 @@ export default function Dashboard() {
           <RightPanel
             rightOpen={true} setRightOpen={() => setMobileRight(false)}
             messages={messages} notes={notes} saveNotes={saveNotes}
-            activeCaseId={activeCaseId} handleFileUpload={handleFileUpload}
+            activeCaseId={activeCaseId} handleFileUpload={handleFileUpload} isPremium={isPremium}
           />
         </SheetContent>
       </Sheet>
+
+      {/* Create case dialog (premium) */}
+      <CreateCaseDialog open={createCaseOpen} onOpenChange={setCreateCaseOpen} onCreated={onCaseCreated} />
+
+      {/* Dev role picker for bhramar123@gmail.com */}
+      {isDevAccount && (
+        <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+          <DialogContent className="glass-strong border-gold/30 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="font-display text-2xl text-gradient-aurora">Choose dashboard view</DialogTitle>
+              <DialogDescription>
+                Dev override for <span className="text-gold">{user?.email}</span>. Switch any time from your profile.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 mt-2">
+              {([
+                { tier: "Free" as Tier, title: "Free Chat", desc: "5 messages/day, chat history only", Icon: User },
+                { tier: "Pro" as Tier, title: "Advocate", desc: "Cases, payments, evidence analysis", Icon: Crown },
+                { tier: "Firm" as Tier, title: "Firm", desc: "Shared workspace, cross-case AI", Icon: Building2 },
+              ]).map(({ tier: t, title, desc, Icon }) => (
+                <button
+                  key={t}
+                  onClick={() => chooseTier(t)}
+                  className={`text-left p-4 rounded-2xl glass border transition-all hover:scale-[1.01] ${
+                    tier === t ? "border-gold/60 shadow-gold" : "border-border/60 hover:border-gold/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-aurora flex items-center justify-center shrink-0">
+                      <Icon className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold">{title}</div>
+                      <div className="text-xs text-muted-foreground">{desc}</div>
+                    </div>
+                    {tier === t && <span className="text-xs text-gold font-bold">CURRENT</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
