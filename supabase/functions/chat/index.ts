@@ -285,9 +285,26 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Look up the caller's tier so the system prompt is calibrated correctly.
+    let tierLabel = "Free Individual";
+    try {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("subscription_tier, full_name")
+        .eq("id", userId)
+        .maybeSingle();
+      const t = (prof?.subscription_tier as string | undefined) || "Free";
+      if (t === "Free") tierLabel = "Free Individual";
+      else if (t === "Pro") tierLabel = "Pro Individual / Pro Advocate";
+      else if (t === "Firm") tierLabel = "Enterprise (Law Firm)";
+    } catch (e) {
+      console.error("tier lookup failed", e);
+    }
+    const tierBlock = `\n\n---\nSESSION CONTEXT — USER TIER: ${tierLabel}\nCalibrate every response to this tier. Do not offer features outside this tier; do not withhold features included in it.`;
+
     const systemPrompt = groundingBlock
-      ? `${BASE_SYSTEM}\n\n---\nUse the following sources when relevant. When you rely on a source, cite it inline as [S1], [S2] etc. matching the labels below. If the sources don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`
-      : BASE_SYSTEM;
+      ? `${BASE_SYSTEM}${tierBlock}\n\n---\nUse the following sources when relevant. When you rely on a source, cite it inline as [S1], [S2] etc. matching the labels below. If the sources don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`
+      : `${BASE_SYSTEM}${tierBlock}`;
 
     const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
