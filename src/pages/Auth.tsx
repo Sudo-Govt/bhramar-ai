@@ -104,7 +104,7 @@ export default function Auth() {
           </Tabs>
         </div>
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing you agree to our terms. Bhramar.ai provides legal information, not legal advice.
+          By continuing you agree to our terms.
         </p>
       </div>
     </div>
