@@ -336,7 +336,7 @@ function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyP
         {messages.length === 0 ? (
           <div className="h-full min-h-[60vh] flex flex-col items-center justify-center px-6 text-center max-w-2xl mx-auto py-10">
             <div className="rounded-3xl glass p-5 mb-6 shadow-glass">
-              <Scale className="h-10 w-10 text-gold" />
+              <img src={logoIcon} alt="Bhramar.ai" className="h-12 w-12 object-contain" />
             </div>
             <h2 className="font-display text-4xl md:text-5xl font-bold mb-3 text-gradient-aurora">Bhramar.ai</h2>
             <p className="text-muted-foreground text-balance">Your AI-powered legal companion. Ask anything about Indian law.</p>
