@@ -12,15 +12,17 @@ import {
   Plus, Send, Paperclip, Mic, Scale, MessageSquare, FolderClosed,
   FileText, StickyNote, Search, Copy, Bookmark, Share2, Save,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
-  ChevronRight, Upload, Crown, Sparkles, Menu,
+  ChevronRight, Upload, Crown, Menu, IndianRupee, History,
 } from "lucide-react";
 import { toast } from "sonner";
+import { TierProvider, useEffectiveTier, Tier } from "@/hooks/useEffectiveTier";
+import { RoleSwitcherDialog } from "@/components/RoleSwitcherDialog";
+import { CreateCaseDialog } from "@/components/CreateCaseDialog";
+import { PaymentTracker } from "@/components/PaymentTracker";
 
-type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft" };
+type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null };
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
 type MsgRow = { id?: string; role: "user" | "assistant"; content: string; citations?: string[] };
-
-const SUGGESTIONS = ["Explain Section 302 IPC", "Draft a legal notice", "Bail conditions under CrPC 437"];
 
 // ============================================================================
 // Sub-components are defined OUTSIDE the page component on purpose.
@@ -41,11 +43,17 @@ type SidebarProps = {
   newChat: () => void;
   profile: any;
   userEmail?: string | null;
+  tier: Tier;
+  freeChatHistory: ConvRow[];
+  setActiveFreeConv: (c: ConvRow) => void;
 };
 
 function Sidebar(props: SidebarProps) {
   const { leftOpen, setLeftOpen, cases, activeCaseId, setActiveCaseId,
-    conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail } = props;
+    conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail,
+    tier, freeChatHistory, setActiveFreeConv } = props;
+
+  const isPremium = tier === "Pro" || tier === "Firm";
 
   return (
     <aside className={`relative bg-sidebar/70 backdrop-blur-xl border-r border-sidebar-border flex flex-col h-full ${leftOpen ? "w-72" : "w-16"} transition-[width] duration-200`}>
@@ -57,45 +65,79 @@ function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="p-3">
-        <Button onClick={newCase} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
-          <Plus className="h-4 w-4" /> {leftOpen && "New Case"}
-        </Button>
-        {leftOpen && (
-          <Button onClick={newChat} variant="ghost" className="w-full mt-2 h-9 justify-start text-muted-foreground hover:text-foreground">
-            <MessageSquare className="h-4 w-4" /> New chat
+        {isPremium ? (
+          <>
+            <Button onClick={newCase} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
+              <Plus className="h-4 w-4" /> {leftOpen && "Create case"}
+            </Button>
+            {leftOpen && (
+              <Button onClick={newChat} variant="ghost" className="w-full mt-2 h-9 justify-start text-muted-foreground hover:text-foreground">
+                <MessageSquare className="h-4 w-4" /> New chat
+              </Button>
+            )}
+          </>
+        ) : (
+          <Button onClick={newChat} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
+            <MessageSquare className="h-4 w-4" /> {leftOpen && "New chat"}
           </Button>
         )}
       </div>
 
       {leftOpen && (
         <div className="flex-1 overflow-y-auto px-3 pb-3">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2">Cases</div>
-          {cases.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCaseId(c.id)}
-              className={`w-full text-left p-2.5 rounded-xl mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-sidebar-accent/60"}`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-medium truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
-                  {c.client_name && <div className="text-xs text-muted-foreground truncate mt-0.5">{c.client_name}</div>}
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                  c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
-                  c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
-                }`}>{c.status}</span>
-              </div>
-            </button>
-          ))}
-
-          {activeCaseId && conversations.length > 0 && (
+          {isPremium ? (
             <>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-5 mb-2">Conversations</div>
-              {conversations.map((cv) => (
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2">Cases</div>
+              {cases.length === 0 && (
+                <div className="text-xs text-muted-foreground px-2 py-3">No cases yet. Click <span className="text-gold">Create case</span> to start.</div>
+              )}
+              {cases.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCaseId(c.id)}
+                  className={`w-full text-left p-2.5 rounded-xl mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-sidebar-accent/60"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm font-medium truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {c.case_number && <span className="text-[10px] font-mono text-gold/80">#{c.case_number}</span>}
+                        {c.client_name && <span className="text-xs text-muted-foreground truncate">· {c.client_name}</span>}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
+                      c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
+                      c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
+                    }`}>{c.status}</span>
+                  </div>
+                </button>
+              ))}
+
+              {activeCaseId && conversations.length > 0 && (
+                <>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-5 mb-2">Conversations</div>
+                  {conversations.map((cv) => (
+                    <button
+                      key={cv.id}
+                      onClick={() => setActiveConvId(cv.id)}
+                      className={`w-full text-left text-xs p-2 rounded-md mb-0.5 truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"}`}
+                    >{cv.title}</button>
+                  ))}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2 flex items-center gap-1.5">
+                <History className="h-3 w-3" /> Chat history
+              </div>
+              {freeChatHistory.length === 0 && (
+                <div className="text-xs text-muted-foreground px-2 py-3">Your past chats will appear here.</div>
+              )}
+              {freeChatHistory.map((cv) => (
                 <button
                   key={cv.id}
-                  onClick={() => setActiveConvId(cv.id)}
+                  onClick={() => setActiveFreeConv(cv)}
                   className={`w-full text-left text-xs p-2 rounded-md mb-0.5 truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"}`}
                 >{cv.title}</button>
               ))}
@@ -120,7 +162,7 @@ function Sidebar(props: SidebarProps) {
             {leftOpen && (
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{profile?.full_name || "Advocate"}</div>
-                <div className="text-[11px] text-gold">{profile?.subscription_tier || "Free"} Plan</div>
+                <div className="text-[11px] text-gold">{tier} Plan</div>
               </div>
             )}
           </div>
