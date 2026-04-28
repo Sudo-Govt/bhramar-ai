@@ -19,8 +19,22 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mfaStep, setMfaStep] = useState<{ factorId: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
 
-  useEffect(() => { if (user) navigate("/app", { replace: true }); }, [user, navigate]);
+  useEffect(() => {
+    if (!user) return;
+    // Don't auto-redirect if a 2FA challenge is pending
+    (async () => {
+      const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (data?.currentLevel === "aal1" && data?.nextLevel === "aal2") {
+        const { data: list } = await supabase.auth.mfa.listFactors();
+        const factor = list?.totp?.find((f) => f.status === "verified");
+        if (factor) { setMfaStep({ factorId: factor.id }); return; }
+      }
+      navigate("/app", { replace: true });
+    })();
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +61,27 @@ export default function Auth() {
     }
   };
 
+  const verifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaStep) return;
+    setLoading(true);
+    try {
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaStep.factorId });
+      if (chErr || !ch) throw chErr || new Error("Challenge failed");
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: mfaStep.factorId,
+        challengeId: ch.id,
+        code: mfaCode,
+      });
+      if (vErr) throw vErr;
+      navigate("/app", { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || "Invalid code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogle = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/app` });
@@ -61,10 +96,35 @@ export default function Auth() {
       <div className="w-full max-w-md">
         <Link to="/" className="flex justify-center mb-8"><BhramarLogo size="lg" /></Link>
         <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
-          <h1 className="font-display text-2xl font-bold text-center mb-1">Welcome back</h1>
-          <p className="text-sm text-muted-foreground text-center mb-6">The AI co-pilot for Indian advocates</p>
+          {mfaStep ? (
+            <>
+              <h1 className="font-display text-2xl font-bold text-center mb-1">Two-factor verification</h1>
+              <p className="text-sm text-muted-foreground text-center mb-6">
+                Enter the 6-digit code from your authenticator app.
+              </p>
+              <form onSubmit={verifyMfa} className="space-y-4">
+                <Input
+                  autoFocus
+                  inputMode="numeric"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="123456"
+                  className="text-center tracking-[0.4em] text-lg"
+                />
+                <Button type="submit" disabled={loading || mfaCode.length !== 6} className="w-full bg-gold hover:bg-gold-bright text-primary-foreground shadow-gold h-11">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+                </Button>
+                <Button type="button" variant="ghost" className="w-full" onClick={async () => { await supabase.auth.signOut(); setMfaStep(null); setMfaCode(""); }}>
+                  Cancel and sign out
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h1 className="font-display text-2xl font-bold text-center mb-1">Welcome back</h1>
+              <p className="text-sm text-muted-foreground text-center mb-6">The AI co-pilot for Indian advocates</p>
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+              <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
             <TabsList className="grid grid-cols-2 w-full bg-secondary mb-6">
               <TabsTrigger value="login">Log in</TabsTrigger>
               <TabsTrigger value="signup">Sign up</TabsTrigger>
@@ -102,9 +162,11 @@ export default function Auth() {
               </Button>
             </TabsContent>
           </Tabs>
+            </>
+          )}
         </div>
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing you agree to our terms. Bhramar.ai provides legal information, not legal advice.
+          By continuing you agree to our terms.
         </p>
       </div>
     </div>

@@ -248,7 +248,7 @@ function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyP
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="rounded-2xl rounded-tl-sm glass px-5 py-4 border-l-2 border-l-gold">
-                        {m.content ? <MiniMarkdown text={m.content} /> : <span className="text-muted-foreground text-sm animate-pulse-soft">Researching Indian law…</span>}
+                        {m.content ? <MiniMarkdown text={m.content} /> : <span className="text-muted-foreground text-sm animate-pulse-soft">…thinking</span>}
                       </div>
                       {!!m.citations?.length && (
                         <div className="flex flex-wrap gap-2 mt-3">
@@ -323,7 +323,7 @@ function InputBar({ input, setInput, send, streaming, handleFileUpload }: InputB
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground text-center mt-2">
-          Bhramar.ai provides legal information, not legal advice. Always consult a qualified advocate.
+          Press Enter to send · Shift + Enter for newline
         </p>
       </div>
     </div>
