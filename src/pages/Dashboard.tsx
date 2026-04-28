@@ -744,6 +744,9 @@ export default function Dashboard() {
           newCase={newCase} newChat={newChat} profile={profile} userEmail={user?.email}
           tier={tier} freeChatHistory={freeChatHistory} setActiveFreeConv={setActiveFreeConv}
           isDevAccount={isDevAccount} openPicker={() => setPickerOpen(true)}
+          showArchived={showArchived} setShowArchived={setShowArchived}
+          onArchiveCase={onArchiveCase} onUnarchiveCase={onUnarchiveCase}
+          onAskDeleteCase={setDeleteTarget} daysLeft={daysLeft}
         />
       </div>
 
@@ -761,6 +764,9 @@ export default function Dashboard() {
             tier={tier} freeChatHistory={freeChatHistory}
             setActiveFreeConv={(cv) => { setActiveFreeConv(cv); setMobileLeft(false); }}
             isDevAccount={isDevAccount} openPicker={() => { setMobileLeft(false); setPickerOpen(true); }}
+            showArchived={showArchived} setShowArchived={setShowArchived}
+            onArchiveCase={onArchiveCase} onUnarchiveCase={onUnarchiveCase}
+            onAskDeleteCase={setDeleteTarget} daysLeft={daysLeft}
           />
         </SheetContent>
       </Sheet>
