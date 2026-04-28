@@ -261,19 +261,7 @@ function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyP
               <Scale className="h-10 w-10 text-gold" />
             </div>
             <h2 className="font-display text-4xl md:text-5xl font-bold mb-3 text-gradient-aurora">Bhramar.ai</h2>
-            <p className="text-muted-foreground mb-10 text-balance">Your AI-powered legal companion. Ask anything about Indian law.</p>
-            <div className="grid sm:grid-cols-3 gap-3 w-full">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setInput(s)}
-                  className="text-left p-4 rounded-2xl glass hover:border-gold/50 hover:scale-[1.02] transition-all group"
-                >
-                  <Sparkles className="h-4 w-4 text-gold mb-2" />
-                  <div className="text-sm font-medium text-foreground group-hover:text-gold transition-colors">{s}</div>
-                </button>
-              ))}
-            </div>
+            <p className="text-muted-foreground text-balance">Your AI-powered legal companion. Ask anything about Indian law.</p>
           </div>
         ) : (
           <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
