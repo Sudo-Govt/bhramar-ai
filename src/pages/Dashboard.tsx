@@ -9,19 +9,22 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MiniMarkdown, extractCitations } from "@/lib/markdown";
 import {
-  Plus, Send, Paperclip, Mic, Scale, MessageSquare, FolderClosed,
+  Plus, Send, Paperclip, Mic, MessageSquare, FolderClosed,
   FileText, StickyNote, Search, Copy, Bookmark, Share2, Save,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
   ChevronRight, Upload, Crown, Menu, IndianRupee, History,
+  Archive, ArchiveRestore, Trash2, ArrowLeft, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tier } from "@/hooks/useEffectiveTier";
 import { CreateCaseDialog } from "@/components/CreateCaseDialog";
 import { PaymentTracker } from "@/components/PaymentTracker";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { NewsPanel } from "@/components/NewsPanel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { User, Building2 } from "lucide-react";
+import logoIcon from "@/assets/bhramar-logo.png";
 
-type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null };
+type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null; archived_at?: string | null };
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
 type MsgRow = { id?: string; role: "user" | "assistant"; content: string; citations?: string[] };
 
