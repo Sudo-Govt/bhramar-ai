@@ -488,6 +488,40 @@ export default function Dashboard() {
   const tier: Tier = isDevAccount && devTier ? devTier : realTier;
   const isPremium = tier === "Pro" || tier === "Firm";
 
+  // Days left on Pro/Firm subscription
+  const daysLeft: number | null = useMemo(() => {
+    if (!isPremium) return null;
+    const exp = profile?.subscription_expires_at as string | undefined;
+    if (!exp) return null;
+    const ms = new Date(exp).getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / 86_400_000));
+  }, [isPremium, profile?.subscription_expires_at]);
+
+  const onArchiveCase = useCallback(async (id: string) => {
+    const { error } = await supabase.rpc("archive_case", { _case_id: id });
+    if (error) return toast.error(error.message);
+    setCases((prev) => prev.map((c) => c.id === id ? { ...c, archived_at: new Date().toISOString() } : c));
+    if (activeCaseId === id) setActiveCaseId(null);
+    toast.success("Case archived");
+  }, [activeCaseId]);
+
+  const onUnarchiveCase = useCallback(async (id: string) => {
+    const { error } = await supabase.rpc("unarchive_case", { _case_id: id });
+    if (error) return toast.error(error.message);
+    setCases((prev) => prev.map((c) => c.id === id ? { ...c, archived_at: null } : c));
+    toast.success("Case restored");
+  }, []);
+
+  const onConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.rpc("delete_case_with_log", { _case_id: deleteTarget.id });
+    if (error) return toast.error(error.message);
+    setCases((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    if (activeCaseId === deleteTarget.id) setActiveCaseId(null);
+    setDeleteTarget(null);
+    toast.success("Case deleted");
+  }, [deleteTarget, activeCaseId]);
+
   // Initial load
   useEffect(() => {
     if (!user) return;
