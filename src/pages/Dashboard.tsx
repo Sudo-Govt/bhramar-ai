@@ -63,14 +63,17 @@ type SidebarProps = {
 function Sidebar(props: SidebarProps) {
   const { leftOpen, setLeftOpen, cases, activeCaseId, setActiveCaseId,
     conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail,
-    tier, freeChatHistory, setActiveFreeConv, isDevAccount, openPicker } = props;
+    tier, freeChatHistory, setActiveFreeConv, isDevAccount, openPicker,
+    showArchived, setShowArchived, onArchiveCase, onUnarchiveCase, onAskDeleteCase, daysLeft } = props;
 
   const isPremium = tier === "Pro" || tier === "Firm";
+  const visibleCases = cases.filter((c) => showArchived ? !!c.archived_at : !c.archived_at);
+  const archivedCount = cases.filter((c) => !!c.archived_at).length;
 
   return (
     <aside className={`relative bg-sidebar/70 backdrop-blur-xl border-r border-sidebar-border flex flex-col h-full ${leftOpen ? "w-72" : "w-16"} transition-[width] duration-200`}>
       <div className="p-3 border-b border-sidebar-border flex items-center justify-between">
-        {leftOpen ? <BhramarLogo /> : <Scale className="h-5 w-5 text-gold mx-auto" />}
+        {leftOpen ? <BhramarLogo /> : <img src={logoIcon} alt="Bhramar.ai" className="h-6 w-6 object-contain mx-auto" />}
         <Button variant="ghost" size="icon" className="hidden md:flex h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setLeftOpen(!leftOpen)}>
           {leftOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
         </Button>
@@ -99,33 +102,72 @@ function Sidebar(props: SidebarProps) {
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           {isPremium ? (
             <>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2">Cases</div>
-              {cases.length === 0 && (
-                <div className="text-xs text-muted-foreground px-2 py-3">No cases yet. Click <span className="text-gold">Create case</span> to start.</div>
+              <div className="flex items-center justify-between px-2 mt-2 mb-2">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  {showArchived ? "Archived" : "Cases"}
+                </div>
+                {showArchived ? (
+                  <button onClick={() => setShowArchived(false)} className="text-[10px] text-gold/80 hover:text-gold flex items-center gap-1">
+                    <ArrowLeft className="h-3 w-3" /> Back
+                  </button>
+                ) : archivedCount > 0 ? (
+                  <button onClick={() => setShowArchived(true)} className="text-[10px] text-muted-foreground hover:text-gold flex items-center gap-1">
+                    <Archive className="h-3 w-3" /> {archivedCount}
+                  </button>
+                ) : null}
+              </div>
+
+              {visibleCases.length === 0 && (
+                <div className="text-xs text-muted-foreground px-2 py-3">
+                  {showArchived ? "No archived cases." : <>No cases yet. Click <span className="text-gold">Create case</span> to start.</>}
+                </div>
               )}
-              {cases.map((c) => (
-                <button
+              {visibleCases.map((c) => (
+                <div
                   key={c.id}
-                  onClick={() => setActiveCaseId(c.id)}
-                  className={`w-full text-left p-2.5 rounded-xl mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-sidebar-accent/60"}`}
+                  className={`relative p-2.5 rounded-xl mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-sidebar-accent/60"}`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-medium truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {c.case_number && <span className="text-[10px] font-mono text-gold/80">#{c.case_number}</span>}
-                        {c.client_name && <span className="text-xs text-muted-foreground truncate">· {c.client_name}</span>}
+                  <button onClick={() => setActiveCaseId(c.id)} className="w-full text-left">
+                    <div className="flex items-start justify-between gap-2 pr-12">
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm font-medium truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {c.case_number && <span className="text-[10px] font-mono text-gold/80">#{c.case_number}</span>}
+                          {c.client_name && <span className="text-xs text-muted-foreground truncate">· {c.client_name}</span>}
+                        </div>
                       </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
+                        c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
+                        c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
+                      }`}>{c.status}</span>
                     </div>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                      c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
-                      c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
-                    }`}>{c.status}</span>
+                  </button>
+                  <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {showArchived ? (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onUnarchiveCase(c.id); }}
+                          className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
+                          title="Restore"
+                        ><ArchiveRestore className="h-3.5 w-3.5" /></button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onAskDeleteCase(c); }}
+                          className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-background/60"
+                          title="Delete forever"
+                        ><Trash2 className="h-3.5 w-3.5" /></button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onArchiveCase(c.id); }}
+                        className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
+                        title="Archive case"
+                      ><Archive className="h-3.5 w-3.5" /></button>
+                    )}
                   </div>
-                </button>
+                </div>
               ))}
 
-              {activeCaseId && conversations.length > 0 && (
+              {!showArchived && activeCaseId && conversations.length > 0 && (
                 <>
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-5 mb-2">Conversations</div>
                   {conversations.map((cv) => (
@@ -160,11 +202,18 @@ function Sidebar(props: SidebarProps) {
 
       <div className="border-t border-sidebar-border p-3">
         {leftOpen && (
-          <Link to="/pricing">
-            <Button variant="outline" className="w-full mb-2 h-9 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold">
-              <Crown className="h-3.5 w-3.5" /> Upgrade to Pro
-            </Button>
-          </Link>
+          isPremium && daysLeft !== null ? (
+            <div className="w-full mb-2 h-9 px-3 rounded-md border border-gold/40 text-gold flex items-center justify-center gap-2 text-xs font-medium">
+              <Clock className="h-3.5 w-3.5" />
+              {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "Subscription expired"}
+            </div>
+          ) : !isPremium ? (
+            <Link to="/pricing">
+              <Button variant="outline" className="w-full mb-2 h-9 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold">
+                <Crown className="h-3.5 w-3.5" /> Upgrade to Pro
+              </Button>
+            </Link>
+          ) : null
         )}
         <Link to="/profile">
           <div className="flex items-center gap-2.5 p-1.5 rounded-md hover:bg-sidebar-accent/60 cursor-pointer">
