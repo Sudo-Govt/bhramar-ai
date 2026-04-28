@@ -1,7 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BhramarLogo } from "@/components/BhramarLogo";
 import { Check, ArrowLeft, Crown } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { startRazorpayCheckout } from "@/lib/razorpay";
 
 const tiers = [
   {
@@ -69,6 +71,17 @@ const tiers = [
 ];
 
 export default function Pricing() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleCta = async (tierName: string) => {
+    if (tierName === "Free Chat") { navigate(user ? "/dashboard" : "/auth"); return; }
+    if (tierName === "Enterprise") { window.location.href = "mailto:hello@bhramar.ai?subject=Enterprise%20enquiry"; return; }
+    if (!user) { navigate("/auth"); return; }
+    const plan = tierName === "Advocate" ? "advocate" : "firm";
+    await startRazorpayCheckout(plan, user.email || undefined);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
@@ -105,11 +118,12 @@ export default function Pricing() {
                 <span className="font-display text-3xl font-bold">{t.price}</span>
                 {t.period && <span className="text-muted-foreground text-sm">{t.period}</span>}
               </div>
-              <Link to={t.name === "Enterprise" ? "/auth" : "/auth"} className="block">
-                <Button className={`w-full h-11 ${t.highlight ? "bg-gold hover:bg-gold-bright text-primary-foreground shadow-gold" : "bg-secondary hover:bg-secondary/80 text-foreground"}`}>
-                  {t.cta}
-                </Button>
-              </Link>
+              <Button
+                onClick={() => handleCta(t.name)}
+                className={`w-full h-11 ${t.highlight ? "bg-gold hover:bg-gold-bright text-primary-foreground shadow-gold" : "bg-secondary hover:bg-secondary/80 text-foreground"}`}
+              >
+                {t.cta}
+              </Button>
               <ul className="space-y-2.5 mt-7">
                 {t.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-sm">
