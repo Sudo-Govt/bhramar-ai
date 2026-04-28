@@ -14,9 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      case_payments: {
+        Row: {
+          case_id: string
+          created_at: string
+          fee_quoted: number
+          fee_received: number
+          id: string
+          note: string | null
+          occurred_on: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          fee_quoted?: number
+          fee_received?: number
+          id?: string
+          note?: string | null
+          occurred_on?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          fee_quoted?: number
+          fee_received?: number
+          id?: string
+          note?: string | null
+          occurred_on?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cases: {
         Row: {
+          ai_summary: string | null
+          case_number: string | null
           client_name: string | null
+          complaint: string | null
           created_at: string
           id: string
           name: string
@@ -25,7 +64,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_summary?: string | null
+          case_number?: string | null
           client_name?: string | null
+          complaint?: string | null
           created_at?: string
           id?: string
           name: string
@@ -34,7 +76,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_summary?: string | null
+          case_number?: string | null
           client_name?: string | null
+          complaint?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -131,6 +176,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          ai_summary: string | null
           case_id: string | null
           chunk_count: number
           created_at: string
@@ -143,6 +189,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_summary?: string | null
           case_id?: string | null
           chunk_count?: number
           created_at?: string
@@ -155,6 +202,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_summary?: string | null
           case_id?: string | null
           chunk_count?: number
           created_at?: string
@@ -302,6 +350,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_case_number: { Args: never; Returns: string }
       match_chunks: {
         Args: {
           corpus_weight?: number
