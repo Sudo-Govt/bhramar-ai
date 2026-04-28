@@ -1,0 +1,629 @@
+Introduction1.1 What is Advocate SaaS?Advocate SaaS is a comprehensive legal practice management platform designed to help lawyers and law firms streamline their daily operations. It is built for solo practitioners, small law firms, and corporate legal departments who need to manage their clients, cases, documents, and billing all in one centralized location. The platform is built using modern technology and comes with 12+ integrated tools to help you manage cases, collaborate with clients, handle documents, track billable time, generate invoices, and maintain compliance with legal regulations. You can monitor your entire legal practice from a single dashboard with visual charts and automated workflows. Advocate SaaS also integrates with Google Calendar, making it easy to sync court dates and client meetings across all your devices.
+
+Advocate SaaS operates as a software-as-a-service solution that supports multiple law firms simultaneously, with complete data isolation and security for each firm. It includes subscription management tools and supports over 30 payment gateways like Stripe, PayPal, Razorpay, and cryptocurrency options. The Super Admin has complete control over the entire platform and can access any law firm’s account for support and troubleshooting. Other useful features include support for more than 15 languages, role-based permissions for team members, document version control and tracking, AI-powered legal assistance through ChatGPT integration, professional license monitoring, continuing legal education (CLE) credit tracking, and comprehensive reports that can be exported in multiple formats. You can also track case progress, monitor billable hours, and generate detailed financial reports.
+
+Whether you want to digitize your law firm’s operations or provide legal management tools to other firms, Advocate SaaS helps you do it efficiently. It eliminates paperwork, automates billing processes, ensures regulatory compliance, and keeps all your legal information organized and accessible from anywhere.
+
+1.2 Key Features OverviewAdvocate SaaS offers a comprehensive suite of features designed to streamline every aspect of legal practice management:
+
+1.2.1 Core Management Features:Case Management: Complete case lifecycle management with timelines, documents, and team collaborationClient Management: Centralized client database with billing information and document storageDocument Management: Version control, collaborative editing, and secure document sharingTime Tracking & Billing: Automated time tracking with flexible billing rates and invoice generationCalendar & Scheduling: Built-in calendar for managing schedules.1.2.2 Advanced Features:Legal Research: Research project management with citation tracking and knowledge baseCompliance Management: CLE tracking, license monitoring, and regulatory complianceTask Management: Workflow automation with task assignment and progress trackingCommunication: Internal messaging system with conversation threadsAI Integration: ChatGPT-powered legal assistance and content generation1.2.3 Business Features:Multi-tenant Architecture: Support for multiple law firms with data isolationPayment Processing: 30+ payment gateways, including Stripe, PayPal, and cryptocurrencySubscription Management: Flexible pricing plans and billing cyclesReporting & Analytics: Real-time dashboards with comprehensive reportingMulti-language Support: Available in 15+ languages with RTL support1.3 Who Should Use Advocate SaaS?Advocate SaaS is designed to serve various types of legal professionals and organizations. Below are the primary user groups who will benefit most from this platform:
+
+1.3.1 Solo Practitioners:Independent lawyers managing their own practiceNeed centralized client and case managementRequire automated billing and time trackingWant professional client communication tools1.3.2 Small to Medium Law Firms:Firms with 2-50 attorneys and support staffNeed team collaboration and case sharingRequire role-based access controlWant to streamline operations and reduce overhead1.3.3 Large Law Firms:Established firms with multiple practice areasNeed enterprise-level security and complianceRequire advanced reporting and analyticsWant integration with existing systems1.3.4 Corporate Legal Departments:In-house legal teams in corporationsNeed matter management and vendor coordinationRequire compliance tracking and risk managementWant cost control and budget management1.3.5 Legal Service Providers:Companies offering legal practice management as a serviceNeed white-label solutions for multiple clientsRequire multi-tenant architecture with data isolationWant subscription and billing management tools2. Registration and LoginAdvocate SaaS includes a complete user authentication system that handles account registration, login, password reset, and email verification. The platform ensures secure access using role-based permissions and provides features to protect user accounts and manage sessions safely.
+
+2.1 User RegistrationTo get started, users need to register by creating a new account using a valid email address and a secure password.
+
+Go to the registration page using the link provided by the platformFill in the required details such as name, email, and password, confirm passwordThe system checks your input in real time and shows any missing or incorrect fields.Once you submit the form, a verification email will be sent to your email address.After email verification, your account will be activated and linked to a default plan automatically.2.2 Email VerificationAfter signing up, you must verify your email before you can log in.
+
+Check your email inbox for the verification messageClick on the verification link provided in the emailIf you did not receive the email, use the “Resend Verification Email” optionThe link may expire after a set time for security reasonsYou cannot log in until your email is verified2.3 User LoginOnce your email is verified, you can log in to your account.
+
+Enter your registered email and password on the login pageUse the “Remember Me” option to stay logged in on the device2.4 Password ManagementIf you forget your password, Advocate SaaS allows you to reset it securely.
+
+Click on the “Forgot Password” link on the login pageEnter your registered email addressYou will receive a password reset link via emailFollow the link to create a new passwordThe system checks the strength and confirmation of the new password before saving it.Users can also change their password after logging in by visiting their account settings. All password changes are tracked to ensure account safety.
+
+Super Admin IntroductionThe Super Admin in Advocate SaaS has complete control over the entire system, allowing full customization of branding, themes, and layout through Brand Settings, including logo uploads, theme mode selection, and sidebar styling. They can configure email delivery using SMTP, Mailgun, Amazon SES, or Send mail. The Super Admin can create and manage subscription plans by setting pricing, business limits, and feature toggles like AI integration, while selecting which themes are included in each plan. They can view and respond to plan requests, approve or decline them as needed, and track all plan orders with payment details and user information. Coupon management allows creating discounts with usage limits and expiry dates. Webhooks can be added for real-time data sharing with other systems. Every control is centralized and designed to give the Super Admin complete authority to manage the platform’s appearance, features, users, and billing smoothly.
+
+3.1 Super Admin Login ProcessTo access the Super Admin panel in Advocate SaaS, begin by visiting the login page. Then, input your registered email address and password in the required fields. Once the correct credentials are submitted, you’ll be securely redirected to the Super Admin Dashboard, where you can manage system settings, subscription plans, users, and overall platform configuration.
+
+3.2 Super Admin DashboardThe Super Admin Dashboard in Advocate SaaS gives a complete view of platform performance and management tools. It is designed for users who have full control over the system, including subscription management, revenue tracking, and user activities.
+
+At the top of the dashboard, you can view key summary data:
+
+Total number of registered companiesOverall revenue generated through subscription plansActive versus inactive users and plan distributionQuick access panels for monitoring recent activitySuper Admin can manage users and system settings directly from the dashboard:
+
+Use the impersonation feature to log in as any user or company for support or testingUpdate system-level settings such as logos, default language, or brandingView the current status of enabled payment gateways and switch them on or off as neededThe dashboard also provides analytics that reflect the overall system usage:
+
+Track total cases and legal documents created across all companiesReview trends in signups, renewals, and plan upgradesIdentify top-performing templates and feature usageA set of advanced tools is also available:
+
+Manage and edit system email templates for various notificationsSet or change the base currency for the platformAll of these features help Super Admin maintain the platform and respond quickly to user needs or system changes.
+
+3.3 Coupons ManagementThis section allows you to create and manage discount coupons for your subscription plans. You can create different types of promotional codes, set spending limits, and control usage to boost sales and attract new customers.
+
+3.3.1 Managing CouponsThe Coupons page displays all your active and inactive promotional codes in a table format. Each coupon entry shows:
+
+Name promotional campaign nameType: Shows whether it’s a Percentage discount or a Flat Amount reductionMin Spend: The minimum purchase amount required to use the couponMax Spend: The maximum purchase amount eligible for the discountDiscount: The discount valueCoupon Limit: Total number of times the coupon can be used across all usersUser Limit: How many times each user can apply this couponExpiry Date: When the coupon expires and becomes invalidCode: The actual coupon code users need to enterStatus: Shows if the coupon is currently active or inactiveYou can easily manage your coupons using:
+
+Search Bar: Find specific coupons by name, code, or other detailsFilters: Sort coupons by status, type, or expiry dateActions: View, edit, delete, or toggle status for each coupon3.3.2 Creating a New CouponTo create a promotional coupon, click the “Add New Coupon” button. A form will appear where you can enter all the details:
+
+Coupon Name: Enter a descriptive name for internal referenceDiscount Type: Choose between Percentage or Flat AmountDiscount Value: Enter the discount amount based on your selected typeCode Generation: Choose Manual Entry or Auto-GenerateCoupon Code: If manual, enter the code users will type during checkoutMinimum Spend: Set the minimum purchase amount required (optional)Maximum Spend: Define the maximum purchase amount eligible (optional)Total Usage Limit: Set how many times this coupon can be used across all customersUsage Limit Per User: Control how many times each customer can use this couponExpiry Date: Set when the coupon will expireOnce you’ve filled in all the details, click “Save” to create the coupon. The new coupon will appear in your coupons list, where you can manage it alongside existing offers.
+
+3.4 Contact Us ManagementThis section allows you to manage contact form submissions and customer inquiries from your website. You can view all messages, respond to customers, and keep track of communications.
+
+3.4.1 Contact Form ManagementYou can view all contact form submissions in a table showing:
+
+Sender NameEmail AddressSubject of inquiryMessage contentDate submittedFor each contact inquiry, you can:
+
+Delete: Remove outdated or spam messages3.4.2 Search and OrganizationUse the search bar to quickly find specific messages by:
+
+NameEmail addressSubjectMessage contentYou can also filter messages by status or date range to focus on the most important communications.
+
+3.5 Newsletter ManagementThe Newsletter section helps you manage email subscriptions and send marketing campaigns to your subscribers. This keeps you connected with potential customers and existing users.
+
+3.5.1 Subscriber ManagementView all newsletter subscribers in a list showing:
+
+Email AddressSubscription DateStatus (Active/Inactive)Source (how they subscribed)You can:
+
+Remove subscribers who request deletionHandle unsubscribe requests automatically3.5.2 Email CampaignsCreate and send campaigns using these tools:
+
+Design professional email templatesSchedule campaigns for optimal delivery timesSegment your audience based on different criteriaTrack performance with detailed analytics, including open rates and click-through rates3.6 Currency ManagementThe Currency Management section allows you to configure and manage all supported currencies for your Advocate SaaS platform. This feature is essential for international users who need to display prices, subscriptions, and services in their local currencies. You can add new currencies, set default options, and maintain a comprehensive list of supported monetary systems.
+
+3.6.1 Currency OverviewThe currencies table shows:
+
+Name: Full name of the currencyCode: Standard three-letter currency code (USD, EUR, GBP)Symbol: Currency symbol used for display ($, €, £)Description: Additional details about the currencyDefault: Shows whether this currency is set as the system defaultActions: Edit and delete options3.6.2 Adding New CurrenciesTo add a new currency, click the “Add New Currency” button and fill in:
+
+Currency Name: Enter the full official nameCurrency Code: Input the standard three-letter ISO currency codeCurrency Symbol: Add the symbol used to represent this currencyDescription: Provide additional information (optional)Default Currency: Check this option to make it the system defaultClick “Save” to add the currency to your system. The new currency will appear in the currencies list and become available for users to select.
+
+3.7 Email Template ManagementManage all automated email notifications sent by the system. These templates are used to communicate important updates and actions to users, clients, and team members.
+
+You can:
+
+View all existing email templates in a list.Edit the subject line and message body for each template.Enable or disable specific templates as required.Features:
+
+Use dynamic placeholders (e.g., %username%, %company_name%, %task_name%) for personalized messages.Multi-language support for global communication.Automatic sending triggered by system events.3.8 Custom Pages ManagementThe Custom Pages section allows super admins to create and manage static pages that appear on the frontend of the platform. These pages are useful for displaying standard content like About Us, Privacy Policy, Terms of Service, FAQs, and more.
+
+3.8.1 Page List ViewYou’ll see a list of all existing custom pages showing:
+
+Page TitleSlug (URL)Content PreviewStatus (Active/Inactive)Created DateActions (Edit/Delete)3.8.2 Creating a New Custom PageClick the “Add Page” button to create a new page. Fill in these fields:
+
+Page Title: Enter the name of the pagePage Slug: URL that auto-generates from title or is entered manuallyContent: Use the rich text editor to format and enter page contentMeta Title: Optional SEO title for the pageMeta Description: Optional SEO description for better indexingStatus Toggle: Activate or deactivate the pageAfter filling in all details, click “Create Page” to save. The new page will appear in your page list.
+
+You can click the pencil icon to edit any page or the trash icon to delete it permanently.
+
+User RolesAdvocate SaaS has four types of users, each with different permissions and access levels. This role-based system helps keep information secure and ensures that everyone sees only what they need for their job. Understanding these roles will help you assign appropriate access to your team members and maintain proper security controls across your platform.
+
+4.1 Super AdminSuper Admins have complete control over the entire system. They can see and change everything on the platform, making this the highest level of access available.
+
+4.1.1 What Super Admin can do:Change all system settings and configurationsCreate and manage all law firm accountsView and manage all users across all companiesLog in as any user to help with support issuesSet up payment methods and subscription plansView system reports and performance dataFix technical problems and help usersSuper Admins can access all features and data on the platform. This role is usually reserved for technical support staff who maintain the system and ensure smooth operation for all users.
+
+4.2 CompanyThe Company user runs their law firm’s account. They control everything for their company but cannot see other companies’ information. This ensures complete data isolation and privacy between different law firms using the platform.
+
+4.2.1 What the company can do:Add, edit, and remove team members and clientsCreate custom roles and set permissions for staffChange company settings and brandingManage billing and subscription plansView all company data and reports4.2.2 Features the company can access:Create and manage all casesHandle all client informationControl all documents and filesSet billing rates and approve time entriesGenerate invoices and track paymentsUse legal research toolsTrack professional licenses and continuing educationSend messages to team membersSchedule court hearings4.3 Team Member UserTeam Members are staff such as lawyers, paralegals, and assistants. They can work on assigned cases and tasks, but have limited access compared to Company users. This ensures that staff members only see information relevant to their responsibilities.
+
+4.3.1 What Team Members can doView their dashboard with assigned tasks and casesCreate and work on cases they’re assigned toManage clients assigned to themTrack their billable time with built-in timersCreate and edit documentsAssign tasks to other team membersUse legal research tools4.3.2 Team collaboration featuresSend messages to other team membersWork together on documents with commentsShare access to team casesView personal and team calendars4.3.3 Custom rolesCompany can create different types of team member roles:
+
+Junior AssociatesSenior AssociatesParalegalsLegal AssistantsSpecialized roles for different practice areasEach role can have different permissions based on what that person needs to do their job.
+
+4.4 Client UserClients have limited access to view information about their own cases only. They cannot see other clients’ information or internal law firm data.
+
+4.4.1 What Clients can do:View details about their casesDownload the documents their lawyer shares with themSend messages to their legal teamView invoices and payment statusSee upcoming court dates and hearings4.4.2 Security features:Clients can only see their own informationAll document sharing is controlled by the law firmThe system tracks what clients view and doThis system makes sure everyone has the right access level for their role while keeping sensitive information secure.
+
+Case ManagementCase Management in Advocate SaaS helps you organize and track all your legal cases from start to finish. You can set up different types of cases, assign team members, track important dates, and keep all case information in one centralized location. This comprehensive system ensures that nothing falls through the cracks and all case-related information remains accessible to authorized team members.
+
+5.1 Case Setup ConfigurationBefore you start creating cases, you need to set up the basic configurations that will help you organize your work. These configuration settings create the foundation for how your firm categorizes and manages cases throughout their lifecycle.
+
+5.1.1 Case Types ConfigurationFirst, set up the different types of cases your firm handles:
+
+Go to “Case Management” → “Case Setup” → “Case Types.”Click the “Add Case Type” buttonFill in the details:
+
+Name: Civil Litigation, Criminal Defense, Family Law, Corporate LawDescription: Write a brief explanation of what this case type coversDefault Priority: Choose Low, Medium, High, or CriticalStatus: Set to Active or InactiveClick Save5.1.2 Case Statuses ConfigurationSet up the different stages a case goes through:
+
+Go to “Case Setup” → “Case Statuses.”Create status entries like
+
+New/Intake: When you first get the caseActive: Case is being worked onOn Hold: Case is paused for nowSettlement: Trying to settle out of courtTrial: Going to courtClosed/Won: Case finished successfullyClosed/Lost: Case finished unsuccessfully5.1.3 Event Types ConfigurationSet up different types of events that happen during a case:
+
+Go to “Case Setup” → “Event Types”Create event types like:
+
+Client Meeting: Meeting with your clientDocument Filing: Sending papers to courtDiscovery: Gathering evidenceHearing: Court appearanceSettlement Conference: Meeting to try to settleTrial Date: Actual trial day5.1.4 Hearing Types ConfigurationSet up different types of court hearings:
+
+Go to “Case Setup” → “Hearing Types”Create hearing types like:
+
+Initial Hearing: First time in courtMotion Hearing: Asking the court for something specificPre-Trial Conference: Meeting before trialTrial: Full trialSentencing: When the judge decides punishmentAppeal Hearing: Trying to change a court decision5.2 CasesThis is where you create and manage all your active and closed cases. The Cases section provides a comprehensive view of all matters your firm is handling.
+
+5.2.1 Creating CasesTo create a new case:
+
+Go to “Case Management” → “Cases”Click the “Add Case” buttonFill in the case details:
+
+Case Title: Give your case a clear nameClient: Choose which client this case is forCase Type: Pick from the types you set up earlierCase Status: Choose the current statusPriority: Set how urgent this case isCourt: Which court will handle this caseOpposing Party: Who you’re going againstCase Description: Write a summary of what the case is aboutAdd team members who will work on this caseSet important dates like the filing date and deadlinesClick Save5.2.2 What you can do with casesOnce you create a case, you can:
+
+Track Timeline: See all important events in orderManage Documents: Store all case files in one placeWork with Team: Assign tasks to different team membersTrack Progress: See how the case is moving forwardTrack Time and Money: Keep track of hours worked and costsCommunicate: Add notes and messages about the caseManage Deadlines: Never miss important due dates5.2.3 Case Information SectionsEach case has different sections:
+
+Basic Information: All the main details about the caseTimeline: List of everything that has happenedDocuments: All files related to the caseTeam Members: Who is working on the caseTime Entries: How much time everyone has spentExpenses: Money spent on the caseNotes: Internal notes about the caseTasks: Things that need to be done5.3 HearingsThe Hearings section helps you keep track of all court dates and legal meetings. This ensures you never miss a court appearance and can properly prepare for each hearing.
+
+5.3.1 Creating HearingsTo schedule a hearing:
+
+Go to “Case Management” → “Hearings”Click the “Add Hearing” buttonEnter the hearing details:
+
+Hearing Title: What the hearing is aboutCase: Which case is this hearing forHearing Type: Choose from the types you set upCourt: Where the hearing will beJudge: Who will be the judgeDate & Time: When the hearing will happenDuration: How long you expect it to takeLocation: Specific courtroom or addressDescription: What do you plan to discussAdd who will attend (lawyers, clients, witnesses)Click Save5.3.2 What you can do with hearingsConnect to Calendar: Sync with your calendar appCheck for Conflicts: Make sure you’re not double-bookedTrack Preparation: List tasks you need to do before the hearingAttach Documents: Link important papers to the hearingReschedule: Change dates if needed5.3.3 Hearing Information SectionsEach hearing has these sections:
+
+Basic Information: Date, time, court, judge detailsCase Association: Which case is this hearing forAttendees: Who will be therePreparation: What you need to do beforehandDocuments: Papers you’ll need for the hearingNotes: Your preparation notes and strategyOutcome: What happened after the hearingCalendar: Connection to your calendar system5.3.4 Who Can Access WhatDifferent users have different access to case management:
+
+Team Members:Can only see cases assigned to themCan create new cases if the admin allows itCan view documents they have permissionCan see hearings for their cases onlyCan add notes and timeline entriesCannot see other team members’ casesClients:Can only view their own casesCan see case updates and timelineCan view documents shared with themCan see their hearing scheduleCannot change any case informationCannot see other clients’ cases6. Court ScheduleCourt Schedule helps you keep track of all the courts and judges you work with. You can organize different types of courts, store comprehensive court information, and manage judge details all in one centralized location. This system ensures that your team always has access to accurate court information when scheduling hearings and preparing for court appearances.
+
+6.1 Court Types SetupBefore adding courts, you should set up the different types of courts your firm works with. This categorization helps you organize courts by their jurisdiction and purpose, making it easier to find the right court for each case.
+
+6.1.1 Creating Court TypesTo create a new court type:
+
+Go to “Court Schedule” → “Court Types”Click the “Add Court Type” buttonFill in the details:
+
+Name: Give the court type a clear nameDescription: Explain what this court type coversColor: Pick a color to help identify this type (use hex code like #FF0000)Status: Set to Active or InactiveClick Save6.1.2 Managing Court TypesOnce you create court types, you can:
+
+Use Colors: Each type shows up in its own color for easy identificationTurn On/Off: Make court types active or inactive as neededSearch: Find court types by name or description6.2 CourtsThis is where you add and manage all the courts you work with. Maintaining accurate court information ensures your team can properly file documents and schedule hearings without errors.
+
+6.2.1 Creating CourtsTo add a new court:
+
+Go to “Court Schedule” → “Courts”Click the “Add Court” buttonFill in all the court details:
+
+Court Name: The official name of the court (required)Court Type: Choose from the types you set up earlier (required)Jurisdiction: What area does this court coverAddress: Full address of the courtPhone: Court’s phone numberEmail: Court’s email addressFiling Requirements: Special rules for filing documentsLocal Rules: Court’s specific proceduresNotes: Any extra information about this courtStatus: Set to Active or Inactive (defaults to Active)Click SaveThe system will give this court a unique ID like CT000001, CT000002, etc.6.2.3 What You Can Do with CourtsAutomatic IDs: Each court gets a unique ID numberColor Coding: Courts show in their type’s color for easy recognitionTurn On/Off: Make courts active or inactiveSearch: Find courts by name, ID, jurisdiction, or addressFilter: Show only certain types of courts or only active ones6.2.4 Court Information You Can StoreFor each court, you can keep:
+
+Complete Profiles: All administrative informationFiling Rules: How to file documents at this courtLocal Procedures: Special rules this court followsContact Info: Phone, email, and addressJurisdiction Info: What cases does his court handle6.2.3 How Courts Are DisplayedWhen you look at your court list, you’ll see:
+
+Court Name: Official nameType: Court type with its colorJurisdiction: What area does it coverStatus: Active or Inactive with colored badgesCreated At: When you added this court6.2.4 Finding CourtsYou can find courts by:
+
+Search: Type in court name, ID, jurisdiction, or addressFilter by Type: Show only certain types of courtsFilter by Status: Show only active, inactive, or all courtsCombine Filters: Use multiple filters at the same timeClear Filters: Remove all filters with one click6.3 JudgesKeep track of all the judges you work with and which courts they are assigned to. This information helps you prepare appropriately for hearings and understand each judge’s preferences and procedures.
+
+6.3.1 Creating JudgesTo add a new judge:
+
+Go to “Court Schedule” → “Judges”Click the “Add Judge” buttonFill in the judge details:
+
+Court Assignment: Which court does this judge work atJudge Name: Full name of the judgeTitle: Their official title (Judge, Justice, Magistrate, etc.)Email: Judge’s official emailPhone: Contact phone numberPreferences: Judge’s scheduling preferencesContact Info: Any additional contact informationStatus: Active or InactiveNotes: Extra information about this judgeClick Save6.3.2 What You Can Do with JudgesLink to Courts: Connect judges to specific courtsTrack Preferences: Store how each judge likes to schedule hearingsContact Management: Keep all contact information in one placeCheck Availability: See which judges are active or inactiveSearch and Filter: Find judges by court, name, or statusTrack Hearings: See which hearings are assigned to each judge6.3.3 Judge Information SectionsFor each judge, you can store:
+
+Basic Info: Name, title, ID, and which court they work atContact Details: Email, phone, and other contact informationPreferences: How they like to schedule thingsStatus: Whether they’re currently availableConnected Records: Which hearings and cases they’re handlingNotes: Additional information about working with this judge6.3.4 Who Can Access WhatDifferent users have different access to court schedule information:
+
+Team Members:Can view court information (but cannot edit it)Can see judge details when scheduling hearingsCannot modify court or judge informationClients:Can only see court information for their own casesCan see hearing locations and judge details for their hearingsCannot see the administrative court data7. Client ManagementClient Management helps you keep track of all your clients and their information. You can organize different types of clients, set up document categories, manage billing currencies, and store all client details in one centralized location. This comprehensive system ensures that all client-related information remains organized, accessible, and secure.
+
+7.1 Client TypesBefore adding clients, you should set up the different types of clients your firm works with. This categorization helps you organize clients by their relationship to your firm and apply appropriate workflows and billing arrangements.
+
+7.1.1 Creating Client TypesTo create a new client type:
+
+Go to “Client Management” → “Client Types”Click the “Add Client Type” buttonFill in the details:
+
+Name: Give the client type a clear name (required)Description: Explain what this client type coversStatus: Set to Active or Inactive (defaults to Active)Click Save7.1.2 Managing Client TypesOnce you create client types, you can:
+
+Turn On/Off: Make client types active or inactive as neededSearch: Find client types by name or descriptionTrack Usage: See which clients are assigned to each typeProtection: Cannot delete types that have clients assigned to them7.2 Document TypesSet up different types of documents to organize your client files more effectively. This categorization makes it easier to locate specific documents and maintain organized client records.
+
+7.2.1 Creating Document TypesTo create a new document type:
+
+Go to “Client Management” → “Document Types”Click the “Add Document Type” buttonFill in the details:
+
+Name: Give the document type a clear name (required)Description: Explain what this document type coversColor: Pick a color to identify this type (use hex code like #FF0000) (required)Status: Set to Active or Inactive (defaults to Active)Click Save7.2.2 Managing Document TypesOnce you create document types, you can:
+
+Use Colors: Each type shows up in its own color for easy identificationTurn On/Off: Make document types active or inactive as neededSearch: Find document types by name or descriptionTrack Usage: See which documents are assigned to each typeOrganize Files: Color-coded document organizationLink to Cases: Use these types for case documents and client documents7.3 Client Billing CurrenciesSet up different currencies for billing clients in various countries or regions. This ensures you can bill international clients in their preferred currency and maintain accurate financial records.
+
+7.3.1 Creating Billing CurrenciesTo add a new currency:
+
+Go to “Client Management” → “Client Billing Currencies”Click the “Add Currency” buttonFill in the currency details:
+
+Name: Full name of the currency (required)Code: Currency code like USD, EUR, GBP (required, must be unique)Symbol: Currency symbol like $, €, £ (required)Description: Extra information about the currencyIs Default: Check this to make it the default currency for new clientsClick Save7.3.2 Managing Billing CurrenciesOnce you set up currencies, you can:
+
+Set Default: Choose one currency as the default for new clientsUnique Codes: Make sure currency codes are not duplicatedTurn On/Off: Enable or disable currenciesSearch: Find currencies by name, code, or symbolProtection: Cannot delete the default currency7.4 ClientsThis is where you add and manage all your client information. The client management system provides a comprehensive database of all individuals and organizations your firm represents.
+
+7.4.1 Creating ClientsTo add a new client:
+
+Go to “Client Management” → “Clients”Click the “Add Client” buttonFill in all the client information:
+
+Client Name: Full name of the client (required)Email: Client’s email addressPassword: Password for the client to access their portal (required for new clients)Phone: Contact phone numberClient Type: Choose from the types you set up earlier (required)Company Name: Business name (for business clients)Tax ID: Tax identification numberTax Rate (%): Tax rate for this client (0-100%)Date of Birth: Client’s birth dateAddress: Full address of the clientReferral Source: How you got this clientNotes: Any extra information about this clientStatus: Set to Active or Inactive (defaults to Active)Click SaveThe system will give this client a unique ID like CL000001, CL000002, etc.If you provided an email and a password, the client can now log in to their portal.7.4.2 What You Can Do with ClientsClient Portal: Clients get automatic access to view their information onlineLimit Tracking: Respects your subscription plan’s client limitsSearch: Find clients by name, email, phone, ID, or company nameFilter: Show only certain types of clients or only active onesStatus Management: Make clients active or inactivePassword Reset: Reset client portal passwords when needed7.4.3 Client Information You Can StoreFor each client, you can keep:
+
+Basic Info: Name, email, phone, and ID numberBusiness Details: Company name, tax ID, and tax ratePersonal Info: Birth date and addressClient Category: Which type of client are theyBilling Info: Tax rates and billing preferencesAdministrative: Status, how they found you, and notesSystem Info: When they were created and who created them7.4.4 Finding ClientsYou can find clients by:
+
+Search: Type in name, email, phone, ID, or company nameReal-time Results: See results as you typeFilter by Type: Show only certain types of clientsFilter by Status: Show only active, inactive, or all clientsCombine Filters: Use multiple filters at the same timeClear Filters: Remove all filters with one click7.4.5 Plan LimitsYour subscription plan controls how many clients you can have:
+
+Limit Checking: Cannot add more clients than your plan allowsCurrent Count: Shows how many clients you have vs. your limitUpgrade Prompts: Suggests upgrading your plan when you reach the limitCompany-wide: Limits apply to your entire organization7.4.6 Client Billing FeaturesFor billing clients, you can:
+
+Set Tax Rates: Different tax rates for different clientsMultiple Currencies: Bill clients in their preferred currencyGenerate Invoices: Create invoices automaticallyTrack Payments: See which invoices are paidBilling History: Keep records of all billing7.4.7 Financial Information You Can StoreTax ID: Store client tax identification numbersCompany Info: Business details for corporate clientsBilling Address: Separate address for sending billsPayment Terms: Special payment arrangements for each client7.4.8 Who Can Access WhatDifferent users have different access to client information:
+
+Team Members:Can only see clients assigned to themCan view client contact informationCan see client case historyCan add notes about client communicationsCannot see other team members’ clientsClients:Can only see and edit their own profileCan update their contact detailsCan view their case historyCannot see other clients’ information8. Billing & InvoicingBilling & Invoicing helps you track time, manage expenses, set billing rates, create invoices, and record payments. This comprehensive financial management system keeps all your billing information organized so you can bill clients accurately and get paid on time. Proper billing management is essential for maintaining cash flow and ensuring your firm receives payment for all work performed.
+
+8.1 Billing SetupBefore you start billing clients, you need to set up expense categories to organize your costs. This categorization helps you track where money is being spent and makes it easier to bill expenses back to clients.
+
+8.1.1 Expense CategoriesTo create expense categories:
+
+Go to “Billing & Invoicing” → “Expense Categories”Click the “Add Expense Category” buttonFill in the details:
+
+Name: Give the category a clear name (required)Description: Explain what expenses go in this categoryStatus: Set to Active or Inactive (defaults to Active)Click Save8.1.2 Managing Expense CategoriesOnce you create categories, you can:
+
+Turn On/Off: Make categories active or inactive as neededSearch: Find categories by name or descriptionTrack Usage: See which expenses are assigned to each category8.2 Time EntriesTrack how much time you and your team spend working on client matters. Accurate time tracking ensures that all billable work is captured and clients are billed fairly for the time invested in their cases.
+
+8.2.1 Creating Time EntriesTo record time spent on work:
+
+Go to “Billing & Invoicing” → “Time Entries”Click the “Add Time Entry” buttonFill in the time details:
+
+Case: Choose which case this time is for (optional)Client: Choose which client (required)User: Who did the workDescription: What work was done (required)Entry Date: When the work was done (required)Hours: How much time was spent (required)Start/End Time: Specific times if neededIs Billable: Check if you can bill the client for this timeStatus: Draft, approved, or billedNotes: Any extra informationClick SaveThe system automatically applies the right billing rate8.2.2 What You Can Do with Time EntriesAutomatic Rates: System applies the correct billing rates automaticallyDifferent Billing Types: Hourly, fixed fee, and contingency billingBillable/Non-Billable: Track both types of timeStatus Tracking: See if time is draft, approved, or already billedLink to Invoices: Add time entries to invoicesCalculate Totals: Automatically calculates amounts based on rates8.3 Billing RatesSet up how much you charge different clients for different types of work. Flexible billing rate configuration allows you to maintain different rates for different team members and customize rates for specific clients.
+
+8.3.1 Creating Billing RatesTo set up billing rates:
+
+Go to “Billing & Invoicing” → “Billing Rates”Click the “Add Billing Rate” buttonSet up the rate details:
+
+User: Choose which team member (required)Client: Choose specific client (leave empty for default rate)Rate Type: Choose how you bill (required):
+
+Hourly: Charge by the hourFixed: One set fee for the whole jobContingency: Percentage of what the client winsHourly Rate: Amount per hour (for hourly billing)Fixed Amount: Total fee (for fixed billing)Contingency Percentage: Percentage from 0-100% for contingencyEffective Date: When this rate starts (required)End Date: When this rate ends (optional)Status: Active or InactiveNotes: Extra information about this rateClick Save8.3.2 What You Can Do with Billing RatesDifferent Rate Types: Hourly, fixed fee, and contingency billingClient-Specific Rates: Charge different clients different amountsDefault Rates: Backup rates when no special client rate existsDate Controls: Set when rates start and endAutomatic Selection: The System picks the right rate automaticallyClear Display: Shows rates like $150.00/hr, $5,000 fixed, 33.3%8.4 ExpensesTrack money you spend on cases that you can bill back to clients. Proper expense tracking ensures you recover costs incurred while working on client matters and maintain accurate financial records.
+
+8.4.1 Creating ExpensesTo record an expense:
+
+Go to “Billing & Invoicing” → “Expenses”Click the “Add Expense” buttonFill in the expense details:
+
+Case: Which case this expense is for (optional)Client: Which client to bill (required)Category: Choose expense categoryDescription: What the expense was for (required)Amount: How much it costs (required)Expense Date: When you spent the moneyIs Billable: Check if you can bill the client for thisIs Approved: Check if this expense is approvedReceipt: Upload a picture of the receiptNotes: Any extra informationClick Save8.4.2 Managing ExpensesOnce you create expenses, you can:
+
+Organize by Category: Group expenses by typeStore Receipts: Upload and keep expense receiptsApproval Process: Get expenses approved before billingTrack Billable vs Non-Billable: See what you can bill clients for8.5 InvoicesCreate and send bills to your clients for work done and expenses incurred. Professional invoicing ensures timely payment and maintains clear financial records of all client billing.
+
+8.5.1 Creating InvoicesTo create an invoice:
+
+Go to “Billing & Invoicing” → “Invoices”Click the “Create Invoice” buttonSet up the invoice:
+
+Client: Choose which client (required)Case: Which case this invoice is for (optional)Currency: What currency to bill inInvoice Date: When you’re creating the invoice (required)Due Date: When payment is due (required)Line Items: Add manual items to the invoiceTime Entries: Include billable time entriesExpenses: Include billable expensesTax Amount: Add taxes if neededNotes: Invoice notes and payment termsReview everything and click Save8.5.2 Invoice Management FeaturesMultiple Currencies: Bill clients in different currenciesTax Calculation: Automatically calculate and add taxesPayment Tracking: See which invoices are paidStatus Management: Track invoice status8.5.3 Invoice Status TypesInvoices can have different statuses:
+
+Draft: Invoice is being preparedSent: Invoice sent to clientPaid: Client has paid the invoiceOverdue: Payment is past due dateCancelled: Invoice was cancelled8.5.4 Invoice Line ItemsEach line on an invoice shows:
+
+Description: What service or item are you billing forQuantity: How many unitsRate: Price per unit or hourly rateAmount: Total for this lineType: Whether it’s manual, time entry, or expense8.5.5 Invoice PaymentsThe company can copy the unique invoice payment link using the Copy Link button and send it to the client.
+
+When the client opens the link, they will see the invoice details, and by clicking Pay Invoice, they’ll get multiple payment options (such as Stripe, PayPal,Razorpay, Paystack, Flutterwave, Paytabs, Skrill, Coingate, Payfast, Tap, Xendit, PayTR, Mollie, ToyyibPay, Benefit, Ozow,Easebuzz,Authorize.net, Paiement Pro, PaymentWall, CinetPay, PayHere ,Yookassa, Midtrans , sspay,Cashfree, Khalti and FedaPay ) to complete the payment securely.
+
+8.6 PaymentsTrack when clients pay their invoices and how much they’ve paid. Accurate payment tracking ensures you maintain current records of accounts receivable and can quickly identify outstanding balances.
+
+8.6.1 Recording PaymentsTo record a payment:
+
+Go to “Billing & Invoicing” → “Payments”Click the “Record Payment” buttonFill in the payment details:
+
+Invoice: Which invoice is being paidClient: Which client made the paymentAmount: How much they paidPayment Date: When they paidPayment Method: How they paid (cash, check, credit card, etc.)Reference: Check the number or transaction IDNotes: Any extra informationClick Save8.6.2 Payment Management FeaturesPayment History: See all payments from each clientPartial Payments: Handle payments that don’t cover the full invoicePayment Methods: Track cash, check, credit card, and bank transfer paymentsOutstanding Balance: Automatically calculates what’s still owedPayment Matching: Links payments to the right invoicesPayment Reports: Create reports showing payment summaries8.6.3 Who Can Access WhatDifferent users have different access to billing information:
+
+Team Members:Can create and manage their time entriesCan see billing tasks assigned to themCan see client billing information if allowedCannot see financial reports or process paymentsClients:Can see their own invoices and payment historyCan make payments through the client portalCan download their invoice PDFsCannot see other clients’ billing information9. Task & WorkflowTask & Workflow helps you create and manage tasks for your team. You can set up different types of tasks, track their progress through customizable statuses, add comments for collaboration, and ensure nothing gets forgotten. This comprehensive task management system keeps your team organized and ensures that all work items are completed on time.
+
+9.1 Task TypesBefore creating tasks, you should set up the different types of tasks your firm handles. This categorization helps you organize work items and makes it easier to track and report on different types of activities.
+
+9.1.1 Creating Task TypesTo create a new task type:
+
+Go to “Task & Workflow” → “Task Types”Click the “Add Task Type” buttonFill in the details:
+
+Name: Give the task type a clear name (required)Description: Explain what this task type coversColor: Pick a color to identify this type (use hex code like #FF0000) (required)Default Duration: How long this type of task usually takes (in minutes)Status: Set to Active or Inactive (defaults to Active)Click Save9.1.2 Managing Task TypesOnce you create task types, you can:
+
+Use Colors: Each type shows up in its own color for easy identificationSet Time Estimates: Default duration helps with planningTurn On/Off: Make task types active or inactive as neededSearch: Find task types by name or description9.2 Task StatusesSet up different statuses to track how tasks move through your workflow. Custom task statuses allow you to create workflows that match your firm’s processes and make it easy to see where each task stands.
+
+9.2.1 Creating Task StatusesTo create a new task status:
+
+Go to “Task & Workflow” → “Task Statuses”Click the “Add Task Status” buttonSet up the status:
+
+Name: Give the status a clear name (required)Color: Pick a color to identify this status (use hex code like #00FF00) (required)Is Completed: Check this if this status means the task is finishedStatus: Set to Active or Inactive (defaults to Active)Click Save9.2.2 Managing Task StatusesOnce you create statuses, you can:
+
+Track Completion: Mark which statuses mean a task is doneUse Colors: Visual workflow with different colored statusesCustom Workflows: Create workflows that fit how your firm worksTurn On/Off: Make statuses active or inactive as neededTrack Progress: See how tasks move through different stages9.3 Task CommentsAdd comments to tasks so your team can communicate and collaborate effectively. The commenting system provides a centralized place for all task-related discussions and keeps a complete history of communication.
+
+9.3.1 What You Can Do with CommentsInternal Comments: Private comments only your team can seeExternal Comments: Comments that clients can see (if you allow it)Comment Threads: Organized discussions about the taskTrack Who Said What: See who made each commentTime Stamps: See when comments were madeComment History: Keep a complete record of all comments9.3.2 Managing CommentsYour team can:
+
+Add Comments: Write new comments on tasksEdit Comments: Change existing comments (if allowed)Delete Comments: Remove comments (if allowed)Get Notifications: Know when someone adds new commentsSearch Comments: Find specific comments within tasks9.4 TasksCreate and manage all the tasks your team needs to complete. The task management system provides comprehensive tools for organizing work, tracking progress, and ensuring deadlines are met.
+
+9.4.1 Creating TasksTo create a new task:
+
+Go to “Task & Workflow” → “Tasks”Click the “Add Task” buttonFill in all the task details:
+
+Title: Give the task a clear name (required)Description: Explain what needs to be donePriority: How urgent is this task – Critical, High, Medium, Low (required)Status: Current status – Not Started, In Progress, Completed, On HoldDue Date: When this task needs to be finishedEstimated Duration: How long you think it will take (in minutes)Case: Which case is this task for (optional)Assigned To: Which team member will do this taskTask Type: Choose from the types you set up earlierTask Status: Choose from the statuses you set up earlierNotes: Any extra information about this taskClick SaveThe system will give this task a unique ID like TSK000001, TSK000002, etc.9.4.2 What You Can Do with TasksPriority Levels: Critical, High, Medium, Low priority levelsStatus Tracking: Follow tasks through your workflowAssign Tasks: Give tasks to specific team membersLink to Cases: Connect tasks to specific casesTrack Deadlines: See when tasks are due and which are overdueEstimate Time: Plan how long tasks will take9.4.3 Task Information You Can StoreFor each task, you can keep:
+
+Basic Info: Title, description, and ID numberAssignment: Who’s responsible and who created itSchedule: Due date, time estimate, and priorityCategories: Task type, status, and case connectionProgress: Status updates and completion trackingCommunication: Comments and team collaborationNotes: Extra information and context9.4.4 Finding and Organizing TasksYou can organize your tasks by:
+
+Sort by Priority: See most urgent tasks firstSort by Due Date: See what’s due soonestFilter by Status: Show only tasks with certain statusesFilter by Person: Show only tasks assigned to specific team membersFilter by Type: Show only certain types of tasksFilter by Case: Show only tasks for specific casesSearch: Find tasks by title, description, or ID9.4.5 Managing Task StatusYou can:
+
+Update Status: Move tasks through your workflowMark Complete: Check off finished tasksTrack Progress: See how tasks are moving alongFind Overdue: Identify tasks that are past dueStatus History: See how the task status has changed over time9.4.6 Who Can Access WhatDifferent users have different access to tasks:
+
+Team Members:Can see and manage tasks assigned to themCan create their own personal tasksCan update task status and add commentsCannot see other team members’ tasksClients:Can see tasks related to their cases (if you share them)Cannot create or edit tasksCan only see limited information about case activities10. CalendarThe Calendar helps you see all your hearings, case events, and firm activities in one centralized location. You can view your schedule in different formats and never miss important dates or deadlines. This integrated calendar system ensures that all team members stay synchronized and aware of upcoming commitments.
+
+10.1 Calendar ViewsYou can view your calendar in different formats depending on what information you need to see and how you prefer to plan your schedule.
+
+10.1.1 Available ViewsThe calendar has three main ways to display your schedule:
+
+Month View: Shows the whole month so you can see everything at onceWeek View: Shows one week in detail with more space for each dayDay View: Shows just one day with lots of detail about each event10.1.2 Calendar FeaturesThe calendar includes helpful features to make scheduling easier:
+
+Multiple Events: Shows hearings and case events together on the same calendarColor Coding: Different types of events show up in different colors, so you can tell them apart quicklyEvent Details: Hover over or click on events to see more informationEasy Navigation: Jump between dates and switch views easilyLive Updates: Calendar updates automatically when changes are made10.2 Event IntegrationYour calendar connects seamlessly with other parts of the system to display all your important events in one place. This integration ensures that scheduling information from various modules appears automatically on your calendar.
+
+10.2.1 Hearing IntegrationAll your court hearings automatically appear on the calendar:
+
+Court Hearings: Every hearing you schedule shows up on the calendarHearing Details: See court location, judge name, case information, and timingStatus Indicators: Visual symbols show the status of each hearingConflict Detection: The System warns you if you have scheduling conflicts10.2.2 Case Timeline IntegrationImportant case events also show up on your calendar:
+
+Case Events: Important milestones and deadlines from your casesEvent Types: Different kinds of case-related activitiesCompletion Status: See which events are done and which are still pendingCase Links: Events are connected to their specific cases10.3 Upcoming EventsStay on top of what’s coming next with comprehensive tools for monitoring and managing future events.
+
+10.3.1 Event MonitoringKeep track of what’s happening soon:
+
+Next 7 > Days: Quick view of everything coming up in the next weekPriority Events: Focus on the most important upcoming activitiesEvent Reminders: Get notifications about upcoming eventsQuick Access: Click directly to see event details10.3.2 Event ManagementManage your calendar events easily:
+
+Create Events: Add new calendar events directlyUpdate Events: Change event details and timingCancel Events: Cancel or postpone events when neededBulk Operations: Handle multiple events at the same time10.3.3 Who Can Access WhatDifferent users see different things on the calendar:
+
+Team Members:Can manage their own personal calendarCan see case events and hearings assigned to themCan create their own appointmentsCannot see other team members’ eventsClients:Can only see events related to their casesCan see their hearing schedules and appointmentsCannot create or edit calendar events11. Legal ResearchLegal Research helps you organize and manage all your research projects, legal sources, and case law. You can create research projects, build a comprehensive knowledge base, and keep track of legal precedents all in one centralized location. This integrated research management system ensures that your team’s legal research remains organized, accessible, and reusable across cases.
+
+11.1 Legal Research SetupBefore you start conducting research, you need to set up the basic configurations that will help you organize your work effectively.
+
+11.1.1 What You Need to Set UpYou should configure these components first:
+
+Research Types: Different categories of legal research you doPractice Areas: Areas of law your firm specializes inResearch Categories: Ways to organize research by topicsResearch Sources: Legal databases and sources you use11.2 Research TypesSet up different types of legal research to organize your projects more effectively. This categorization helps you track what kinds of research your firm performs most frequently.
+
+11.2.1 Creating Research TypesTo create a new research type:
+
+Go to “Legal Research” → “Research Types”Click the “Add Research Type” buttonFill in the details:
+
+Name: Give the research type a clear name (required)Description: Explain what this type of research coversStatus: Set to Active or Inactive (defaults to Active)Click Save11.3 Practice AreasSet up the different areas of law your firm works in. Practice areas help you organize research by legal specialty and track your firm’s expertise in different fields of law.
+
+11.3.1 Creating Practice AreasTo create a new practice area:
+
+Go to “Legal Research” → “Research Setup” → “Practice Areas”Click the “Add Practice Area” buttonFill in the details:
+
+Name: Give the practice area a clear name (required)Description: Explain what this area of law coversExpertise Level: How experienced your firm is in this areaIs Primary: Check this if it’s a main focus area for your firmCertifications: Any special certifications or specializationsStatus: Set to Active or Inactive (defaults to Active)Click Save11.3.2 What You Can Do with Practice AreasOrganize Research: Group research by areas of lawShow Specialties: Focus research on your firm’s specialtiesConnect Categories: Link practice areas to research categoriesAssign Team Members: Assign staff to specific practice areasTrack Expertise: Show how experienced your firm is in each areaHighlight Main Areas: Show which practice areas are most important to your firm11.4 Research CategoriesCreate categories to organize your research more effectively. Categories provide a flexible way to group related research materials across different practice areas and case types.
+
+11.4.1 Creating Research CategoriesTo create a new research category:
+
+Go to “Legal Research” → “Research Categories”Click the “Add Research Category” buttonSet up the category:
+
+Name: Give the category a clear name (required)Description: Explain what goes in this categoryColor: Pick a color to identify this categoryPractice Area: Which practice area does this category belong toStatus: Set to Active or InactiveClick Save11.5 Research ProjectsCreate and manage your legal research projects. Research projects help you organize research activities, track progress, and ensure timely completion of research tasks.
+
+11.5.1 Creating Research ProjectsTo create a new research project:
+
+Go to “Legal Research” → “Research Projects”Click the “Add Research Project” buttonFill in the project details:
+
+Title: Give the research project a clear title (required)Description: Explain what research you need to doResearch Type: Choose from the types you set up earlierCase: Which case is this research for (optional)Status: Current status of the projectPriority: How urgent is this research?Due Date: When you need to finish this researchClick Save11.5.2 What You Can Do with Research ProjectsLink to Cases: Connect research projects to specific casesSet Priorities: Mark which research is most urgentTrack Progress: See how research projects are moving alongManage Deadlines: Track when research needs to be finishedAdd Notes: Include research notes in projectsManage Citations: Keep track of legal citationsTeam Work: Assign research projects to team members11.6 Research SourcesKeep track of all the legal databases and sources you use for research. Maintaining a centralized list of research sources ensures your team knows where to find reliable legal information.
+
+11.6.1 Creating Research SourcesTo add a new research source:
+
+Go to “Legal Research” → “Research Sources”Click the “Add Research Source” buttonFill in the source details:
+
+Source Name: Name of the research source (required)Source Type: What type of source is thisDescription: Explain what this source is good forURL: Website address or access linkAccess Info: Instructions for how to access this sourceStatus: Set to Active or InactiveClick Save11.7 Knowledge BaseBuild a library of legal knowledge that your team can use and reference. The knowledge base serves as your firm’s institutional memory, preserving research findings and legal insights for future use.
+
+11.7.1 Creating Knowledge ArticlesTo create a new knowledge article:
+
+Go to “Legal Research” → “Knowledge Base”Click the “Add Knowledge Article” buttonWrite your article:
+
+Title: Give the article a clear title (required)Category: Which research category does this belong toContent: Write the main content of the article (required)Tags: Add tags to make the article easier to findIs Public: Check this if you want to make the article publicly accessibleStatus: Published or DraftClick Save11.7.2 Knowledge Base FeaturesSearch Everything: Find articles by searching the full textOrganize by Category: Group articles by research categoriesUse Tags: Add flexible tags to organize articles betterControl Access: Choose whether articles are public or privateSave Drafts: Work on articles and save them before publishing11.8 Legal PrecedentsKeep track of important legal cases and precedents that may be relevant to your work. The legal precedents system helps you build a database of case law that can be referenced across multiple matters.
+
+11.8.1 Creating Legal PrecedentsTo add a new legal precedent:
+
+Go to “Legal Research” → “Legal Precedents”Click the “Add Legal Precedent” buttonFill in the case details:
+
+Case Name: Name of the legal case (required)Citation: Official legal citation referenceJurisdiction: Which court system does this case fall underSummary: Brief summary of the caseCategory: Which research category does this belong toRelevance Score: How relevant is this case to your workDecision Date: When the court made this decisionCourt Level: Whether it was the trial court, appellate court, or supreme courtKey Points: Important points from this caseStatus: Set to Active or InactiveClick SaveThe system will give this precedent a unique ID like LP000001, LP000002, etc.11.8.2 Legal Precedent FeaturesAutomatic IDs: Each precedent gets a unique ID numberTrack Citations: Keep track of legal citation referencesFilter by Jurisdiction: Find cases from specific court systemsRate Relevance: Score how relevant cases are (1-10 scale)Organize by Court Level: See which court level made the decisionGroup by Category: Organize precedents by legal categoriesSearch Everything: Find precedents using multiple search criteriaTrack Status: See which precedents are active or inactive11.8.3 Who Can Access WhatDifferent users have different access to legal research:
+
+Team Members:Can create and manage research projectsCan access the company knowledge baseCan add legal precedents and sourcesCan work together on research activitiesClients:Can see limited research summaries (if you share them)Cannot create or edit research dataCan only view research findings related to their cases12. Document ManagementDocument Management in Advocate SaaS helps you store, organize, and share all your legal documents in one secure, centralized location. You can upload files, organize them by type and category, control who can access them, and track different versions over time. This comprehensive system makes it easy to find documents when you need them and ensures your important legal files remain secure, organized, and properly managed throughout their lifecycle.
+
+12.1 Document SetupBefore you start adding documents, you need to set up categories to organize your files. This initial configuration helps you maintain organization from the start and makes it easier to find documents later as your document library grows
+
+Go to “Document Management” → “Document Setup”Here you can set up the basic settings for how your documents will be organized. The main thing you need to do is create categories that make sense for your law firm.12.2 CategoriesDocument categories help you organize your files into logical groups, similar to organizing physical files in different folders. Well-organized categories make document retrieval faster and ensure consistent filing practices across your firm.
+
+12.2.1 Creating Document CategoriesTo create a new category:
+
+Go to “Document Management” → “Document Setup” → “Categories”Click the “Add Document Category” buttonFill in the details:
+
+Name: Give your category a clear name like “Court Papers,” “Client Files,” or “Contracts.”Description: Explain what types of documents go in this categoryColor: Pick a color to make this category easy to spot (like #FF0000 for red)Status: Leave this set to ActiveClick Save12.2.2 What You Can Do with CategoriesColor Coding: Each category shows up in its own color to help you find documents quickly.Turn On/Off: You can make categories active or inactive without losing the documents in them.Organization: Group your documents in ways that make sense for your law firmSearch: Find categories by typing in their name12.3 DocumentsThis is where you upload and manage all your legal documents. The document management system provides comprehensive tools for storing, organizing, and controlling access to your firm’s files.
+
+12.3.1 Creating DocumentsTo add a new document:
+
+Go to “Document Management” → “Documents”Click the “Add Document” or “Upload Document” buttonFill in the document information:
+
+Name: Give your document a clear name that explains what it isDescription: Write what the document is aboutCategory: Choose which category this document belongs toFolder: Pick a folder to organize the documentFile: Click to upload the actual file from your computerStatus: Shows whether the document is active or notConfidentiality: Choose who should be able to see this documentTags: Add keywords to make the document easier to find laterClick Save12.3.2 What You Can Do with DocumentsUpload Files: You can upload many different types of files, such as PDFs, Word documents, and images.Organize: Sort documents into categories and foldersFind Easily: Use tags and search to find documents quicklyControl Access: Decide who can see, edit, or download each documentTrack Changes: The system keeps track of when documents are changed and by whomWork Together: Team members can work on documents together12.4 VersionsDocument versions help you keep track of changes to your files over time. When you update a document, the system automatically saves both the old and new versions, ensuring you never lose important information and can always review the evolution of a document.
+
+12.4.1 Creating Document VersionsTo create a new version of a document:
+
+Go to “Document Management” → “Versions”Click the “Add Version” buttonFill in the details:
+
+Document: Choose which document you want to updateFile: Upload the new version from your computerChange Description: Explain what you changed in this versionClick Save12.4.2 What You Can Do with VersionsTrack Changes: See all the different versions of a document over timeVersion Numbers: Each version gets a number (like 1.0, 1.1, 2.0) so you can tell them apartChange History: Read what was changed in each versionCurrent Version: Always know which version is the most recent oneGo Back: If needed, you can go back to an older version of a document12.5 PermissionsDocument permissions control who can access and work with your files. You can grant different users different levels of access to maintain security and ensure confidential information remains protected while still enabling necessary collaboration.
+
+12.5.1 Creating Document PermissionsTo give someone access to a document:
+
+Go to “Document Management” → “Permissions”Click the “Grant Permission” buttonSet up the permission:
+
+Document: Choose which document to shareUser: Pick who should get accessPermission Type: Choose what they can do:
+
+View: They can only read the documentEdit: They can make changes to the documentDelete: They can remove the documentDownload: They can save a copy to their computerExpires At: Set when this permission should stop working (optional)Click Save12.5.2 What You Can Do with PermissionsControl Access: Decide exactly who can see each documentDifferent Levels: Give people only the access they needTemporary Access: Set permissions to expire after a certain dateTrack Access: See who has permission to access which documentsChange Anytime: You can update or remove permissions whenever needed12.6 CommentsComments allow your team to discuss documents and provide feedback. This collaborative feature helps everyone work together to review, improve, and finalize documents before they are submitted or shared with clients.
+
+12.6.1 Creating Document CommentsTo add a comment to a document:
+
+Go to “Document Management” → “Comments”Click the “Add Comment” buttonFill in the comment:
+
+Document: Choose which document to comment onComment Text: Write your comment or feedbackClick Save12.6.2 What You Can Do with CommentsTeam Discussion: Have conversations about documents with your team.Give Feedback: Share suggestions and ideas for improving documentsTrack Discussions: See all comments and replies in one placeMark as Done: Show when issues have been resolvedSee Who Said What: Comments show who wrote them and whenWork Together: Multiple people can review and discuss documents12.6.3 Who Can Access WhatDifferent people in your law firm have different levels of access to documents:
+
+Team Members:Can only see documents they have permission to accessCan upload and edit documents if they have permissionCan add comments to documents that they can accessCannot see confidential documents unless given specific permissionClients:Can only see documents that have been shared with themCan download documents they have permission to accessCan add comments if this feature is turned on for themCannot upload new documents or see other clients’ files13. Compliance & RegulatoryCompliance & Regulatory helps law firms meet all the legal and professional requirements they need to follow. This comprehensive system tracks licenses, continuing education, regulatory requirements, and risks to ensure your firm stays in good standing with all legal authorities and professional organizations. Maintaining compliance is critical for protecting your firm’s reputation, avoiding penalties, and upholding professional standards.
+
+13.1 Compliance SetupBefore you start tracking compliance, you need to set up the basic categories and schedules that organize all your compliance requirements. This initial configuration creates the framework for managing all compliance activities throughout your firm.
+
+Go to “Compliance & Regulatory” → “Compliance Setup”Here, you set up the foundation for managing all compliance activities. You need to create categories, frequencies, risk types, and audit types that fit your law firm’s needs.13.1.1 What You Need to Set UpCompliance Categories: Different types of compliance requirements your firm must meetCompliance Frequencies: How often do you need to complete different requirementsRisk Categories: Different types of risks your firm facesCompliance Audit Types: Different kinds of audits you conduct or receive13.2 Compliance CategoriesCategories help you organize different types of compliance requirements into logical groups that make sense for your law firm’s regulatory obligations and practice areas.
+
+13.2.1 Creating Compliance CategoriesTo create a new compliance category:
+
+Go to “Compliance & Regulatory” → “Compliance Setup” → “Compliance Categories”Click the “Add Compliance Category” buttonFill in the details:
+
+Name: Give your category a clear name like “Professional Ethics,” “Court Rules,” or “Bar Requirements.”Description: Explain what types of compliance requirements go in this categoryColor: Pick a color to make this category easy to spot (like #0066CC for blue)Status: Leave this set to ActiveClick Save13.3 Compliance FrequenciesFrequencies define how often you need to complete different compliance requirements. These schedules help automate reminders and ensure timely compliance.
+
+13.3.1 Creating Compliance FrequenciesTo set up a new frequency schedule:
+
+Go to “Compliance & Regulatory” → “Compliance Setup” → “Compliance Frequencies”Click the “Add Compliance Frequency” button.Set up the frequency:
+
+Name: Give it a clear name like “Annual,” “Monthly,” or “Every 3 Years.”Description: Explain when this frequency appliesDays: Enter the number of days in the cycle (365 for annual, 30 for monthly)Status: Leave this set to ActiveClick Save13.4 Risk CategoriesRisk categories help you organize different types of risks that could affect your law firm’s operations, reputation, or compliance standing.
+
+13.4.1 Creating Risk CategoriesTo create a new risk category:
+
+Go to “Compliance & Regulatory” → “Compliance Setup” → “Risk Categories”Click the “Add Risk Category” button.Enter the category details:
+
+Name: Give it a clear name like “Financial Risk,” “Professional Liability,” or “Data Security.”Description: Explain what types of risks belong in this categoryColor: Pick a color to identify this type of riskStatus: Leave this set to ActiveClick Save13.5 Compliance Audit TypesAudit types help you organize different kinds of audits and inspections your firm might undergo or conduct internally.
+
+13.5.1 Creating Compliance Audit TypesGo to “Compliance & Regulatory” → “Compliance Setup” → “Compliance Audit Types”Click the “Add Audit Type” button.Fill in the audit type:
+
+Name: Give it a name like “Bar Association Audit,” “Trust Account Review,” or “Internal Audit.”Description: Explain what this type of audit coversStatus: Leave this set to ActiveClick Save13.6 Compliance RequirementsThis is where you track all the specific compliance requirements your law firm must meet. The requirements system provides comprehensive tracking of obligations, deadlines, and evidence of compliance.
+
+13.6.1 Creating Compliance RequirementsTo add a new compliance requirement:
+
+Go to “Compliance & Regulatory” → “Compliance Requirements”Click the “Add Compliance Requirement” button.Fill in all the requirement details:
+
+Title: Give the requirement a clear nameDescription: Explain what you need to do to complyRegulatory Body: Which organization requires thisCategory: Choose from the categories you set upJurisdiction: Where this requirement appliesScope: Who in your firm needs to complyEffective Date: When this requirement startedDeadline: When you need to complete itFrequency: How often do you need to do thisResponsible Party: Who is in charge of making sure this gets doneEvidence Requirements: What proof do you need to show compliancePenalty Implications: What happens if you don’t complyMonitoring Procedures: How you check that compliance is maintainedStatus: Current status (Pending, In Progress, Compliant, Non-Compliant, Overdue)Priority: How urgent this is (Low, Medium, High, Critical)Click Save13.6.2 What You Can Do with Compliance RequirementsTrack Status: See which requirements are complete and which need attentionSet Priorities: Focus on the most important requirements firstMonitor Deadlines: Never miss important compliance deadlinesSchedule Reminders: Get automatic notifications before deadlinesTrack Evidence: Keep records of how you met each requirementMonitor Penalties: Understand the consequences of not complying13.7 Professional LicensesKeep track of all professional licenses and certifications for everyone in your law firm. License tracking ensures that all attorneys and staff maintain current credentials required for practice.
+
+13.7.1 Creating Professional LicensesTo add a professional license:
+
+Go to “Compliance & Regulatory” → “Professional Licenses”Click the “Add Professional License” buttonEnter the license information:
+
+User: Choose which team member this license belongs toLicense Type: What kind of license (Bar License, Professional Certification, etc)License Number: The official license numberIssuing Authority: Who issued the licenseJurisdiction: Where the license is validIssue Date: When the license was first issuedExpiry Date: When the license expiresStatus: Current status (Active, Expired, Suspended, Revoked)Notes: Any additional information about the licenseClick Save13.7.2 What You Can Do with Professional LicensesTrack All Licenses: Keep records of every license your team hasMonitor Expiration: Get warnings before licenses expireStatus Updates: Track if licenses are active, expired, or suspendedRenewal Alerts: Get automatic reminders to renew licensesMulti-Jurisdiction: Track licenses in different states or countriesLink to Requirements: Connect licenses to compliance requirements13.8 CLE TrackingTrack Continuing Legal Education (CLE) requirements and completion for all attorneys in your firm. This system ensures that all attorneys maintain the required continuing education credits for license renewal.
+
+13.8.1 Creating CLE RecordsTo record completed CLE credits:
+
+Go to “Compliance & Regulatory” → “CLE Tracking”Click the “Add CLE Record” buttonEnter the CLE details:
+
+User: Choose which attorney completed the trainingCourse Title: Name of the CLE courseProvider: Organization that provided the trainingCourse Date: When the course was completedCredits Earned: How many CLE credits were earnedCategory: Type of CLE (Ethics, Substantive Law, Skills, etc.)Certificate: Upload the completion certificateStatus: Whether the course is completeDescription: Additional information about the courseClick Save13.8.2 What You Can Do with CLE TrackingTrack Credits: See how many CLE credits each attorney has earnedMonitor Requirements: Track what credits each attorney still needsCategory Organization: Organize credits by required categoriesStore Certificates: Keep digital copies of all CLE certificatesDeadline Tracking: Know when CLE requirements are dueProvider Management: Keep records of which organizations provide training13.9 Regulatory BodiesManage information about all the regulatory organizations that oversee your law firm. This centralized database ensures you have current contact information and requirements for all relevant authorities.
+
+13.9.1 Creating Regulatory BodiesTo add a regulatory body:
+
+Go to “Compliance & Regulatory” → “Regulatory Bodies”Click the “Add Regulatory Body” buttonEnter the organization details:
+
+Name: Official name of the regulatory bodyDescription: What this organization does and why it’s importantJurisdiction: Geographic area they regulateContact Information: How to reach themWebsite: Their official website addressEmail: Official email addressPhone: Contact phone numberAddress: Physical addressStatus: Whether they’re currently activeClick Save13.9.2 What You Can Do with Regulatory BodiesOrganization Database: Keep complete information about all regulatory bodiesContact Management: Have all contact information in one placeWebsite Links: Go directly to their websites for updatesJurisdiction Tracking: Know which bodies regulate which areasLink to Requirements: Connect regulatory bodies to their specific requirements13.10 Risk AssessmentsIdentify and manage risks that could affect your law firm’s operations, reputation, or compliance status. Regular risk assessments help prevent problems before they occur.
+
+13.10.1 Creating Risk AssessmentsTo conduct a risk assessment:
+
+Go to “Compliance & Regulatory” → “Risk Assessments”Click the “Add Risk Assessment” buttonFill in the assessment details:
+
+Title: Give the risk a clear nameDescription: Explain what the risk is and why it mattersCategory: Choose from the risk categories you set upAssessment Date: When you evaluated this riskProbability: How likely this risk is to happen (Low, Medium, High, Critical)Impact Score: How much damage it could cause (1-10 scale)Current Controls: What you’re already doing to prevent this riskMitigation Plan: What you plan to do to reduce this riskResponsible Person: Who is in charge of managing this riskReview Date: When you’ll reassess this riskStatus: Current status of the risk assessmentClick Save13.10.2 What You Can Do with Risk AssessmentsIdentify Risks: Find potential problems before they happenScore Risks: Rate how serious each risk isPlan Solutions: Develop plans to reduce or prevent risksAssign Responsibility: Make sure someone is watching each riskTrack Progress: See how well your risk management is workingSchedule Reviews: Regularly reassess risks as things change13.11 Compliance AuditsPlan and manage audits to verify that your firm is meeting all compliance requirements. Regular audits help identify issues early and demonstrate due diligence.
+
+13.11.1 Creating Compliance AuditsTo set up a compliance audit:
+
+Go to “Compliance & Regulatory” → “Compliance Audits”Click the “Add Compliance Audit” button.Enter all the audit information:
+
+Title: Give the audit a clear nameDescription: Explain what the audit will cover and whyAudit Type: Choose from the audit types you set upAudit Date: When the audit will happenAuditor: Who will conduct the auditAudit Scope: What areas and processes will be reviewedScope: Specific compliance areas to checkMethodology: How the audit will be conductedChecklist: What items will be checkedStatus: Current audit status (Planned, In Progress, Completed)Risk Level: Overall risk rating for this auditFindings: What the audit discoveredNon-Compliance Issues: Any problems that were foundRecommendations: Suggestions for improvementAction Items: What needs to be done to fix problemsFollow-up Date: When to check on progressReport: Audit report and documentationNotes: Additional comments about the auditClick Save13.11.2 What You Can Do with Compliance AuditsPlan Audits: Schedule audits to check compliance regularlyTrack Progress: See which audits are planned, happening, or completeDocument Findings: Keep detailed records of what audits discoverManage Issues: Track problems found and make sure they get fixedGenerate Reports: Create comprehensive audit reports.Schedule Follow-ups: Make sure problems actually get resolvedAssign Actions: Give specific people responsibility for fixing issues.13.11.3 Who Can Access WhatDifferent people in your law firm have different access to compliance information:
+
+Team Members:Can manage their own professional licenses and CLE recordsCan view compliance requirements that apply to themCan update their own compliance statusCannot see other team members’ personal compliance informationClients:Cannot access the compliance sectionCompliance management is internal to the law firm only.14. CommunicationCommunication provides an internal messaging system for your law firm. You can send messages to team members, view conversation history, and maintain organized communication threads all within the platform. This integrated messaging system eliminates the need for external communication tools and keeps all firm-related conversations secure and accessible in one centralized location.
+
+14.1 Messages InterfaceThe messaging interface is designed to provide clear visibility into all your conversations while making it easy to manage multiple communication threads.
+
+Go to “Communication” → “Messages”The Messages page has two main sections:
+
+Left panel: List of all conversationsRight panel: Selected conversation details14.2 Viewing ConversationsThe left panel displays all your conversations in a organized list format. Each conversation entry shows essential information to help you identify and prioritize messages:
+
+Contact name and profile pictureLatest message previewTimestamp of the last messageUnread message indicatorsClick on any conversation to view the full message thread in the right panel.
+
+14.3 Starting New ConversationsTo start a new conversation:
+
+Click the “New Conversation” buttonIn the popup window:
+
+Select User: Choose who to message from the dropdownMessage: Type your message in the text areaClick “Share” to send14.4 Sending Messages In an active conversation:Type your message in the text box at the bottomClick the send button to deliver the messageMessages appear in chronological order14.5 Managing ConversationsSearch Conversations: Use the search bar to find specific conversationsDelete Conversations: Click the delete option to remove conversation threads15. Media LibraryThe Media Library stores and manages all your files in one centralized location. You can upload images, documents, and other files for your cases and law firm operations. This comprehensive file management system ensures that all your digital assets remain organized, accessible, and secure.
+
+15.1 Accessing Media LibraryThe Media Library provides a visual, organized interface for managing all your uploaded files.
+
+Go to “Media Library” from the main navigation menuThe main page shows all your uploaded files in a grid layout with thumbnails, file names, sizes, and upload dates.15.2 Uploading Files To upload new filesThe Media Library supports multiple upload methods for your convenience. You can add files quickly using drag-and-drop or traditional file selection.
+
+Click the “Upload Media” buttonChoose one option:
+
+Drag and drop files into the upload areaClick “Choose Files” to browse and select filesFiles are automatically saved to your librarySupported file types include images (PNG, JPG), documents (PDF, DOC), and other common formats.15.3 Managing FilesThe Media Library provides comprehensive tools for organizing and tracking your files.
+
+File Information Displayed: File name and typeFile size (KB/MB)Upload dateThumbnail preview for imagesSearch Files: Use the search bar to find files by name or typeStorage Tracking: View total files count, storage used, and available space15.4 File AccessControl Company: Can view and manage all company filesTeam Members: Can access files with granted permissionsClients: Can only access files specifically shared with them16. Plan ManagementPlan Management helps you create and manage subscription plans for your law firm software. You can set up different pricing tiers, manage customer orders, and handle plan upgrade requests. This comprehensive system controls how customers subscribe to your services and what features they receive with each plan level, providing complete flexibility in your SaaS business model.
+
+16.1 PlansPlans are the different subscription packages you offer to law firms using your software. Each plan can be configured with unique features, usage limits, and pricing structures to serve different market segments.
+
+Go to “Plan Management” → “Plans”This is where you create and manage all the subscription plans that law firms can choose from. Each plan can have different features, limits, and pricing.16.1.1 Creating PlansTo create a new subscription plan:
+
+Go to “Plan Management” → “Plans”Click the “Add Plan” buttonFill in all the plan details:
+
+Name: Give your plan a clear name like “Basic,” “Professional,” or “Enterprise.”Description: Explain what this plan includes and who it’s forPrice: Set the monthly price for this planYearly Price: Set a discounted annual price (optional)Duration: How long the plan lasts (in days)Max Users: Maximum number of people who can use the accountMax Cases: Maximum number of cases they can manageMax Clients: Maximum number of clients they can haveStorage Limit: How much file storage they get (in GB)Trial Days: How many days of free trial to offerEnable Branding: Let them customize the look with their own logo and colors.Enable ChatGPT: Include AI-powered legal assistance featuresIs Trial: Check this if it’s a trial planIs Plan Enable: Turn the plan on or offIs Default: Make this the default plan for new usersClick Save16.1.2 What You Can Do with Plans:Flexible Pricing: Offer both monthly and yearly payment optionsFeature Control: Turn specific features on or off for each planSet Limits: Control how many users, cases, and clients each plan allowsStorage Management: Give different amounts of file storage to different plansTrial Plans: Offer free trials to let people try before they buyDefault Plan: Choose which plan new users get automaticallyPlan Status: Turn plans on or off without deleting themCustom Branding: Let premium users customize the software with their brandingAI Features: Include or exclude AI assistance based on the plan level16.2 Plan OrdersPlan Orders displays all the subscriptions that customers have purchased or are attempting to purchase. This section provides comprehensive order management and subscription activation capabilities.
+
+Go to “Plan Management” → “Plan Orders”This section helps you manage customer purchases and make sure subscriptions get activated properly.16.2.1 Managing Plan OrdersWhen customers buy subscriptions, you can:
+
+View Pending Orders: See orders that need your approvalReview Order Details: Check what plan the customer bought and how much they paidProcess Orders: Approve or reject orders as neededApprove Orders: Activate the customer’s subscriptionReject Orders: Decline orders and add notes explaining whyReview Customer Information: See details about who placed the order16.2.2 What You Can Do with Plan OrdersUnique Order Numbers: Every order gets its own number (like PO-12345678) for easy trackingOrder Status: Track orders through different stages (Pending, Approved, Rejected, Paid)Payment Integration: Work with different payment methods like credit cards and PayPalCoupon Support: Handle discount codes that customers useBilling Cycles: Manage monthly and yearly subscription cyclesPrice Calculation: See the original price, any discounts, and the final amountOrder Processing: Approve or reject orders with notesAutomatic Activation: When you approve an order, the customer’s plan starts automatically16.3 Plan RequestsPlan Requests handle situations when existing customers want to upgrade or downgrade their subscription plans. This system creates a structured workflow where customers can request plan changes, and you can review and approve them.
+
+Go to “Plan Management” → “Plan Requests”This creates a workflow where customers can request plan changes, and you can review and approve them.16.3.1 How Plan Requests WorkThe plan request system works in two parts
+
+Company Side (Customer Requesting)Submit Plan Request:Customers go to their “Plans” sectionThey select the plan they want to switch toThey click the “Request Plan” buttonThe system creates a request with “Pending” statusThe request is sent to you (Super Admin) for approvalTrack Request Status:Customers can check their “My Plan Requests” sectionThey can see if their request is Pending, Under Review, Approved, or RejectedRequest Actions:Cancel Request: Customers can cancel requests before you approve themView Details: See request information and any feedback you provideResubmit: Submit a new request if the previous one was rejected
+
+Super Admin Side (You Processing)Review Plan Requests:You see all pending requests from customersYou can review customer details and what plan they wantYou evaluate the request based on their needsProcess Requests:Approve Request:
+
+Click the “Approve” buttonThe system automatically gives them the new planThe new plan becomes active immediatelyReject Request:
+
+Click the “Reject” buttonAdd a reason for rejectionThe customer can submit a new request laterRequest Management:
+
+Bulk Processing: Handle multiple requests at onceRequest History: See all past requestsCompany Analysis: Review how much the customer is usingCustom Plans: Create special plans for specific customers3. Plan Request Status TypesThe system tracks requests through these stages:
+
+Pending: Customer just submitted the requestUnder Review: You’re looking at the requestApproved: Request accepted, new plan is activeRejected: Request declined with explanationCancelled: Customer cancelled before you processed itWhat Information Gets Tracked For each request, the system tracks:Customer Request Details:
+
+Current Plan: What plan do they have nowRequested Plan: What plan do they wantRequest Date: When they asked for the changeJustification: Why they want to change (if they provided a reason)Company Usage: How much they’re currently usingSuper Admin Review Information:
+
+Company Profile: Complete information about the customerUsage Analytics: How they’ve been using the softwarePayment History: Their past payment recordsPlan Comparison: Differences between current and requested plansResource Requirements: What they’ll need with the new plan17. Referral ProgramThe Referral Program lets law firms earn money by referring other law firms to use Advocate SaaS. When you refer someone and they subscribe to a paid plan, you earn a commission. This section works differently for regular users (law firms) and Super Admin who manage the entire program.
+
+17.1 Company SideReferral Management
+
+This section is designed for law firms that want to generate additional revenue by referring other law firms to the platform.
+
+17.1.1 Referral Dashboard (Company)Your referral dashboard shows how much money you’ve earned and how well your referrals are doing.
+
+Go to “Referral Program” → “Dashboard”Here you can see all your referral activities and earnings in one place.What You Can See on Your Dashboard Personal EarningsHow much commission money have you made total:
+
+Pending Commissions: Money you’ve earned but haven’t been paid yetMy Referral Count: How many law firms have you successfully referredConversion Rate: What percentage of people you refer actually subscribeMonthly Performance: How you’re doing each month with referralsEarnings History: Complete timeline of all your earningsDashboard Information:
+
+Earnings Summary: Shows your total earnings, pending payments, and what you’ve been paidReferral Statistics: Numbers about your referrals and how many became paying customersRecent Activity: Your latest referral activitiesPayout History: Record of commission payments you’ve receivedPerformance Charts: Visual graphs showing how your referrals are performing over time17.1.2 Referred Users (Company)This section shows you all the people you’ve referred and whether they’re paying customers.
+
+Go to “Referral Program” → “Referred Users”Here, you track everyone who signed up using your referral link.How Referrals Work for You
+
+Generate Personal Referral Link: Get your unique referral web address.Share Referral Link: Send your link to other law firms that might be interested.Track Registrations: See when new users sign up using your linkSubscription Monitoring: Track when referred users start paying for subscriptionsCommission Earning: Earn money based on what your referred users pay for their subscriptionsWhat Information can you see
+
+Referred Users: List of everyone who signed up using your referral linkRegistration Dates: When each person signed upSubscription Status: Whether they have a paid subscription or notPlan Details: What subscription plan did they chooseCommission Earned: How much money you made from each referralPayment Status: Whether you’ve been paid the commission for each referral17.1.3 Payout Requests (Company)This is where you request to get paid the commission money you’ve earned.
+
+Go to “Referral Program” → “Payout Requests”When you’ve earned enough commission, you can request to withdraw your earnings.How to Request Your Money
+
+Check Commission Balance: See how much money you have available to withdraw.Verify Threshold: Make sure you have the minimum amount required for payout.Submit Payout Request: Ask to withdraw your commission earningsProvide Payment Details: Enter your bank account or payment method informationTrack Request Status: See if your request is pending, approved, or being processedReceive Payment: Get your commission money when the request is approved17.2 Super Admin SideThis section is exclusively for Super Admins who manage and oversee the entire referral program for all users.
+
+Referral Administration
+
+Super Admins control how the referral program operates for all users on the platform.
+
+17.2.1 Referral Settings (Super Admin Only)Super Admin control how the referral program works for everyone.Go to “Referral Program” → “Settings”Here you set up the rules and settings for the entire referral program.How Super Admin Configure the ProgramAccess Referral Settings: Go to the global referral program controls
+
+Configure Program Parameters:Is Enabled: Turn the entire referral program on or off for everyoneCommission Percentage: Set what percentage commission people earn (0-100%)Threshold Amount: Set the minimum amount people must earn before they can request a payoutGuidelines: Write the rules and terms for the referral programSave Global Configuration: Apply these settings to everyone using the systemWhat Super Admin Can ControlGlobal Program Control: Turn the referral system on or off for all usersCommission Rate Management: Set how much commission everyone earnsPayout Threshold Control: Decide the minimum amount for payoutsTerms and Guidelines: Manage the rules of the referral programSystem-Wide Configuration: Make changes that affect all law firms using referrals17.2.2 All Referrals Management (Super Admin)Super Admin can see all referral activities from all law firms.Go to “Referral Program” → “All Referrals”This gives Super Admin a complete view of how the referral program is performing.What Super Admin Can SeeAll Company Referrals: See referrals from every law firmSystem-Wide Statistics: Total referrals, conversions, and commissions across the entire platformCompany Performance: How well each individual law firm is doing with referralsRevenue Impact: How much total revenue comes from the referral programGrowth Analytics: How many new users join through referralsSuper Admin Monitoring FeaturesGlobal Referral Tracking: Monitor all referral activities across the platformCompany Comparison: Compare how different law firms are performingConversion Analytics: See conversion rates across the entire systemRevenue Tracking: Track total commission payouts and program costsPerformance Metrics: Measure how effective the referral program is overall17.2.3 Payout Management (Super Admin)Super Admin review and approve all commission payout requests.Go to “Referral Program” → “Payout Requests”Here, Super Admin decide which payout requests to approve or reject.How Super Admin Process PayoutsReview All Payout Requests: See requests from all law firmsVerify Commission Balances: Check that law firms actually earned the money they’re requesting.Evaluate Payout Requests: Review request details and the law firm’s history.Process Payout Actions:Approve: Process the payment to the law firmReject: Decline the payout request and explain whyHold: Put the request aside for more reviewTrack Payout History: Keep records of all processed payouts17.2.4 Referral Analytics (Super Admin)Super Admin get detailed reports about how the referral program is performing.Go to “Referral Program” → “Analytics”This section provides comprehensive data about the entire referral program.What Analytics Show Super AdminTotal Program Performance: How the entire referral program is doingCommission Payouts: How much money has been paid out to all law firmsActive Referrers: How many law firms are actively referring othersProgram ROI: Whether the referral program is profitableGrowth Metrics: How much user growth comes from referralsTop Performers: Which law firms are best at referring othersConversion Trends: Patterns in how referrals become paying customersSuper Admin Reporting FeaturesSystem-Wide Reports: Complete reports covering the entire referral programCompany Performance Reports: Detailed analytics for each individual law firmFinancial Reports: Reports about commission payouts and program revenueGrowth Analysis: Analysis of user acquisition through referralsExport Capabilities: Download reports as files to use in other programs17.3 Referral Commission System (Both Sides)This section explains how commissions are calculated, credited, and managed for both law firms and Super Admins.
+
+17.3.1 How Commissions WorkReferral Registration: Someone signs up using your referral linkSubscription Purchase: The referred person subscribes to a paid planCommission Generation: The system calculates your commission:
+
+Plan Price: How much the subscription costsCommission Rate: The percentage set by the Super AdminCommission Amount: Plan Price × Commission RateCommission Credit: The money gets added to your account balance17.3.2 Commission Features for Law FirmsAutomatic Calculation: The system calculates your commissions automaticallyReal-Time Tracking: Your commission balance updates instantlyMultiple Plans: You earn different amounts for different subscription plansCommission History: Complete record of all your earningsBalance Management: Track available money and pending payouts17.3.3 Commission Management for Super AdminGlobal Rate Setting: Super Admin set commission rates for everyoneCommission Monitoring: Track all commission calculations across the platformPayout Authorization: Approve commission payouts to law firmsRate Adjustments: Change commission rates when neededSystem Analytics: Monitor total commission costs and program effectiveness18. Company Notification TemplatesThis module manages customizable templates for automated system notifications. You can edit notification content, customize messages and configure notification preferences.
+
+18.1 Access Notification TemplatesClick “Notification Template” in the left sidebarYou can:
+
+View Templates: See all available notification templates in the systemCustomize Content: Edit template messages to match your business communication styleConfigure Settings: Set notification preferences for when and how notifications are sent19. Settings & ConfigurationSettings & Configuration allows you to customize how Advocate SaaS operates for your organization. The available options vary significantly depending on whether you’re a Super Admin managing the entire platform or a Company user managing just your law firm’s account. This comprehensive settings system helps you configure everything from visual appearance and branding to payment processing and email delivery.
+
+19.1 Super Admin Settings (Super Admin Login Required)These settings are exclusively available to Super Admins who manage the entire Advocate SaaS platform. Super Admin settings control system-wide configuration that affects all law firms using the software.
+
+19.1.1 System SettingsSystem Settings control how the entire platform works for everyone.Go to “Settings” → “System Settings” (Super Admin Only)Here, you set up basic system-wide settings that affect all law firms using the platform.Setting Up System Configuration Go to “Settings” → “System Settings”Configure these system parameters:
+
+Default Language: Choose what language the system uses by defaultDate Format: Set how dates appear throughout the systemTime Format: Choose between 12-hour (2:30 PM) or 24-hour (14:30) time displayCalendar Start Day: Set which day starts the week (Sunday or Monday)Default Timezone: Set the timezone for the entire systemEmail Verification: Decide if users must verify their email addressesLanding Page Enabled: Turn the custom landing page on or offClick Save to apply the system configuration19.1.2 Brand SettingsBrand Settings control how the platform looks and what branding appears.Go to “Settings” → “Brand Settings” (Super Admin Only)Here, you customize the appearance and branding of the entire platform.Brand Configuration OptionsLogo Dark: Upload a logo that looks good on dark backgroundsLogo Light: Upload a logo that looks good on light backgroundsFavicon: Set the small icon that appears in browser tabsTitle Text: Set the text that appears in the browser titleFooter Text: Add custom text that appears at the bottom of pagesTheme Color: Choose from blue, green, purple, orange, red, or use a custom colorCustom Color: Set your own color using a hex color codeSidebar Variant: Choose how the sidebar looks (inset, floating, or minimal)Sidebar Style: Select plain, colored, or gradient style for the sidebarLayout Direction: Set whether the layout goes left-to-right or right-to-leftTheme Mode: Choose light theme, dark theme, or let the system decide19.1.3 Payment SettingsPayment Settings let you configure how customers can pay for subscriptions.Go to “Settings” → “Payment Settings” (Super Admin Only)Here you set up the payment methods that customers can use to subscribe.Payment Gateway ConfigurationThe system supports over 30+ different payment methods:
+
+Popular Gateways: Stripe, PayPal, Razorpay, Bank TransferInternational Gateways: Flutterwave, Paystack, Mollie, CoingateRegional Gateways: Mercado Pago, Payfast, Tap, XenditAnd many more payment options for different countriesFor each payment gateway, you can:
+
+API Credentials: Enter the secure keys provided by the payment companyTest/Live Mode: Switch between testing mode and real payment processingGateway Status: Turn individual payment methods on or offCurrency Support: Set which currencies each payment method accepts19.1.4 Email SettingsEmail Settings control how the system sends emails to users.Go to “Settings” → “Email Settings” (Configure email server settings for system notifications and communications)Email Configuration Options
+
+SMTP Configuration: Set up your email server connectionMail Driver: Choose how emails are sent (SMTP, Mailgun, etc.)Host: Enter your email server addressPort: Enter the port number for your email serverUsername: Enter your email server usernamePassword: Enter your email server passwordEncryption: Choose TLS or SSL securityFrom Address: Set what email address sends the messagesFrom Name: Set what name appears as the senderEmail Testing: Test your email setup to make sure it works19.1.5 Storage SettingsStorage Settings control where and how files are stored in the system.Go to “Settings” → “Storage Settings” (Super Admin Only)Here, you configure where uploaded files are stored and what types of files are allowed.Storage Configuration OptionsStorage Type: Choose between local storage, Amazon S3, or Wasabi cloud storageFile Upload Limits: Set the maximum size for uploaded filesAllowed File Types: Choose which file extensions are permitted (PDF, DOC, JPG, etc.)If you choose Amazon S3:Access Key: Your Amazon S3 access keySecret: Your Amazon S3 secret keyRegion: Which Amazon region to useBucket: Your S3 bucket nameURL: Your S3 URLEndpoint: Your S3 endpointIf you choose Wasabi:Access Key: Your Wasabi access keySecret: Your Wasabi secret keyRegion: Which Wasabi region to useBucket: Your Wasabi bucket nameURL: Your Wasabi URLRoot: Your Wasabi root directory19.1.6 ReCaptcha SettingsReCaptcha Settings help protect the system from spam and automated attacks.Go to “Settings” → “ReCaptcha Settings” (Super Admin Only)Here, you set up Google reCAPTCHA to protect login and registration forms.ReCaptcha Configuration reCAPTCHA Enabled-Turn Google reCAPTCHA protection on or off
+
+reCAPTCHA Version: Choose between version 2 (checkboxes) or version 3 (invisible)Site Key: Enter your Google reCAPTCHA site keySecret Key: Enter your Google reCAPTCHA secret keyScore Threshold: For version 3, set the minimum security score required19.1.7 ChatGPT SettingsChatGPT Settings control the AI assistant features in the system.Go to “Settings” → “ChatGPT Settings” (only super Admin)Here, you configure the AI assistant that helps with legal work.ChatGPT Configuration OptionsChatGPT API Key: Enter your OpenAI API key to enable AI featuresChatGPT Model: Choose which AI model to use for assistanceMax Tokens: Set the maximum length of AI responsesTemperature: Control how creative or conservative the AI responses areEnable/Disable: Turn AI assistance on or off19.2 Company Settings (Company Login Required)Navigate to Settings
+
+Click “Settings” in the left sidebar to expand submenuThe Settings section contains multiple subsections that control various aspects of your company’s configuration19.2.1 System SettingsThis section provides basic system configuration and preferences. You can set language, timezone, date format and system-wide preferences.
+
+Click “System Settings” in the submenuYou can:
+
+Configure System Preferences: Set your preferred language, timezone, and date formatUpdate System Settings: Modify system-wide configurations that affect how the system works for your company19.2.2 Brand SettingsControl the visual appearance of the entire platform:
+
+Logo Management: Upload separate dark mode and light mode logos with media picker integrationFavicon: Set browser tab icon with live previewTitle Text: Define platform title displayed across the systemFooter Text: Add custom footer content for branding purposesTheme Colors: Choose from 5 predefined colors (blue, green, purple, orange, red) or enter custom hex colorSidebar Variants: Select inset, floating, or minimal sidebar stylesSidebar Styles: Choose plain, colored, or gradient sidebar appearancesLayout Direction: Support for left-to-right or right-to-left text directionTheme Mode: Enable light mode, dark mode, or system-based theme switchingLive Preview: Real-time preview of all branding changes before saving19.2.3 Currency SettingsThis section handles currency configuration and exchange rates. You can set default currency, configure symbols and manage multi-currency support.
+
+Click “Currency Settings” in the submenuSet Default Currency: Choose primary currencyConfigure Currency Display: Set symbols position and formatManage Exchange Rates: Update currency rates19.2.4 Email SettingsThis section configures email server and SMTP settings. You can set up email delivery, configure SMTP servers and manage email preferences.
+
+Click “Email Settings” in the submenuYou can:
+
+Configure SMTP: Set up email server settings including host, port, username, and passwordTest Email Delivery: Send a test email to verify your email configuration works correctlyManage Email Preferences: Set email-related options and preferences19.2.5 Email Notification SettingsThis section manages automated email notifications and templates. You can configure notification triggers, customize email content and set notification preferences.
+
+Click “Email Notification Settings” in the submenuYou can:
+
+Configure Notifications: Set which events trigger email notificationsCustomize Templates: Edit notification email content and stylingManage Recipients: Set who receives different types of notificationsEmail Templates: Enable or disable specific email templates including: new user, new customer, new vendor, new branch, new expense, new purchase, new purchase return, new quotation, new sale return19.2.6 Slack Notification SettingsThis section allows you to receive important system updates directly in your Slack workspace. By enabling Slack notifications, you can stay informed about key activities without logging into the system.
+
+To access this feature, click “Slack Settings” from the submenu.You can perform the following actions:
+
+Set Up Slack Integration: Enter your Slack Incoming Webhook URL to connect your workspace with the system.Send Test Notification: Send a test message to confirm that Slack notifications are working correctly.Enable or Disable Notifications: Turn Slack notifications on or off based on your preference.Slack Notification: Notification enable/disable option, available notification new customer, new quotation, send quotation, new vendor, new sales, new purchase, new expense.19.2.7 Twilio SettingsThis section configures SMS notifications through Twilio integration. You can set up SMS delivery, configure Twilio credentials and manage SMS preferences.
+
+Click “Twilio SMS Settings” in the submenuYou can:
+
+Configure Twilio: Set up Twilio API credentials for SMS functionalityTest SMS Delivery: Send a test SMS to verify your SMS configuration worksManage SMS Preferences: Set SMS-related optionsTwilio Notification: Notification enable/disable option, available notification new customer, new quotation, new return, new vendor, new sales, new purchase19.2.8 Payment SettingsPayment Settings let you configure how invoice can pay.Go to “Settings” → “Payment Settings” (Company Only)Payment Gateway Configuration
+
+The system supports over 30+ different payment methods:
+
+Popular Gateways: Stripe, PayPal, Razorpay, Bank TransferInternational Gateways: Flutterwave, Paystack, Mollie, CoingateRegional Gateways: Payfast, Tap, XenditAnd many more payment options for different countriesFor each payment gateway, you can:
+
+API Credentials: Enter the secure keys provided by the payment companyTest/Live Mode: Switch between testing mode and real payment processingGateway Status: Turn individual payment methods on or offCurrency Support: Set which currencies each payment method accepts19.2.9 Google Calendar SettingThis section manages Google Calendar integration for scheduling and event synchronization. You can connect your Google account, configure calendar access, and manage event sync settings.
+
+Click “Google Calendar Settings” in the submenuYou can:
+
+Configure Google Calendar: Connect your Google account and set calendar json fileManage Event Sync: Enable syncing of system events to Google Calendar
