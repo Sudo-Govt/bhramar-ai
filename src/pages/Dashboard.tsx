@@ -215,7 +215,7 @@ function Sidebar(props: SidebarProps) {
             </Link>
           ) : null
         )}
-        <Link to="/profile">
+        <Link to="/dashboard">
           <div className="flex items-center gap-2.5 p-1.5 rounded-md hover:bg-sidebar-accent/60 cursor-pointer">
             <div className="h-8 w-8 rounded-full bg-gradient-aurora flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
               {(profile?.full_name || userEmail || "U")[0].toUpperCase()}
