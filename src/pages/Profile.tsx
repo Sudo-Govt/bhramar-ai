@@ -5,9 +5,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BhramarLogo } from "@/components/BhramarLogo";
-import { ArrowLeft, MessageSquare, FileText, FolderClosed, LogOut, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MessageSquare, FileText, FolderClosed, LogOut, AlertTriangle, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
+import { DemographicsForm, type Demographics } from "@/components/DemographicsForm";
+
+const SUPER_ADMIN = "bhramar123@gmail.com";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -66,6 +69,56 @@ export default function Profile() {
             </span>
           </div>
         </Card>
+
+        <Card className="p-6">
+          <h2 className="font-display text-lg font-semibold mb-1">Your details</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            These details are sent to the AI with every question so its guidance is tailored to your situation, jurisdiction, and circumstances.
+          </p>
+          <DemographicsForm
+            value={profile || {}}
+            onChange={(next) => setProfile({ ...(profile || {}), ...next })}
+          />
+          <Button
+            className="mt-4 bg-gold hover:bg-gold-bright text-primary-foreground"
+            onClick={async () => {
+              if (!user) return;
+              const payload: Demographics & { id: string } = {
+                id: user.id,
+                full_name: profile?.full_name ?? null,
+                age: profile?.age ?? null,
+                gender: profile?.gender ?? null,
+                religion: profile?.religion ?? null,
+                marital_status: profile?.marital_status ?? null,
+                has_children: profile?.has_children ?? null,
+                occupation: profile?.occupation ?? null,
+                earning_bracket: profile?.earning_bracket ?? null,
+                family_background: profile?.family_background ?? null,
+                physical_condition: profile?.physical_condition ?? null,
+                prior_case_history: profile?.prior_case_history ?? null,
+                state: profile?.state ?? null,
+                district: profile?.district ?? null,
+              };
+              const { error } = await supabase.from("profiles").update(payload).eq("id", user.id);
+              if (error) toast.error(error.message); else toast.success("Profile saved");
+            }}
+          >
+            <Save className="h-4 w-4" /> Save details
+          </Button>
+        </Card>
+
+        {(user?.email || "").toLowerCase() === SUPER_ADMIN && (
+          <Card className="p-6 border-gold/40">
+            <div className="flex items-start gap-3 mb-3">
+              <ShieldCheck className="h-5 w-5 text-gold mt-0.5" />
+              <div>
+                <h2 className="font-display text-lg font-semibold text-gold">Super-admin tools</h2>
+                <p className="text-sm text-muted-foreground mt-1">Edit AI model and system prompt for the entire app.</p>
+              </div>
+            </div>
+            <Link to="/admin/ai"><Button variant="outline" className="border-gold/40 text-gold hover:bg-gold/10 hover:text-gold">Open AI controls</Button></Link>
+          </Card>
+        )}
 
         <div className="grid sm:grid-cols-3 gap-4">
           <Card className="p-5">
