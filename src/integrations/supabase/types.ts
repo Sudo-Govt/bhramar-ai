@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_settings: {
+        Row: {
+          id: number
+          model: string
+          system_prompt: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          model?: string
+          system_prompt?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          model?: string
+          system_prompt?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ai_training_logs: {
         Row: {
           case_id: string | null
@@ -250,40 +274,76 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          age: number | null
           avatar_url: string | null
           created_at: string
+          district: string | null
+          earning_bracket: string | null
           email: string | null
+          family_background: string | null
           firm_id: string | null
           full_name: string
+          gender: string | null
+          has_children: boolean | null
           id: string
+          marital_status: string | null
           notes: string | null
+          occupation: string | null
           phone: string | null
+          physical_condition: string | null
+          prior_case_history: string | null
+          religion: string | null
+          state: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           address?: string | null
+          age?: number | null
           avatar_url?: string | null
           created_at?: string
+          district?: string | null
+          earning_bracket?: string | null
           email?: string | null
+          family_background?: string | null
           firm_id?: string | null
           full_name: string
+          gender?: string | null
+          has_children?: boolean | null
           id?: string
+          marital_status?: string | null
           notes?: string | null
+          occupation?: string | null
           phone?: string | null
+          physical_condition?: string | null
+          prior_case_history?: string | null
+          religion?: string | null
+          state?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           address?: string | null
+          age?: number | null
           avatar_url?: string | null
           created_at?: string
+          district?: string | null
+          earning_bracket?: string | null
           email?: string | null
+          family_background?: string | null
           firm_id?: string | null
           full_name?: string
+          gender?: string | null
+          has_children?: boolean | null
           id?: string
+          marital_status?: string | null
           notes?: string | null
+          occupation?: string | null
           phone?: string | null
+          physical_condition?: string | null
+          prior_case_history?: string | null
+          religion?: string | null
+          state?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -827,33 +887,72 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
           avatar_url: string | null
+          court_of_practice: string | null
           created_at: string
+          district: string | null
+          earning_bracket: string | null
           email: string | null
+          family_background: string | null
           full_name: string | null
+          gender: string | null
+          has_children: boolean | null
           id: string
+          marital_status: string | null
+          occupation: string | null
+          physical_condition: string | null
+          prior_case_history: string | null
+          religion: string | null
+          state: string | null
           subscription_expires_at: string | null
           subscription_started_at: string | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           updated_at: string
         }
         Insert: {
+          age?: number | null
           avatar_url?: string | null
+          court_of_practice?: string | null
           created_at?: string
+          district?: string | null
+          earning_bracket?: string | null
           email?: string | null
+          family_background?: string | null
           full_name?: string | null
+          gender?: string | null
+          has_children?: boolean | null
           id: string
+          marital_status?: string | null
+          occupation?: string | null
+          physical_condition?: string | null
+          prior_case_history?: string | null
+          religion?: string | null
+          state?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
         }
         Update: {
+          age?: number | null
           avatar_url?: string | null
+          court_of_practice?: string | null
           created_at?: string
+          district?: string | null
+          earning_bracket?: string | null
           email?: string | null
+          family_background?: string | null
           full_name?: string | null
+          gender?: string | null
+          has_children?: boolean | null
           id?: string
+          marital_status?: string | null
+          occupation?: string | null
+          physical_condition?: string | null
+          prior_case_history?: string | null
+          religion?: string | null
+          state?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
@@ -1191,6 +1290,7 @@ export type Database = {
       }
       is_firm_member: { Args: { _firm_id: string }; Returns: boolean }
       is_firm_owner: { Args: { _firm_id: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       match_chunks: {
         Args: {
           corpus_weight?: number
