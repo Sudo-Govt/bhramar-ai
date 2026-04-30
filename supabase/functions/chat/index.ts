@@ -285,26 +285,51 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Look up the caller's tier so the system prompt is calibrated correctly.
+    // Load tier + demographics + admin AI settings in parallel.
     let tierLabel = "Free Individual";
+    let demoBlock = "";
+    let chatModel = CHAT_MODEL;
+    let baseSystem = BASE_SYSTEM;
     try {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("subscription_tier, full_name")
-        .eq("id", userId)
-        .maybeSingle();
+      const [{ data: prof }, { data: settings }] = await Promise.all([
+        supabase.from("profiles").select(
+          "subscription_tier, full_name, age, gender, religion, marital_status, has_children, occupation, earning_bracket, family_background, physical_condition, prior_case_history, state, district"
+        ).eq("id", userId).maybeSingle(),
+        supabase.from("ai_settings").select("model, system_prompt").eq("id", 1).maybeSingle(),
+      ]);
       const t = (prof?.subscription_tier as string | undefined) || "Free";
       if (t === "Free") tierLabel = "Free Individual";
       else if (t === "Pro") tierLabel = "Pro Individual / Pro Advocate";
       else if (t === "Firm") tierLabel = "Enterprise (Law Firm)";
+
+      if (settings?.model) chatModel = settings.model;
+      if (settings?.system_prompt && settings.system_prompt.trim()) baseSystem = settings.system_prompt;
+
+      if (prof) {
+        const lines: string[] = [];
+        if (prof.full_name) lines.push(`Name: ${prof.full_name}`);
+        if (prof.age != null) lines.push(`Age: ${prof.age}`);
+        if (prof.gender) lines.push(`Gender: ${prof.gender}`);
+        if (prof.religion) lines.push(`Religion: ${prof.religion}`);
+        if (prof.state || prof.district) lines.push(`Location: ${[prof.district, prof.state].filter(Boolean).join(", ")}, India`);
+        if (prof.marital_status) lines.push(`Marital status: ${prof.marital_status}${prof.has_children ? " (has children)" : ""}`);
+        if (prof.occupation) lines.push(`Occupation: ${prof.occupation}`);
+        if (prof.earning_bracket) lines.push(`Earning bracket: ${prof.earning_bracket}`);
+        if (prof.physical_condition) lines.push(`Physical condition: ${prof.physical_condition}`);
+        if (prof.family_background) lines.push(`Family background: ${prof.family_background}`);
+        if (prof.prior_case_history) lines.push(`Prior case history: ${prof.prior_case_history}`);
+        if (lines.length) {
+          demoBlock = `\n\n---\nUSER PROFILE (use this to tailor jurisdiction-specific law, tone, and circumstances):\n${lines.join("\n")}`;
+        }
+      }
     } catch (e) {
-      console.error("tier lookup failed", e);
+      console.error("context lookup failed", e);
     }
     const tierBlock = `\n\n---\nSESSION CONTEXT — USER TIER: ${tierLabel}\nCalibrate every response to this tier. Do not offer features outside this tier; do not withhold features included in it.`;
 
     const systemPrompt = groundingBlock
-      ? `${BASE_SYSTEM}${tierBlock}\n\n---\nUse the following sources when relevant. When you rely on a source, cite it inline as [S1], [S2] etc. matching the labels below. If the sources don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`
-      : `${BASE_SYSTEM}${tierBlock}`;
+      ? `${baseSystem}${tierBlock}${demoBlock}\n\n---\nUse the following sources when relevant. When you rely on a source, cite it inline as [S1], [S2] etc. matching the labels below. If the sources don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`
+      : `${baseSystem}${tierBlock}${demoBlock}`;
 
     const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -313,7 +338,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: CHAT_MODEL,
+        model: chatModel,
         stream: true,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
       }),
