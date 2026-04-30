@@ -627,6 +627,22 @@ function FilesSection() {
     toast.success("SMTP saved"); load();
   };
 
+  const sendTestEmail = async () => {
+    if (!smtp) return toast.error("Save SMTP first");
+    const to = prompt("Send test email to:", smtpForm.from_email);
+    if (!to) return;
+    const { data, error } = await supabase.functions.invoke("send-email", {
+      body: {
+        to,
+        subject: "Bhramar SMTP test",
+        html: "<p>Your Bhramar SMTP is working. ✅</p>",
+        text: "Your Bhramar SMTP is working.",
+      },
+    });
+    if (error || (data as any)?.error) return toast.error((data as any)?.error || error!.message);
+    toast.success("Test email sent");
+  };
+
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file || !user) return;
     const path = `${user.id}/${Date.now()}-${file.name}`;
@@ -678,7 +694,10 @@ function FilesSection() {
             <div><Label>From email</Label><Input value={smtpForm.from_email} onChange={(e) => setSmtpForm({ ...smtpForm, from_email: e.target.value })} /></div>
             <div><Label>From name</Label><Input value={smtpForm.from_name || ""} onChange={(e) => setSmtpForm({ ...smtpForm, from_name: e.target.value })} /></div>
           </div>
-          <Button onClick={saveSmtp} size="sm">Save SMTP</Button>
+          <div className="flex gap-2">
+            <Button onClick={saveSmtp} size="sm">Save SMTP</Button>
+            <Button onClick={sendTestEmail} size="sm" variant="outline" disabled={!smtp}>Send test email</Button>
+          </div>
         </Card>
       </TabsContent>
     </Tabs>
