@@ -1313,7 +1313,7 @@ export type Database = {
     Enums: {
       app_role: "owner" | "admin" | "advocate" | "member" | "client"
       case_status: "Active" | "Closed" | "Draft"
-      chunk_source: "corpus" | "user"
+      chunk_source: "corpus" | "user" | "kb"
       message_role: "user" | "assistant" | "system"
       subscription_tier: "Free" | "Pro" | "Firm"
     }
@@ -1445,7 +1445,7 @@ export const Constants = {
     Enums: {
       app_role: ["owner", "admin", "advocate", "member", "client"],
       case_status: ["Active", "Closed", "Draft"],
-      chunk_source: ["corpus", "user"],
+      chunk_source: ["corpus", "user", "kb"],
       message_role: ["user", "assistant", "system"],
       subscription_tier: ["Free", "Pro", "Firm"],
     },

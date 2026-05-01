@@ -1,0 +1,1 @@
+ALTER TYPE public.chunk_source ADD VALUE IF NOT EXISTS 'kb';
