@@ -15,6 +15,7 @@ import DashboardRouter from "./pages/dashboards/DashboardRouter.tsx";
 import AdvocateDashboard from "./pages/dashboards/AdvocateDashboard.tsx";
 import EnterpriseDashboard from "./pages/dashboards/EnterpriseDashboard.tsx";
 import AdminSettings from "./pages/AdminSettings.tsx";
+import SystemConsole from "./pages/SystemConsole.tsx";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/dashboard/advocate/*" element={<ProtectedRoute><AdvocateDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/enterprise/*" element={<ProtectedRoute><EnterpriseDashboard /></ProtectedRoute>} />
             <Route path="/admin/ai" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+            <Route path="/system" element={<ProtectedRoute><SystemConsole /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
