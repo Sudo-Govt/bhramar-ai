@@ -13,10 +13,24 @@ const corsHeaders = {
 };
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const CHAT_MODEL = "google/gemini-3-flash-preview";
 const EMBED_MODEL = "google/text-embedding-004";
+
+// Gemini's native model id (strip "google/" prefix and "-preview" suffix for direct API).
+function toGeminiModelId(id: string): string {
+  let m = id.replace(/^google\//, "");
+  // The native Gemini API accepts ids like "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash".
+  // Preview/experimental ids may not exist on the public API — map to closest stable.
+  m = m.replace(/-preview$/, "");
+  if (m === "gemini-3-flash") m = "gemini-2.5-flash";
+  if (m === "gemini-3.1-pro") m = "gemini-2.5-pro";
+  if (m === "gemini-3-pro-image") m = "gemini-2.5-flash-image";
+  if (m === "gemini-3.1-flash-image") m = "gemini-2.5-flash-image";
+  return m;
+}
 
 const BASE_SYSTEM = `You are Bhramar — India's most powerful AI legal intelligence.
 
