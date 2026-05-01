@@ -14,6 +14,7 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const CHAT_MODEL = "google/gemini-3-flash-preview";
@@ -278,16 +279,21 @@ Deno.serve(async (req) => {
           console.error("match_chunks failed", rpcErr);
         } else if (Array.isArray(chunks) && chunks.length) {
           sources = chunks.map((c: any, i: number) => {
-            const label =
-              c.source === "corpus"
-                ? `${c.act_name || "Bare act"}${c.section_label ? ` ${c.section_label}` : ""}`
-                : `Your document`;
+            let label: string;
+            if (c.source === "corpus") {
+              label = `${c.act_name || "Bare act"}${c.section_label ? ` ${c.section_label}` : ""}`;
+            } else if (c.source === "kb") {
+              label = `KB${c.section_label ? ` · ${c.section_label}` : ""}`;
+            } else {
+              label = `Your document`;
+            }
             return {
               id: i + 1,
               label,
               source: c.source,
               snippet: (c.content || "").slice(0, 400),
               document_id: c.document_id,
+              similarity: typeof c.similarity === "number" ? c.similarity : null,
             };
           });
           groundingBlock = sources
@@ -304,12 +310,16 @@ Deno.serve(async (req) => {
     let demoBlock = "";
     let chatModel = CHAT_MODEL;
     let baseSystem = BASE_SYSTEM;
+    let provider: "groq" | "gemini" | "lovable" = "gemini";
+    let groqModel = "llama-3.3-70b-versatile";
+    let kbThreshold = 0.72;
+    let allowGeneralFallback = true;
     try {
       const [{ data: prof }, { data: settings }] = await Promise.all([
         supabase.from("profiles").select(
           "subscription_tier, full_name, age, gender, religion, marital_status, has_children, occupation, earning_bracket, family_background, physical_condition, prior_case_history, state, district"
         ).eq("id", userId).maybeSingle(),
-        supabase.from("ai_settings").select("model, system_prompt").eq("id", 1).maybeSingle(),
+        supabase.from("ai_settings").select("model, system_prompt, provider, groq_model, kb_threshold, allow_general_fallback").eq("id", 1).maybeSingle(),
       ]);
       const t = (prof?.subscription_tier as string | undefined) || "Free";
       if (t === "Free") tierLabel = "Free Individual";
@@ -318,6 +328,10 @@ Deno.serve(async (req) => {
 
       if (settings?.model) chatModel = settings.model;
       if (settings?.system_prompt && settings.system_prompt.trim()) baseSystem = settings.system_prompt;
+      if (settings?.provider) provider = settings.provider as any;
+      if (settings?.groq_model) groqModel = settings.groq_model;
+      if (typeof settings?.kb_threshold === "number") kbThreshold = settings.kb_threshold;
+      if (typeof settings?.allow_general_fallback === "boolean") allowGeneralFallback = settings.allow_general_fallback;
 
       if (prof) {
         const lines: string[] = [];
@@ -341,11 +355,26 @@ Deno.serve(async (req) => {
     }
     const tierBlock = `\n\n---\nSESSION CONTEXT — USER TIER: ${tierLabel}\nCalibrate every response to this tier. Do not offer features outside this tier; do not withhold features included in it.`;
 
-    const systemPrompt = groundingBlock
-      ? `${baseSystem}${tierBlock}${demoBlock}\n\n---\nUse the following sources when relevant. When you rely on a source, cite it inline as [S1], [S2] etc. matching the labels below. If the sources don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`
-      : `${baseSystem}${tierBlock}${demoBlock}`;
+    // KB-first instruction: if any KB chunk is over threshold, lock the answer to it.
+    const topKb = sources.find((s: any) => s.source === "kb" && (s.similarity ?? 0) >= kbThreshold);
+    let groundingDirective = "";
+    if (groundingBlock) {
+      if (topKb) {
+        groundingDirective = `\n\n---\nGROUNDED ANSWER MODE — KB FIRST.\n` +
+          `The PRIMARY sources below come from the user's curated knowledge base (labelled "KB"). Build the answer from these first and cite them inline as [S1], [S2] etc. ` +
+          `If KB sources do not fully answer the question, you may use the bare-acts corpus and your general knowledge — but for any sentence that is NOT supported by the sources below, prefix the sentence with "[GENERAL]". ` +
+          (allowGeneralFallback ? "" : "If the KB sources are insufficient, reply: \"I don't have that in your knowledge base.\" Do NOT use general knowledge. ") +
+          `\n\nSOURCES:\n${groundingBlock}`;
+      } else {
+        groundingDirective = `\n\n---\nUse the following sources when relevant and cite as [S1], [S2] etc. If they don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`;
+      }
+    } else if (!allowGeneralFallback) {
+      groundingDirective = `\n\n---\nNo knowledge-base sources matched. Respond: "I don't have that in your knowledge base." Do not fall back to general knowledge.`;
+    }
 
-    // Try Gemini direct API first (primary). Fall back to Lovable AI Gateway on any failure.
+    const systemPrompt = `${baseSystem}${tierBlock}${demoBlock}${groundingDirective}`;
+
+    // Provider chain: configured primary → Gemini direct → Lovable AI gateway.
     const isOpenAI = chatModel.startsWith("openai/");
     const payload = {
       stream: true,
@@ -353,48 +382,62 @@ Deno.serve(async (req) => {
     };
 
     let upstream: Response | null = null;
-    let usedProvider: "gemini" | "lovable" = "gemini";
+    let usedProvider: "groq" | "gemini" | "lovable" = provider;
 
-    if (!isOpenAI && GEMINI_API_KEY) {
+    const tryGroq = async () => {
+      if (!GROQ_API_KEY) return null;
       try {
-        const geminiModel = toGeminiModelId(chatModel);
-        upstream = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${GEMINI_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ ...payload, model: geminiModel }),
-          },
-        );
-        if (!upstream.ok) {
-          const t = await upstream.text();
-          console.error("Gemini direct failed, falling back to Lovable", upstream.status, t.slice(0, 300));
-          upstream = null;
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, model: groqModel }),
+        });
+        if (!r.ok) {
+          console.error("Groq failed", r.status, (await r.text()).slice(0, 200));
+          return null;
         }
-      } catch (e) {
-        console.error("Gemini direct threw, falling back to Lovable", e);
-        upstream = null;
-      }
+        return r;
+      } catch (e) { console.error("Groq threw", e); return null; }
+    };
+
+    const tryGemini = async () => {
+      if (isOpenAI || !GEMINI_API_KEY) return null;
+      try {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, model: toGeminiModelId(chatModel) }),
+        });
+        if (!r.ok) {
+          console.error("Gemini failed", r.status, (await r.text()).slice(0, 200));
+          return null;
+        }
+        return r;
+      } catch (e) { console.error("Gemini threw", e); return null; }
+    };
+
+    const tryLovable = async () => {
+      if (!LOVABLE_API_KEY) return null;
+      return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, model: chatModel }),
+      });
+    };
+
+    const order: Array<"groq" | "gemini" | "lovable"> =
+      provider === "groq" ? ["groq", "gemini", "lovable"]
+      : provider === "lovable" ? ["lovable", "gemini"]
+      : ["gemini", "lovable"];
+
+    for (const p of order) {
+      const r = p === "groq" ? await tryGroq() : p === "gemini" ? await tryGemini() : await tryLovable();
+      if (r && r.ok) { upstream = r; usedProvider = p; break; }
     }
 
     if (!upstream) {
-      usedProvider = "lovable";
-      if (!LOVABLE_API_KEY) {
-        return new Response(JSON.stringify({ error: "No AI provider configured" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...payload, model: chatModel }),
-      });
+      return new Response(JSON.stringify({ error: "No AI provider available" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (!upstream.ok) {

@@ -1,112 +1,115 @@
-# Plan — Bhramar.ai RAG (Lovable AI + pgvector)
 
-Turn Bhramar.ai into a true grounded Indian legal agent. The LLM stays Lovable AI (Gemini); we add a retrieval layer that fetches relevant chunks from (a) pre-loaded bare acts and (b) the user's own uploaded case files, then injects them into the prompt with real citations.
+## Goal
 
-## Architecture
+1. Implement the approved RAG plan: JSON knowledge upload, "your data first" prompt strategy, and a Groq provider added to the existing Gemini → Lovable AI fallback chain.
+2. Add a **SYSTEM** super-admin console (only visible to `bhramar123@gmail.com`) accessible via a button placed under the chat history sidebar on the main chat page (`/app`).
 
-```text
-                ┌───────────────────────────────────────────┐
-                │           User asks a question            │
-                └──────────────────┬────────────────────────┘
-                                   ▼
-                  ┌────────────────────────────────┐
-                  │  chat()  edge function         │
-                  │  1. embed question (Lovable AI)│
-                  │  2. pgvector similarity search │
-                  │     (corpus + user docs)       │
-                  │  3. build grounded prompt      │
-                  │  4. stream Gemini response     │
-                  └──────────────────┬─────────────┘
-                                     ▼
-                          Streamed answer + citations
-                                     ▲
-              ┌──────────────────────┴──────────────────────┐
-              │        document_chunks (pgvector)            │
-              │   ┌─────────────────┐  ┌─────────────────┐  │
-              │   │ source='corpus' │  │ source='user'   │  │
-              │   │ IPC, CrPC, CPC, │  │ uploaded PDFs   │  │
-              │   │ Evidence,       │  │ scoped per user │  │
-              │   │ Constitution,   │  │ + per case      │  │
-              │   │ Contract Act    │  │                 │  │
-              │   └─────────────────┘  └─────────────────┘  │
-              └──────────────────────────────────────────────┘
-                          ▲                       ▲
-                          │                       │
-                  one-time seed             ingest-document()
-                  (admin script)            edge function
-```
+## Part A — RAG knowledge loader (approved earlier)
 
-## What gets built
+### A.1 Database migration
+- Add `'kb'` to the existing `chunk_source` enum.
+- New table `kb_files`: `id, user_id, name, item_count, is_global bool default false, created_at`. RLS: owner read/write; super-admin sees all.
+- Add columns to `ai_settings`: `provider text default 'gemini'`, `groq_model text`, `kb_threshold float default 0.72`, `allow_general_fallback bool default true`.
+- Rewrite `match_chunks()` to return KB hits (global + caller's), corpus, and the caller's user docs, with a similarity boost on `source='kb'` so your data wins ties.
 
-### 1. Database (migration)
-- Enable `vector` extension.
-- New table `document_chunks`:
-  - `id uuid pk`, `source text` (`'corpus'` or `'user'`), `user_id uuid null`, `case_id uuid null`, `document_id uuid null` (FK to `documents`), `act_name text` (e.g. "IPC"), `section_label text` (e.g. "Section 302"), `chunk_index int`, `content text`, `embedding vector(768)`, `created_at`.
-- HNSW index on `embedding` for fast cosine similarity.
-- RLS: corpus chunks readable by all authenticated users; user chunks readable only by owner (`auth.uid() = user_id`).
-- SQL function `match_chunks(query_embedding vector, user_id uuid, case_id uuid, match_count int)` returning the top-K rows mixing corpus + that user's docs.
+### A.2 Edge functions
+- **`ingest-json-kb`** — accepts `{ name, items, is_global? }`, auto-detects shape (Q/A pairs, `{title,text}`, `{label,text}`, or wrapped `{items:[…]}`), chunks anything > ~1800 chars, embeds in batches of 16 via Lovable AI `text-embedding-004`, inserts as `source='kb'`. Records the file in `kb_files`. `is_global` only honored for super-admin.
+- **`kb-admin`** — list / delete / toggle-global for KB files.
+- **`chat`** (update) —
+  - After retrieval: if any KB hit ≥ `kb_threshold`, prepend a strong "answer from KB first, mark non-KB paragraphs with `[GENERAL]`, refuse if `allow_general_fallback=false` and no KB hit" instruction.
+  - Provider chain configurable via `ai_settings.provider`:
+    1. **Groq** → `https://api.groq.com/openai/v1/chat/completions` (OpenAI-compatible, streaming) using `GROQ_API_KEY` and `groq_model`.
+    2. **Gemini direct** → existing path.
+    3. **Lovable AI gateway** → existing fallback.
+  - On any non-2xx, fall through to the next provider transparently.
+- Will request `GROQ_API_KEY` via the secrets flow once the user confirms they want Groq active.
 
-### 2. New edge function: `ingest-document`
-Called when the user clicks "Index for AI" on an uploaded document.
-- Downloads the file from the `case-documents` storage bucket.
-- Extracts text (PDF → text via `pdf-parse` from esm.sh; .txt/.md handled directly).
-- Splits into ~500-token overlapping chunks.
-- Calls Lovable AI embeddings (`text-embedding-004`, 768-dim) in batches.
-- Inserts rows into `document_chunks` with `source='user'`, `user_id`, `case_id`, `document_id`.
+## Part B — SYSTEM super-admin console
 
-### 3. Updated edge function: `chat`
-Before calling the LLM:
-- Embed the latest user message.
-- `rpc('match_chunks', …)` → top 6 chunks (mix of corpus + user's docs).
-- Build augmented system prompt:
+### B.1 Entry point on the chat page
+- In `src/pages/Dashboard.tsx`, below the conversation history sidebar, render a **SYSTEM** button (gold accent, `Settings` icon) — visibility gated to `user.email === 'bhramar123@gmail.com'` (matches existing `is_super_admin()` SQL helper).
+- Clicking opens `/system` (full-page console, not a modal — too much content).
 
-  ```text
-  Use ONLY the following sources to answer. Cite each fact as [S1], [S2]…
-  S1 — IPC §302 (corpus): "Whoever commits murder…"
-  S2 — User doc "FIR_Sharma.pdf" p.3: "…"
-  ```
-- Stream response as today. Parse `[S#]` markers and return a `citations` array (id, label, source type, snippet) alongside the SSE stream via a final `data: {"citations":[…]} ` event.
+### B.2 New page `src/pages/SystemConsole.tsx` at `/system`
+Tabbed layout (`Tabs` from shadcn):
 
-### 4. New edge function: `seed-corpus` (run once)
-- Hard-coded list of bare-act source URLs (indiacode.nic.in / official PDFs):
-  IPC, CrPC, CPC, Indian Evidence Act, Constitution of India, Indian Contract Act.
-- For each: fetch text, split per Section, embed, insert with `source='corpus'`, `act_name`, `section_label`.
-- Idempotent — skips acts already present.
-- Triggered by you clicking a hidden "Seed corpus" button in Profile (admin-only via your user id) or by me invoking it once after deploy.
+**Tab 1 — AI engine**
+- Provider radio: Groq / Gemini / Lovable.
+- Model dropdown (existing list) + free-text Groq model id field.
+- "Add / rotate Groq API key" button → triggers secrets flow for `GROQ_API_KEY`.
+- System-prompt override textarea (existing).
+- Retrieval tuning: KB-strictness slider (0.6–0.85) and "Allow general-knowledge fallback" toggle.
+- Live "Test prompt" box to send one query and see which provider answered + KB hits used.
 
-### 5. Frontend changes (`src/pages/Dashboard.tsx`)
-- **Right panel → Documents tab**: each uploaded file gets an **"Index for AI"** button (calls `ingest-document`). Status badge: *Not indexed / Indexing… / Indexed (N chunks)*.
-- **Right panel → Research tab**: now populated from real citations returned by chat (clickable chips opening a popover with the source snippet).
-- **Chat bubbles**: assistant messages render `[S1] [S2]` as gold citation chips; hovering shows the snippet, clicking jumps to Research tab.
-- **Composer**: small toggle "Ground in my documents" (default on). When off, falls back to plain LLM answer.
+**Tab 2 — RAG knowledge**
+- Drop-zone for `.json` (multi-file). Shows live indexing progress.
+- Table of all uploaded KB files across all users (super-admin sees everyone): name, owner email, items, scope (Mine / Global), created. Actions: Delete, Toggle global, Re-embed.
+- Counter cards: total chunks by source (kb / corpus / user).
 
-### 6. New table column on `documents`
-- Add `indexed_at timestamptz null` and `chunk_count int default 0` so the UI can show indexing status.
+**Tab 3 — Chat logs**
+- Cross-user reader of `ai_training_logs` (already mirrors every message via `mirror_message_to_training` trigger).
+- Filters: user (search by email), date range, role (user/assistant), free-text search in `content`, has-citations toggle.
+- Row click → side panel with full conversation thread + citations.
+- Export selected rows to CSV / JSON.
+- Requires a new SECURITY DEFINER SQL function `admin_list_training_logs(...)` that checks `is_super_admin()` and returns logs joined with `profiles.email`. (Avoids opening `ai_training_logs` to public RLS.)
 
-## Cost estimate (Lovable AI)
-- Seeding all six bare acts: ~5–10M tokens of embeddings ≈ **one-time $0.10–$0.20**.
-- Per question: 1 embedding (negligible) + 1 chat call with ~3K tokens of context ≈ **<$0.001 per query** on Gemini Flash.
-- Storage: free at this scale inside Lovable Cloud.
+**Tab 4 — Users & roles**
+- Lists `profiles` with email, full_name, tier, subscription dates, state/district, created_at.
+- Inline actions: change `subscription_tier`, extend `subscription_expires_at`, grant/revoke role in `user_roles` (`admin` / `moderator` / `user`), force sign-out (calls a new `admin-user-action` edge function using service role).
+- Search + paginate.
+- Same SECURITY DEFINER pattern for cross-user reads.
 
-## Security
-- Corpus chunks: `SELECT` allowed for any authenticated user, no writes.
-- User chunks: full RLS — only owner reads/writes.
-- `match_chunks` is `SECURITY DEFINER` but always filters by the passed `user_id` (validated server-side from JWT in the edge function, never trusted from the client).
-- Storage bucket `case-documents` already private; ingestion uses the service role key.
+**Tab 5 — Audit**
+- Reads `audit_log` across all users, filterable. Every super-admin action in this console writes an entry here automatically.
+
+### B.3 New edge function `admin-actions`
+Single function with action dispatch (`{action: 'set_tier' | 'extend_subscription' | 'grant_role' | 'revoke_role' | 'force_signout' | 'delete_kb_file' | 'toggle_global_kb' | 'reembed_kb_file'}`).
+- Validates JWT.
+- Checks super-admin via JWT email match (same rule as `is_super_admin()`).
+- Uses service role for the actual mutation.
+- Writes an `audit_log` row for every action.
+
+### B.4 Schema additions for the console
+- SECURITY DEFINER functions:
+  - `admin_list_training_logs(_search text, _from date, _to date, _user uuid, _limit int)` — only callable when `is_super_admin()`.
+  - `admin_list_profiles(_search text, _limit int, _offset int)` — same gate.
+  - `admin_kb_files()` — same gate, returns kb_files joined with email + chunk count.
+- No RLS changes to existing tables; everything routes through these definer functions or the `admin-actions` edge function.
 
 ## Files touched
-- `supabase/migrations/<new>.sql` — extension, table, index, RLS, `match_chunks` function, `documents` columns.
-- `supabase/functions/chat/index.ts` — add embed + retrieve + grounded prompt steps.
-- `supabase/functions/ingest-document/index.ts` — new.
-- `supabase/functions/seed-corpus/index.ts` — new.
-- `src/pages/Dashboard.tsx` — index buttons, citation chips, Research tab wiring.
-- `src/lib/markdown.tsx` — render `[S#]` chips.
-- `supabase/config.toml` — register new functions.
 
-## Out of scope (for this pass)
-- OCR for scanned PDFs (we'll add `pytesseract`-equivalent later if needed; for now scanned PDFs will index whatever embedded text exists).
-- Re-ranking model (top-K cosine is enough at this scale).
-- Per-section deep-link navigation to bare-act source PDFs.
+```
+supabase/migrations/<new>.sql
+  - 'kb' enum value
+  - kb_files table + RLS
+  - ai_settings columns (provider, groq_model, kb_threshold, allow_general_fallback)
+  - match_chunks v2 with kb boost
+  - admin_list_* SECURITY DEFINER functions
 
-## After approval, you do nothing
-I'll run the migration, deploy the three functions, invoke `seed-corpus` once (takes ~3–5 min), and verify a sample question like *"What is the punishment under Section 302 IPC?"* returns a grounded answer with `[S1] IPC §302 (corpus)` citation.
+supabase/functions/ingest-json-kb/index.ts        (new)
+supabase/functions/kb-admin/index.ts              (new)
+supabase/functions/admin-actions/index.ts         (new)
+supabase/functions/chat/index.ts                  (KB-first prompt, Groq provider, 3-tier fallback)
+supabase/config.toml                              (register new functions)
+
+src/pages/SystemConsole.tsx                       (new — 5 tabs)
+src/pages/Dashboard.tsx                           (SYSTEM button under chat history, super-admin only)
+src/pages/AdminSettings.tsx                       (kept; SystemConsole is the new home — old route redirects to /system)
+src/components/KbUploader.tsx                     (new shared widget; reused in Profile too)
+src/pages/Profile.tsx                             ("My knowledge" tab using KbUploader, scoped to user)
+src/App.tsx                                       (add /system route, gated; redirect /admin/ai → /system)
+```
+
+## Out of scope this pass
+
+- Live web-search fallback (separate function call; we'll wire Tavily/Brave later if you want).
+- Fine-tune training UI for your custom Groq model (Groq hosts fine-tunes, but training is done outside this app).
+- Per-message thumbs-up/down feedback collection (easy follow-up).
+
+## After approval
+
+1. Run migration.
+2. Deploy `ingest-json-kb`, `kb-admin`, `admin-actions`, updated `chat`.
+3. Ship the UI: Dashboard SYSTEM button + `/system` page with 5 tabs.
+4. Ask you for `GROQ_API_KEY` via the secrets flow when you flip provider to Groq the first time.
+5. You upload a sample JSON, ask a question, and confirm KB-tagged citations come back.

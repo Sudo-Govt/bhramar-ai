@@ -16,22 +16,34 @@ export type Database = {
     Tables: {
       ai_settings: {
         Row: {
+          allow_general_fallback: boolean
+          groq_model: string | null
           id: number
+          kb_threshold: number
           model: string
+          provider: string
           system_prompt: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          allow_general_fallback?: boolean
+          groq_model?: string | null
           id?: number
+          kb_threshold?: number
           model?: string
+          provider?: string
           system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          allow_general_fallback?: boolean
+          groq_model?: string | null
           id?: number
+          kb_threshold?: number
           model?: string
+          provider?: string
           system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -815,6 +827,33 @@ export type Database = {
           },
         ]
       }
+      kb_files: {
+        Row: {
+          created_at: string
+          id: string
+          is_global: boolean
+          item_count: number
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          item_count?: number
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          item_count?: number
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           citations: Json | null
@@ -1278,6 +1317,67 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_kb_files: {
+        Args: never
+        Returns: {
+          chunk_count: number
+          created_at: string
+          id: string
+          is_global: boolean
+          item_count: number
+          name: string
+          user_email: string
+          user_id: string
+        }[]
+      }
+      admin_list_audit: {
+        Args: { _limit?: number }
+        Returns: {
+          action: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          user_email: string
+          user_id: string
+        }[]
+      }
+      admin_list_profiles: {
+        Args: { _limit?: number; _offset?: number; _search?: string }
+        Returns: {
+          created_at: string
+          district: string
+          email: string
+          full_name: string
+          id: string
+          state: string
+          subscription_expires_at: string
+          subscription_started_at: string
+          subscription_tier: Database["public"]["Enums"]["subscription_tier"]
+        }[]
+      }
+      admin_list_training_logs: {
+        Args: {
+          _from?: string
+          _limit?: number
+          _role?: string
+          _search?: string
+          _to?: string
+          _user?: string
+        }
+        Returns: {
+          case_id: string
+          citations: Json
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          user_email: string
+          user_id: string
+        }[]
+      }
       archive_case: { Args: { _case_id: string }; Returns: undefined }
       delete_case_with_log: { Args: { _case_id: string }; Returns: undefined }
       generate_case_number: { Args: never; Returns: string }
@@ -1313,7 +1413,7 @@ export type Database = {
     Enums: {
       app_role: "owner" | "admin" | "advocate" | "member" | "client"
       case_status: "Active" | "Closed" | "Draft"
-      chunk_source: "corpus" | "user"
+      chunk_source: "corpus" | "user" | "kb"
       message_role: "user" | "assistant" | "system"
       subscription_tier: "Free" | "Pro" | "Firm"
     }
@@ -1445,7 +1545,7 @@ export const Constants = {
     Enums: {
       app_role: ["owner", "admin", "advocate", "member", "client"],
       case_status: ["Active", "Closed", "Draft"],
-      chunk_source: ["corpus", "user"],
+      chunk_source: ["corpus", "user", "kb"],
       message_role: ["user", "assistant", "system"],
       subscription_tier: ["Free", "Pro", "Firm"],
     },
