@@ -279,16 +279,21 @@ Deno.serve(async (req) => {
           console.error("match_chunks failed", rpcErr);
         } else if (Array.isArray(chunks) && chunks.length) {
           sources = chunks.map((c: any, i: number) => {
-            const label =
-              c.source === "corpus"
-                ? `${c.act_name || "Bare act"}${c.section_label ? ` ${c.section_label}` : ""}`
-                : `Your document`;
+            let label: string;
+            if (c.source === "corpus") {
+              label = `${c.act_name || "Bare act"}${c.section_label ? ` ${c.section_label}` : ""}`;
+            } else if (c.source === "kb") {
+              label = `KB${c.section_label ? ` · ${c.section_label}` : ""}`;
+            } else {
+              label = `Your document`;
+            }
             return {
               id: i + 1,
               label,
               source: c.source,
               snippet: (c.content || "").slice(0, 400),
               document_id: c.document_id,
+              similarity: typeof c.similarity === "number" ? c.similarity : null,
             };
           });
           groundingBlock = sources
