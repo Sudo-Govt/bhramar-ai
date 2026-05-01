@@ -374,7 +374,7 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `${baseSystem}${tierBlock}${demoBlock}${groundingDirective}`;
 
-    // Try Gemini direct API first (primary). Fall back to Lovable AI Gateway on any failure.
+    // Provider chain: configured primary → Gemini direct → Lovable AI gateway.
     const isOpenAI = chatModel.startsWith("openai/");
     const payload = {
       stream: true,
@@ -382,48 +382,62 @@ Deno.serve(async (req) => {
     };
 
     let upstream: Response | null = null;
-    let usedProvider: "gemini" | "lovable" = "gemini";
+    let usedProvider: "groq" | "gemini" | "lovable" = provider;
 
-    if (!isOpenAI && GEMINI_API_KEY) {
+    const tryGroq = async () => {
+      if (!GROQ_API_KEY) return null;
       try {
-        const geminiModel = toGeminiModelId(chatModel);
-        upstream = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${GEMINI_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ ...payload, model: geminiModel }),
-          },
-        );
-        if (!upstream.ok) {
-          const t = await upstream.text();
-          console.error("Gemini direct failed, falling back to Lovable", upstream.status, t.slice(0, 300));
-          upstream = null;
+        const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, model: groqModel }),
+        });
+        if (!r.ok) {
+          console.error("Groq failed", r.status, (await r.text()).slice(0, 200));
+          return null;
         }
-      } catch (e) {
-        console.error("Gemini direct threw, falling back to Lovable", e);
-        upstream = null;
-      }
+        return r;
+      } catch (e) { console.error("Groq threw", e); return null; }
+    };
+
+    const tryGemini = async () => {
+      if (isOpenAI || !GEMINI_API_KEY) return null;
+      try {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, model: toGeminiModelId(chatModel) }),
+        });
+        if (!r.ok) {
+          console.error("Gemini failed", r.status, (await r.text()).slice(0, 200));
+          return null;
+        }
+        return r;
+      } catch (e) { console.error("Gemini threw", e); return null; }
+    };
+
+    const tryLovable = async () => {
+      if (!LOVABLE_API_KEY) return null;
+      return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, model: chatModel }),
+      });
+    };
+
+    const order: Array<"groq" | "gemini" | "lovable"> =
+      provider === "groq" ? ["groq", "gemini", "lovable"]
+      : provider === "lovable" ? ["lovable", "gemini"]
+      : ["gemini", "lovable"];
+
+    for (const p of order) {
+      const r = p === "groq" ? await tryGroq() : p === "gemini" ? await tryGemini() : await tryLovable();
+      if (r && r.ok) { upstream = r; usedProvider = p; break; }
     }
 
     if (!upstream) {
-      usedProvider = "lovable";
-      if (!LOVABLE_API_KEY) {
-        return new Response(JSON.stringify({ error: "No AI provider configured" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...payload, model: chatModel }),
-      });
+      return new Response(JSON.stringify({ error: "No AI provider available" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (!upstream.ok) {
