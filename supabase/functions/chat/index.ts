@@ -345,18 +345,57 @@ Deno.serve(async (req) => {
       ? `${baseSystem}${tierBlock}${demoBlock}\n\n---\nUse the following sources when relevant. When you rely on a source, cite it inline as [S1], [S2] etc. matching the labels below. If the sources don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`
       : `${baseSystem}${tierBlock}${demoBlock}`;
 
-    const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: chatModel,
-        stream: true,
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-      }),
-    });
+    // Try Gemini direct API first (primary). Fall back to Lovable AI Gateway on any failure.
+    const isOpenAI = chatModel.startsWith("openai/");
+    const payload = {
+      stream: true,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+    };
+
+    let upstream: Response | null = null;
+    let usedProvider: "gemini" | "lovable" = "gemini";
+
+    if (!isOpenAI && GEMINI_API_KEY) {
+      try {
+        const geminiModel = toGeminiModelId(chatModel);
+        upstream = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${GEMINI_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ ...payload, model: geminiModel }),
+          },
+        );
+        if (!upstream.ok) {
+          const t = await upstream.text();
+          console.error("Gemini direct failed, falling back to Lovable", upstream.status, t.slice(0, 300));
+          upstream = null;
+        }
+      } catch (e) {
+        console.error("Gemini direct threw, falling back to Lovable", e);
+        upstream = null;
+      }
+    }
+
+    if (!upstream) {
+      usedProvider = "lovable";
+      if (!LOVABLE_API_KEY) {
+        return new Response(JSON.stringify({ error: "No AI provider configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...payload, model: chatModel }),
+      });
+    }
 
     if (!upstream.ok) {
       if (upstream.status === 429) {
@@ -370,11 +409,12 @@ Deno.serve(async (req) => {
         });
       }
       const errText = await upstream.text();
-      console.error("AI gateway error", upstream.status, errText);
+      console.error("AI provider error", usedProvider, upstream.status, errText);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    console.log(`chat: using provider=${usedProvider} model=${chatModel}`);
 
     // Pipe upstream SSE through, then append a final sources event.
     const reader = upstream.body!.getReader();
