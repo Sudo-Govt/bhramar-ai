@@ -215,6 +215,13 @@ function Sidebar(props: SidebarProps) {
             </Link>
           ) : null
         )}
+        {leftOpen && isDevAccount && (
+          <Link to="/system">
+            <Button variant="outline" className="w-full mb-2 h-9 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold">
+              <Crown className="h-3.5 w-3.5" /> SYSTEM
+            </Button>
+          </Link>
+        )}
         <Link to="/dashboard">
           <div className="flex items-center gap-2.5 p-1.5 rounded-md hover:bg-sidebar-accent/60 cursor-pointer">
             <div className="h-8 w-8 rounded-full bg-gradient-aurora flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
