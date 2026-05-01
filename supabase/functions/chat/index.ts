@@ -310,12 +310,16 @@ Deno.serve(async (req) => {
     let demoBlock = "";
     let chatModel = CHAT_MODEL;
     let baseSystem = BASE_SYSTEM;
+    let provider: "groq" | "gemini" | "lovable" = "gemini";
+    let groqModel = "llama-3.3-70b-versatile";
+    let kbThreshold = 0.72;
+    let allowGeneralFallback = true;
     try {
       const [{ data: prof }, { data: settings }] = await Promise.all([
         supabase.from("profiles").select(
           "subscription_tier, full_name, age, gender, religion, marital_status, has_children, occupation, earning_bracket, family_background, physical_condition, prior_case_history, state, district"
         ).eq("id", userId).maybeSingle(),
-        supabase.from("ai_settings").select("model, system_prompt").eq("id", 1).maybeSingle(),
+        supabase.from("ai_settings").select("model, system_prompt, provider, groq_model, kb_threshold, allow_general_fallback").eq("id", 1).maybeSingle(),
       ]);
       const t = (prof?.subscription_tier as string | undefined) || "Free";
       if (t === "Free") tierLabel = "Free Individual";
@@ -324,6 +328,10 @@ Deno.serve(async (req) => {
 
       if (settings?.model) chatModel = settings.model;
       if (settings?.system_prompt && settings.system_prompt.trim()) baseSystem = settings.system_prompt;
+      if (settings?.provider) provider = settings.provider as any;
+      if (settings?.groq_model) groqModel = settings.groq_model;
+      if (typeof settings?.kb_threshold === "number") kbThreshold = settings.kb_threshold;
+      if (typeof settings?.allow_general_fallback === "boolean") allowGeneralFallback = settings.allow_general_fallback;
 
       if (prof) {
         const lines: string[] = [];
@@ -347,9 +355,24 @@ Deno.serve(async (req) => {
     }
     const tierBlock = `\n\n---\nSESSION CONTEXT — USER TIER: ${tierLabel}\nCalibrate every response to this tier. Do not offer features outside this tier; do not withhold features included in it.`;
 
-    const systemPrompt = groundingBlock
-      ? `${baseSystem}${tierBlock}${demoBlock}\n\n---\nUse the following sources when relevant. When you rely on a source, cite it inline as [S1], [S2] etc. matching the labels below. If the sources don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`
-      : `${baseSystem}${tierBlock}${demoBlock}`;
+    // KB-first instruction: if any KB chunk is over threshold, lock the answer to it.
+    const topKb = sources.find((s: any) => s.source === "kb" && (s.similarity ?? 0) >= kbThreshold);
+    let groundingDirective = "";
+    if (groundingBlock) {
+      if (topKb) {
+        groundingDirective = `\n\n---\nGROUNDED ANSWER MODE — KB FIRST.\n` +
+          `The PRIMARY sources below come from the user's curated knowledge base (labelled "KB"). Build the answer from these first and cite them inline as [S1], [S2] etc. ` +
+          `If KB sources do not fully answer the question, you may use the bare-acts corpus and your general knowledge — but for any sentence that is NOT supported by the sources below, prefix the sentence with "[GENERAL]". ` +
+          (allowGeneralFallback ? "" : "If the KB sources are insufficient, reply: \"I don't have that in your knowledge base.\" Do NOT use general knowledge. ") +
+          `\n\nSOURCES:\n${groundingBlock}`;
+      } else {
+        groundingDirective = `\n\n---\nUse the following sources when relevant and cite as [S1], [S2] etc. If they don't cover the question, answer from your training but do not fabricate citations.\n\n${groundingBlock}`;
+      }
+    } else if (!allowGeneralFallback) {
+      groundingDirective = `\n\n---\nNo knowledge-base sources matched. Respond: "I don't have that in your knowledge base." Do not fall back to general knowledge.`;
+    }
+
+    const systemPrompt = `${baseSystem}${tierBlock}${demoBlock}${groundingDirective}`;
 
     // Try Gemini direct API first (primary). Fall back to Lovable AI Gateway on any failure.
     const isOpenAI = chatModel.startsWith("openai/");
