@@ -332,6 +332,30 @@ export default function SystemConsole() {
               </div>
             </Card>
           </TabsContent>
+          <TabsContent value="audit">
+            <Card className="p-6 space-y-3">
+              <div className="text-xs text-muted-foreground">Last 200 admin actions and significant events.</div>
+              <div className="border border-border rounded-md max-h-[60vh] overflow-y-auto divide-y divide-border">
+                {audit.length === 0 && <div className="p-4 text-sm text-muted-foreground">No audit entries yet.</div>}
+                {audit.map((a) => (
+                  <div key={a.id} className="p-3 text-sm">
+                    <div className="text-xs text-muted-foreground flex items-center justify-between">
+                      <span>{a.user_email || a.user_id?.slice(0, 8)} · <span className="font-medium text-foreground">{a.action}</span></span>
+                      <span>{new Date(a.created_at).toLocaleString()}</span>
+                    </div>
+                    {a.entity_type && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {a.entity_type}{a.entity_id ? ` · ${a.entity_id.slice(0, 8)}` : ""}
+                      </div>
+                    )}
+                    {a.metadata && Object.keys(a.metadata).length > 0 && (
+                      <pre className="text-[10px] mt-1 bg-muted p-2 rounded overflow-x-auto">{JSON.stringify(a.metadata, null, 2)}</pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
     </div>
