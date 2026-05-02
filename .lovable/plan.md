@@ -1,115 +1,121 @@
+# Path to Public Launch — Production Hardening Sweep
 
-## Goal
+Goal: close every blocker between today and a public launch. Skipping `GROQ_API_KEY` and custom email domain (you'll add those later — code already handles their absence gracefully).
 
-1. Implement the approved RAG plan: JSON knowledge upload, "your data first" prompt strategy, and a Groq provider added to the existing Gemini → Lovable AI fallback chain.
-2. Add a **SYSTEM** super-admin console (only visible to `bhramar123@gmail.com`) accessible via a button placed under the chat history sidebar on the main chat page (`/app`).
+---
 
-## Part A — RAG knowledge loader (approved earlier)
+## 1. Security & data integrity (blockers)
 
-### A.1 Database migration
-- Add `'kb'` to the existing `chunk_source` enum.
-- New table `kb_files`: `id, user_id, name, item_count, is_global bool default false, created_at`. RLS: owner read/write; super-admin sees all.
-- Add columns to `ai_settings`: `provider text default 'gemini'`, `groq_model text`, `kb_threshold float default 0.72`, `allow_general_fallback bool default true`.
-- Rewrite `match_chunks()` to return KB hits (global + caller's), corpus, and the caller's user docs, with a similarity boost on `source='kb'` so your data wins ties.
+- Run `supabase--linter` + `security--run_security_scan`. Fix every error/warn the scanners flag (likely candidates: missing RLS on `ai_training_logs` and `case_deletion_logs`, function search_path on a couple of helpers).
+- Add RLS to `ai_training_logs` (super-admin select only; insert via trigger continues to work because trigger is `SECURITY DEFINER`).
+- Add RLS to `case_deletion_logs` (owner-only select; insert via `delete_case_with_log` definer continues to work).
+- Enable **Leaked Password Protection** (HIBP) via `configure_auth`.
+- Confirm email verification is **on** (no auto-confirm) — verify with `configure_auth`.
 
-### A.2 Edge functions
-- **`ingest-json-kb`** — accepts `{ name, items, is_global? }`, auto-detects shape (Q/A pairs, `{title,text}`, `{label,text}`, or wrapped `{items:[…]}`), chunks anything > ~1800 chars, embeds in batches of 16 via Lovable AI `text-embedding-004`, inserts as `source='kb'`. Records the file in `kb_files`. `is_global` only honored for super-admin.
-- **`kb-admin`** — list / delete / toggle-global for KB files.
-- **`chat`** (update) —
-  - After retrieval: if any KB hit ≥ `kb_threshold`, prepend a strong "answer from KB first, mark non-KB paragraphs with `[GENERAL]`, refuse if `allow_general_fallback=false` and no KB hit" instruction.
-  - Provider chain configurable via `ai_settings.provider`:
-    1. **Groq** → `https://api.groq.com/openai/v1/chat/completions` (OpenAI-compatible, streaming) using `GROQ_API_KEY` and `groq_model`.
-    2. **Gemini direct** → existing path.
-    3. **Lovable AI gateway** → existing fallback.
-  - On any non-2xx, fall through to the next provider transparently.
-- Will request `GROQ_API_KEY` via the secrets flow once the user confirms they want Groq active.
+## 2. Rate limiting & abuse protection (blocker)
 
-## Part B — SYSTEM super-admin console
+- Add a `rate_limits` table (`user_id`, `bucket`, `window_start`, `count`) plus a SECURITY DEFINER `check_and_increment_rate_limit(_bucket, _max, _window_seconds)` RPC.
+- Wire into `chat/index.ts`: tier-based caps
+  - Free: 20 messages / day
+  - Pro: 500 / day
+  - Firm: unlimited
+- Same wrapper around `ingest-document` and `ingest-json-kb` (10 uploads/hour for non-admin) to stop AI-budget burn.
+- Return HTTP 429 with a clear toast on the client.
 
-### B.1 Entry point on the chat page
-- In `src/pages/Dashboard.tsx`, below the conversation history sidebar, render a **SYSTEM** button (gold accent, `Settings` icon) — visibility gated to `user.email === 'bhramar123@gmail.com'` (matches existing `is_super_admin()` SQL helper).
-- Clicking opens `/system` (full-page console, not a modal — too much content).
+## 3. Legal pages (Razorpay live-mode requirement)
 
-### B.2 New page `src/pages/SystemConsole.tsx` at `/system`
-Tabbed layout (`Tabs` from shadcn):
+Three new public routes, linked from the Landing footer + Pricing checkout:
+- `/terms` — Terms of Service (DPDP-compliant boilerplate, India jurisdiction).
+- `/privacy` — Privacy Policy (DPDP Act 2023 disclosures, AI-data usage clause).
+- `/refund` — Refund / Cancellation Policy (Razorpay needs this URL on file).
+- `/contact` — support@ + business address placeholder.
 
-**Tab 1 — AI engine**
-- Provider radio: Groq / Gemini / Lovable.
-- Model dropdown (existing list) + free-text Groq model id field.
-- "Add / rotate Groq API key" button → triggers secrets flow for `GROQ_API_KEY`.
-- System-prompt override textarea (existing).
-- Retrieval tuning: KB-strictness slider (0.6–0.85) and "Allow general-knowledge fallback" toggle.
-- Live "Test prompt" box to send one query and see which provider answered + KB hits used.
+Ship these as plain Markdown-rendered pages with a shared `LegalLayout` component. User can edit copy later.
 
-**Tab 2 — RAG knowledge**
-- Drop-zone for `.json` (multi-file). Shows live indexing progress.
-- Table of all uploaded KB files across all users (super-admin sees everyone): name, owner email, items, scope (Mine / Global), created. Actions: Delete, Toggle global, Re-embed.
-- Counter cards: total chunks by source (kb / corpus / user).
+## 4. Resilience & UX polish
 
-**Tab 3 — Chat logs**
-- Cross-user reader of `ai_training_logs` (already mirrors every message via `mirror_message_to_training` trigger).
-- Filters: user (search by email), date range, role (user/assistant), free-text search in `content`, has-citations toggle.
-- Row click → side panel with full conversation thread + citations.
-- Export selected rows to CSV / JSON.
-- Requires a new SECURITY DEFINER SQL function `admin_list_training_logs(...)` that checks `is_super_admin()` and returns logs joined with `profiles.email`. (Avoids opening `ai_training_logs` to public RLS.)
+- **Global error boundary** (`src/components/ErrorBoundary.tsx`) wrapping the router — friendly fallback, "Reload" button, sends error to console with conversation id.
+- **Loading skeletons** on Dashboard chat list, Profile, SystemConsole tabs.
+- **Empty states** with CTAs ("No conversations yet — start your first chat").
+- **Toast on AI failure** instead of silent retry — surface which provider answered.
+- **Mobile sweep** at 375 / 414 widths: Dashboard sidebar collapses to a Sheet, Pricing cards stack, SystemConsole tabs scroll horizontally.
+- **404 page** polish with logo + "Back to chat" CTA.
 
-**Tab 4 — Users & roles**
-- Lists `profiles` with email, full_name, tier, subscription dates, state/district, created_at.
-- Inline actions: change `subscription_tier`, extend `subscription_expires_at`, grant/revoke role in `user_roles` (`admin` / `moderator` / `user`), force sign-out (calls a new `admin-user-action` edge function using service role).
-- Search + paginate.
-- Same SECURITY DEFINER pattern for cross-user reads.
+## 5. Onboarding & SEO
 
-**Tab 5 — Audit**
-- Reads `audit_log` across all users, filterable. Every super-admin action in this console writes an entry here automatically.
+- Landing page: real `<title>`, meta description, OpenGraph image (use existing logo), `og:title`, Twitter card tags.
+- Add `robots.txt` allow + `sitemap.xml` with public routes.
+- First-login redirect: if profile demographics empty, route to `/profile` with a one-line banner "Complete your profile so Bhramar can give you sharper answers."
 
-### B.3 New edge function `admin-actions`
-Single function with action dispatch (`{action: 'set_tier' | 'extend_subscription' | 'grant_role' | 'revoke_role' | 'force_signout' | 'delete_kb_file' | 'toggle_global_kb' | 'reembed_kb_file'}`).
-- Validates JWT.
-- Checks super-admin via JWT email match (same rule as `is_super_admin()`).
-- Uses service role for the actual mutation.
-- Writes an `audit_log` row for every action.
+## 6. Admin / observability hooks
 
-### B.4 Schema additions for the console
-- SECURITY DEFINER functions:
-  - `admin_list_training_logs(_search text, _from date, _to date, _user uuid, _limit int)` — only callable when `is_super_admin()`.
-  - `admin_list_profiles(_search text, _limit int, _offset int)` — same gate.
-  - `admin_kb_files()` — same gate, returns kb_files joined with email + chunk count.
-- No RLS changes to existing tables; everything routes through these definer functions or the `admin-actions` edge function.
+- SystemConsole → new **Audit** tab pulling `admin_list_audit()` (function already exists).
+- SystemConsole → AI Engine: small "live status" card showing which provider succeeded last, KB chunk count, today's request count.
+- Daily auto-cleanup edge function `cleanup-old-logs` (cron via pg_cron) — purges `usage_logs` older than 90 days.
 
-## Files touched
+## 7. Razorpay go-live checklist (in-app)
+
+- Add a banner inside SystemConsole → Users tab: "Razorpay mode: TEST / LIVE" detected from key prefix (`rzp_test_` vs `rzp_live_`). No code change needed when you swap secrets — just visibility.
+- Verify webhook path exists; if not, add `razorpay-webhook` edge function for payment-failed / refund events.
+
+## 8. Final QA gate
+
+- `supabase--linter` clean.
+- `security--run_security_scan` clean (or every finding triaged).
+- Manual smoke test script in chat (signup → verify email → chat → upload doc → upgrade tier → admin login → SYSTEM tab).
+- Confirm `/system` is gated to your email even if URL is guessed (already enforced via `is_super_admin()` SQL + UI check).
+
+---
+
+## Files this sweep will touch
 
 ```
 supabase/migrations/<new>.sql
-  - 'kb' enum value
-  - kb_files table + RLS
-  - ai_settings columns (provider, groq_model, kb_threshold, allow_general_fallback)
-  - match_chunks v2 with kb boost
-  - admin_list_* SECURITY DEFINER functions
+  - RLS on ai_training_logs, case_deletion_logs
+  - rate_limits table + check_and_increment_rate_limit RPC
 
-supabase/functions/ingest-json-kb/index.ts        (new)
-supabase/functions/kb-admin/index.ts              (new)
-supabase/functions/admin-actions/index.ts         (new)
-supabase/functions/chat/index.ts                  (KB-first prompt, Groq provider, 3-tier fallback)
-supabase/config.toml                              (register new functions)
+supabase/functions/chat/index.ts                 (rate-limit gate)
+supabase/functions/ingest-document/index.ts      (rate-limit gate)
+supabase/functions/ingest-json-kb/index.ts       (rate-limit gate)
+supabase/functions/cleanup-old-logs/index.ts     (new, cron)
+supabase/functions/razorpay-webhook/index.ts     (new, optional)
 
-src/pages/SystemConsole.tsx                       (new — 5 tabs)
-src/pages/Dashboard.tsx                           (SYSTEM button under chat history, super-admin only)
-src/pages/AdminSettings.tsx                       (kept; SystemConsole is the new home — old route redirects to /system)
-src/components/KbUploader.tsx                     (new shared widget; reused in Profile too)
-src/pages/Profile.tsx                             ("My knowledge" tab using KbUploader, scoped to user)
-src/App.tsx                                       (add /system route, gated; redirect /admin/ai → /system)
+src/components/ErrorBoundary.tsx                 (new)
+src/components/LegalLayout.tsx                   (new)
+src/pages/legal/Terms.tsx                        (new)
+src/pages/legal/Privacy.tsx                      (new)
+src/pages/legal/Refund.tsx                       (new)
+src/pages/legal/Contact.tsx                      (new)
+src/pages/NotFound.tsx                           (polish)
+src/pages/Landing.tsx                            (SEO + footer links)
+src/pages/Dashboard.tsx                          (mobile sheet, skeletons, empty states)
+src/pages/SystemConsole.tsx                      (Audit tab + live status card + Razorpay mode badge)
+src/App.tsx                                      (ErrorBoundary wrap + 4 legal routes)
+index.html                                       (OG/meta tags)
+public/robots.txt, public/sitemap.xml            (SEO)
 ```
 
-## Out of scope this pass
+---
 
-- Live web-search fallback (separate function call; we'll wire Tavily/Brave later if you want).
-- Fine-tune training UI for your custom Groq model (Groq hosts fine-tunes, but training is done outside this app).
-- Per-message thumbs-up/down feedback collection (easy follow-up).
+## What's deliberately deferred
 
-## After approval
+- **GROQ_API_KEY** — you'll add later; provider already falls through to Gemini.
+- **Custom email domain** — auth emails will keep using Lovable defaults until you add a domain.
+- **Sentry / external error tracking** — optional, can wire after launch.
+- **Web-search fallback** (Tavily/Brave) — post-launch v1.1.
 
-1. Run migration.
-2. Deploy `ingest-json-kb`, `kb-admin`, `admin-actions`, updated `chat`.
-3. Ship the UI: Dashboard SYSTEM button + `/system` page with 5 tabs.
-4. Ask you for `GROQ_API_KEY` via the secrets flow when you flip provider to Groq the first time.
-5. You upload a sample JSON, ask a question, and confirm KB-tagged citations come back.
+---
+
+## Order of work (one continuous build)
+
+1. Migration: RLS gaps + `rate_limits` + cleanup grants.
+2. Edge functions: rate-limit middleware, cleanup cron, optional webhook.
+3. Frontend: ErrorBoundary, legal pages + routes, Landing SEO, footer links.
+4. Mobile + skeleton + empty-state pass on Dashboard, Profile, SystemConsole.
+5. SystemConsole Audit tab + live status + Razorpay mode badge.
+6. Run linter + security scan, fix anything new.
+7. Hand back a launch-readiness checklist with each item ticked.
+
+After this pass you'll be at **public-launch grade**. Add `GROQ_API_KEY` and the email domain whenever you're ready — no further code changes needed for either.
+
+Approve and I'll execute the whole pass in one go.

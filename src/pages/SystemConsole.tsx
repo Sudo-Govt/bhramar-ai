@@ -42,11 +42,13 @@ export default function SystemConsole() {
   const [kbFiles, setKbFiles] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // Logs / users
+  // Logs / users / audit
   const [logs, setLogs] = useState<any[]>([]);
   const [logSearch, setLogSearch] = useState("");
   const [profiles, setProfiles] = useState<any[]>([]);
   const [profileSearch, setProfileSearch] = useState("");
+  const [audit, setAudit] = useState<any[]>([]);
+  const [stats, setStats] = useState<{ users: number; chunks: number; messages24h: number } | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -63,8 +65,24 @@ export default function SystemConsole() {
       reloadKb();
       reloadLogs();
       reloadProfiles();
+      reloadAudit();
+      loadStats();
     })();
   }, [isAdmin]);
+
+  const reloadAudit = async () => {
+    const { data } = await supabase.rpc("admin_list_audit", { _limit: 200 });
+    setAudit(data || []);
+  };
+  const loadStats = async () => {
+    const since = new Date(Date.now() - 86400000).toISOString();
+    const [{ count: users }, { count: chunks }, { count: messages24h }] = await Promise.all([
+      supabase.from("profiles").select("*", { count: "exact", head: true }),
+      supabase.from("document_chunks").select("*", { count: "exact", head: true }),
+      supabase.from("messages").select("*", { count: "exact", head: true }).gte("created_at", since),
+    ]);
+    setStats({ users: users || 0, chunks: chunks || 0, messages24h: messages24h || 0 });
+  };
 
   const reloadKb = async () => {
     const { data } = await supabase.rpc("admin_kb_files");
@@ -171,9 +189,17 @@ export default function SystemConsole() {
             <TabsTrigger value="kb">RAG knowledge</TabsTrigger>
             <TabsTrigger value="logs">Chat logs</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="audit">Audit</TabsTrigger>
           </TabsList>
 
           <TabsContent value="ai">
+            {stats && (
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Card className="p-4"><div className="text-xs text-muted-foreground">Users</div><div className="text-2xl font-bold">{stats.users}</div></Card>
+                <Card className="p-4"><div className="text-xs text-muted-foreground">KB+Doc chunks</div><div className="text-2xl font-bold">{stats.chunks}</div></Card>
+                <Card className="p-4"><div className="text-xs text-muted-foreground">Messages · 24h</div><div className="text-2xl font-bold">{stats.messages24h}</div></Card>
+              </div>
+            )}
             <Card className="p-6 space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
@@ -301,6 +327,30 @@ export default function SystemConsole() {
                       </Select>
                       <Button size="sm" variant="outline" onClick={() => extendSub(p.id)}>+30d</Button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
+          <TabsContent value="audit">
+            <Card className="p-6 space-y-3">
+              <div className="text-xs text-muted-foreground">Last 200 admin actions and significant events.</div>
+              <div className="border border-border rounded-md max-h-[60vh] overflow-y-auto divide-y divide-border">
+                {audit.length === 0 && <div className="p-4 text-sm text-muted-foreground">No audit entries yet.</div>}
+                {audit.map((a) => (
+                  <div key={a.id} className="p-3 text-sm">
+                    <div className="text-xs text-muted-foreground flex items-center justify-between">
+                      <span>{a.user_email || a.user_id?.slice(0, 8)} · <span className="font-medium text-foreground">{a.action}</span></span>
+                      <span>{new Date(a.created_at).toLocaleString()}</span>
+                    </div>
+                    {a.entity_type && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {a.entity_type}{a.entity_id ? ` · ${a.entity_id.slice(0, 8)}` : ""}
+                      </div>
+                    )}
+                    {a.metadata && Object.keys(a.metadata).length > 0 && (
+                      <pre className="text-[10px] mt-1 bg-muted p-2 rounded overflow-x-auto">{JSON.stringify(a.metadata, null, 2)}</pre>
+                    )}
                   </div>
                 ))}
               </div>
