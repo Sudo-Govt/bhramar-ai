@@ -42,11 +42,13 @@ export default function SystemConsole() {
   const [kbFiles, setKbFiles] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // Logs / users
+  // Logs / users / audit
   const [logs, setLogs] = useState<any[]>([]);
   const [logSearch, setLogSearch] = useState("");
   const [profiles, setProfiles] = useState<any[]>([]);
   const [profileSearch, setProfileSearch] = useState("");
+  const [audit, setAudit] = useState<any[]>([]);
+  const [stats, setStats] = useState<{ users: number; chunks: number; messages24h: number } | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -63,8 +65,24 @@ export default function SystemConsole() {
       reloadKb();
       reloadLogs();
       reloadProfiles();
+      reloadAudit();
+      loadStats();
     })();
   }, [isAdmin]);
+
+  const reloadAudit = async () => {
+    const { data } = await supabase.rpc("admin_list_audit", { _limit: 200 });
+    setAudit(data || []);
+  };
+  const loadStats = async () => {
+    const since = new Date(Date.now() - 86400000).toISOString();
+    const [{ count: users }, { count: chunks }, { count: messages24h }] = await Promise.all([
+      supabase.from("profiles").select("*", { count: "exact", head: true }),
+      supabase.from("document_chunks").select("*", { count: "exact", head: true }),
+      supabase.from("messages").select("*", { count: "exact", head: true }).gte("created_at", since),
+    ]);
+    setStats({ users: users || 0, chunks: chunks || 0, messages24h: messages24h || 0 });
+  };
 
   const reloadKb = async () => {
     const { data } = await supabase.rpc("admin_kb_files");
