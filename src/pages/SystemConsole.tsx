@@ -189,9 +189,17 @@ export default function SystemConsole() {
             <TabsTrigger value="kb">RAG knowledge</TabsTrigger>
             <TabsTrigger value="logs">Chat logs</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="audit">Audit</TabsTrigger>
           </TabsList>
 
           <TabsContent value="ai">
+            {stats && (
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Card className="p-4"><div className="text-xs text-muted-foreground">Users</div><div className="text-2xl font-bold">{stats.users}</div></Card>
+                <Card className="p-4"><div className="text-xs text-muted-foreground">KB+Doc chunks</div><div className="text-2xl font-bold">{stats.chunks}</div></Card>
+                <Card className="p-4"><div className="text-xs text-muted-foreground">Messages · 24h</div><div className="text-2xl font-bold">{stats.messages24h}</div></Card>
+              </div>
+            )}
             <Card className="p-6 space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
