@@ -75,11 +75,23 @@ export default function Pricing() {
   const navigate = useNavigate();
 
   const handleCta = async (tierName: string) => {
-    if (tierName === "Free Chat") { navigate(user ? "/dashboard" : "/auth"); return; }
-    if (tierName === "Enterprise") { window.location.href = "mailto:hello@bhramar.ai?subject=Enterprise%20enquiry"; return; }
+    if (tierName === "Free" || tierName === "Free Chat") {
+      navigate(user ? "/dashboard" : "/auth");
+      return;
+    }
+    if (tierName === "Enterprise") {
+      window.location.href = "mailto:hello@bhramar.ai?subject=Enterprise%20enquiry";
+      return;
+    }
     if (!user) { navigate("/auth"); return; }
-    const plan = tierName === "Advocate" ? "advocate" : "firm";
-    await startRazorpayCheckout(plan, user.email || undefined);
+    const planMap: Record<string, "basic" | "advocate" | "firm" | "firm_pro"> = {
+      "Basic": "basic",
+      "Advocate": "advocate",
+      "Firm": "firm",
+      "Firm Pro": "firm_pro",
+    };
+    const plan = planMap[tierName];
+    if (plan) await startRazorpayCheckout(plan, user.email || undefined);
   };
 
   return (

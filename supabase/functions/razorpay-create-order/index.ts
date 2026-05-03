@@ -6,8 +6,10 @@ const corsHeaders = {
 };
 
 const PLANS: Record<string, { amount: number; label: string }> = {
-  advocate: { amount: 49900, label: "Advocate" }, // ₹499
-  firm: { amount: 390000, label: "Firm" },        // ₹3,900
+  basic:    { amount: 19900,  label: "Basic" },     // ₹199
+  advocate: { amount: 49900,  label: "Advocate" },  // ₹499
+  firm:     { amount: 299900, label: "Firm" },      // ₹2,999
+  firm_pro: { amount: 499900, label: "Firm Pro" },  // ₹4,999
 };
 
 Deno.serve(async (req) => {

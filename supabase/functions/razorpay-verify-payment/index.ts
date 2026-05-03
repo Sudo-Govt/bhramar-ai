@@ -18,7 +18,12 @@ async function hmacSha256Hex(key: string, message: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const PLAN_TIER: Record<string, "Pro" | "Firm"> = { advocate: "Pro", firm: "Firm" };
+const PLAN_TIER: Record<string, "Free" | "Pro" | "Firm"> = {
+  basic:    "Pro",
+  advocate: "Pro",
+  firm:     "Firm",
+  firm_pro: "Firm",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -72,10 +77,17 @@ Deno.serve(async (req) => {
 
     const tier = PLAN_TIER[order.plan];
     if (tier) {
-      await admin.from("profiles").update({ subscription_tier: tier }).eq("id", user.id);
+      await admin.from("profiles").update({
+        subscription_tier: tier,
+        plan_name: order.plan,
+        subscription_started_at: new Date().toISOString(),
+      }).eq("id", user.id);
     }
 
-    return new Response(JSON.stringify({ success: true, tier }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(
+      JSON.stringify({ success: true, tier, plan: order.plan }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (e) {
     console.error("verify-payment error", e);
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
