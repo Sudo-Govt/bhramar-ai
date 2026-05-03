@@ -666,6 +666,7 @@ export default function Dashboard() {
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
+          case_id: activeCaseId,
           messages: [...priorMessages.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: text }],
         }),
       });
