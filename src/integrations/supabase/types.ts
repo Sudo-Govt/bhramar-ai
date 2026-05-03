@@ -950,6 +950,7 @@ export type Database = {
           marital_status: string | null
           occupation: string | null
           physical_condition: string | null
+          plan_name: string | null
           prior_case_history: string | null
           religion: string | null
           state: string | null
@@ -974,6 +975,7 @@ export type Database = {
           marital_status?: string | null
           occupation?: string | null
           physical_condition?: string | null
+          plan_name?: string | null
           prior_case_history?: string | null
           religion?: string | null
           state?: string | null
@@ -998,6 +1000,7 @@ export type Database = {
           marital_status?: string | null
           occupation?: string | null
           physical_condition?: string | null
+          plan_name?: string | null
           prior_case_history?: string | null
           religion?: string | null
           state?: string | null
