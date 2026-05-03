@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import logoImg from "@/assets/bhramar-logo.png";
 
 export default function Landing() {
@@ -7,7 +8,8 @@ export default function Landing() {
   const dest = user ? "/app" : "/auth";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative aurora-bg">
+      <div className="absolute top-4 right-4 z-10"><ThemeToggle /></div>
       <Link
         to={dest}
         className="group flex flex-col items-center gap-4 transition-transform hover:scale-[1.02]"
