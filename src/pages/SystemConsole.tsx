@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, Upload, Trash2, Globe, Lock, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const SUPER_ADMIN = "bhramar123@gmail.com";
@@ -34,13 +33,7 @@ export default function SystemConsole() {
   const [model, setModel] = useState(MODELS[0]);
   const [groqModel, setGroqModel] = useState("llama-3.3-70b-versatile");
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [kbThreshold, setKbThreshold] = useState(0.72);
-  const [allowFallback, setAllowFallback] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // KB
-  const [kbFiles, setKbFiles] = useState<any[]>([]);
-  const [uploading, setUploading] = useState(false);
 
   // Logs / users / audit
   const [logs, setLogs] = useState<any[]>([]);
@@ -59,10 +52,7 @@ export default function SystemConsole() {
         setModel(data.model || MODELS[0]);
         setGroqModel(data.groq_model || "llama-3.3-70b-versatile");
         setSystemPrompt(data.system_prompt || "");
-        setKbThreshold(data.kb_threshold ?? 0.72);
-        setAllowFallback(data.allow_general_fallback ?? true);
       }
-      reloadKb();
       reloadLogs();
       reloadProfiles();
       reloadAudit();
@@ -84,10 +74,6 @@ export default function SystemConsole() {
     setStats({ users: users || 0, chunks: chunks || 0, messages24h: messages24h || 0 });
   };
 
-  const reloadKb = async () => {
-    const { data } = await supabase.rpc("admin_kb_files");
-    setKbFiles(data || []);
-  };
   const reloadLogs = async () => {
     const { data } = await supabase.rpc("admin_list_training_logs", { _limit: 200 });
     setLogs(data || []);
@@ -116,38 +102,10 @@ export default function SystemConsole() {
     setSaving(true);
     const { error } = await supabase.from("ai_settings").update({
       provider, model, groq_model: groqModel, system_prompt: systemPrompt || null,
-      kb_threshold: kbThreshold, allow_general_fallback: allowFallback,
       updated_at: new Date().toISOString(), updated_by: user.id,
     }).eq("id", 1);
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("AI settings saved.");
-  };
-
-  const onUpload = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        const text = await file.text();
-        let parsed: any;
-        try { parsed = JSON.parse(text); } catch { toast.error(`${file.name}: invalid JSON`); continue; }
-        const { data, error } = await supabase.functions.invoke("ingest-json-kb", {
-          body: { name: file.name, items: parsed, is_global: true },
-        });
-        if (error) toast.error(`${file.name}: ${error.message}`);
-        else toast.success(`${file.name}: ${data?.items} items, ${data?.chunks} chunks indexed`);
-      }
-      reloadKb();
-    } finally { setUploading(false); }
-  };
-
-  const deleteKb = async (file_id: string) => {
-    const { error } = await supabase.functions.invoke("admin-actions", { body: { action: "delete_kb_file", file_id } });
-    if (error) toast.error(error.message); else { toast.success("Deleted"); reloadKb(); }
-  };
-  const toggleGlobal = async (file_id: string, is_global: boolean) => {
-    const { error } = await supabase.functions.invoke("admin-actions", { body: { action: "toggle_global_kb", file_id, is_global } });
-    if (error) toast.error(error.message); else reloadKb();
   };
 
   const setTier = async (user_id: string, tier: string) => {
@@ -186,7 +144,6 @@ export default function SystemConsole() {
         <Tabs defaultValue="ai">
           <TabsList>
             <TabsTrigger value="ai">AI engine</TabsTrigger>
-            <TabsTrigger value="kb">RAG knowledge</TabsTrigger>
             <TabsTrigger value="logs">Chat logs</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="audit">Audit</TabsTrigger>
@@ -196,26 +153,38 @@ export default function SystemConsole() {
             {stats && (
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <Card className="p-4"><div className="text-xs text-muted-foreground">Users</div><div className="text-2xl font-bold">{stats.users}</div></Card>
-                <Card className="p-4"><div className="text-xs text-muted-foreground">KB+Doc chunks</div><div className="text-2xl font-bold">{stats.chunks}</div></Card>
+                <Card className="p-4"><div className="text-xs text-muted-foreground">Document chunks</div><div className="text-2xl font-bold">{stats.chunks}</div></Card>
                 <Card className="p-4"><div className="text-xs text-muted-foreground">Messages · 24h</div><div className="text-2xl font-bold">{stats.messages24h}</div></Card>
               </div>
             )}
             <Card className="p-6 space-y-5">
+              <div>
+                <Label className="text-base font-semibold">Master system prompt</Label>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">
+                  Drives every chat platform-wide. Leave blank to use the built-in Bhramar Master Prompt.
+                </p>
+                <Textarea value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} rows={18}
+                  placeholder="Empty = built-in Bhramar Master Prompt" className="font-mono text-xs" />
+                <div className="text-xs text-muted-foreground mt-1">
+                  {systemPrompt ? `${systemPrompt.length} chars — overrides built-in.` : "Using built-in prompt."}
+                </div>
+              </div>
+
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <Label>Primary provider</Label>
+                  <Label>Primary AI provider</Label>
                   <Select value={provider} onValueChange={setProvider}>
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="groq">Groq (your model)</SelectItem>
+                      <SelectItem value="groq">Groq (fastest)</SelectItem>
                       <SelectItem value="gemini">Gemini direct</SelectItem>
                       <SelectItem value="lovable">Lovable AI Gateway</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground mt-1">Falls back to the others on failure.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Auto-falls back to the others on failure.</p>
                 </div>
                 <div>
-                  <Label>Default model (Gemini/Lovable)</Label>
+                  <Label>Default model (Gemini / Lovable)</Label>
                   <Select value={model} onValueChange={setModel}>
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                     <SelectContent>{MODELS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
@@ -225,63 +194,12 @@ export default function SystemConsole() {
                   <Label>Groq model id</Label>
                   <Input className="mt-1.5" value={groqModel} onChange={(e) => setGroqModel(e.target.value)}
                     placeholder="llama-3.3-70b-versatile" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add <code>GROQ_API_KEY</code> via Cloud secrets to enable.
-                  </p>
-                </div>
-                <div>
-                  <Label>KB strictness ({kbThreshold.toFixed(2)})</Label>
-                  <Input type="range" min={0.6} max={0.85} step={0.01} className="mt-1.5"
-                    value={kbThreshold} onChange={(e) => setKbThreshold(Number(e.target.value))} />
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-muted-foreground">Allow general-knowledge fallback</span>
-                    <Switch checked={allowFallback} onCheckedChange={setAllowFallback} />
-                  </div>
                 </div>
               </div>
-              <div>
-                <Label>System prompt override</Label>
-                <Textarea value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} rows={12}
-                  placeholder="Empty = use built-in Bhramar Master Prompt" className="mt-1.5 font-mono text-xs" />
-              </div>
+
               <Button onClick={saveSettings} disabled={saving} className="bg-gold hover:bg-gold-bright text-primary-foreground">
                 <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save settings"}
               </Button>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="kb">
-            <Card className="p-6 space-y-4">
-              <div>
-                <Label>Upload JSON knowledge files</Label>
-                <Input type="file" accept=".json,application/json" multiple
-                  onChange={(e) => onUpload(e.target.files)} disabled={uploading} className="mt-1.5" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Accepts arrays of {`{q,a}`}, {`{title,text}`}, {`{label,text}`}, or strings.
-                  Uploads here are <strong>global</strong> — used in every user's chat.
-                </p>
-              </div>
-              <div className="border border-border rounded-md divide-y divide-border">
-                {kbFiles.length === 0 && <div className="p-4 text-sm text-muted-foreground">No KB files yet.</div>}
-                {kbFiles.map((f) => (
-                  <div key={f.id} className="p-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{f.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {f.user_email} · {f.item_count} items · {f.chunk_count} chunks · {new Date(f.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button variant="outline" size="sm" onClick={() => toggleGlobal(f.id, !f.is_global)}>
-                        {f.is_global ? <><Globe className="h-3.5 w-3.5" /> Global</> : <><Lock className="h-3.5 w-3.5" /> Mine</>}
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => deleteKb(f.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </Card>
           </TabsContent>
 
