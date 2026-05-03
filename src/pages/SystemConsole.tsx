@@ -52,10 +52,7 @@ export default function SystemConsole() {
         setModel(data.model || MODELS[0]);
         setGroqModel(data.groq_model || "llama-3.3-70b-versatile");
         setSystemPrompt(data.system_prompt || "");
-        setKbThreshold(data.kb_threshold ?? 0.72);
-        setAllowFallback(data.allow_general_fallback ?? true);
       }
-      reloadKb();
       reloadLogs();
       reloadProfiles();
       reloadAudit();
@@ -77,10 +74,6 @@ export default function SystemConsole() {
     setStats({ users: users || 0, chunks: chunks || 0, messages24h: messages24h || 0 });
   };
 
-  const reloadKb = async () => {
-    const { data } = await supabase.rpc("admin_kb_files");
-    setKbFiles(data || []);
-  };
   const reloadLogs = async () => {
     const { data } = await supabase.rpc("admin_list_training_logs", { _limit: 200 });
     setLogs(data || []);
@@ -109,38 +102,10 @@ export default function SystemConsole() {
     setSaving(true);
     const { error } = await supabase.from("ai_settings").update({
       provider, model, groq_model: groqModel, system_prompt: systemPrompt || null,
-      kb_threshold: kbThreshold, allow_general_fallback: allowFallback,
       updated_at: new Date().toISOString(), updated_by: user.id,
     }).eq("id", 1);
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("AI settings saved.");
-  };
-
-  const onUpload = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        const text = await file.text();
-        let parsed: any;
-        try { parsed = JSON.parse(text); } catch { toast.error(`${file.name}: invalid JSON`); continue; }
-        const { data, error } = await supabase.functions.invoke("ingest-json-kb", {
-          body: { name: file.name, items: parsed, is_global: true },
-        });
-        if (error) toast.error(`${file.name}: ${error.message}`);
-        else toast.success(`${file.name}: ${data?.items} items, ${data?.chunks} chunks indexed`);
-      }
-      reloadKb();
-    } finally { setUploading(false); }
-  };
-
-  const deleteKb = async (file_id: string) => {
-    const { error } = await supabase.functions.invoke("admin-actions", { body: { action: "delete_kb_file", file_id } });
-    if (error) toast.error(error.message); else { toast.success("Deleted"); reloadKb(); }
-  };
-  const toggleGlobal = async (file_id: string, is_global: boolean) => {
-    const { error } = await supabase.functions.invoke("admin-actions", { body: { action: "toggle_global_kb", file_id, is_global } });
-    if (error) toast.error(error.message); else reloadKb();
   };
 
   const setTier = async (user_id: string, tier: string) => {
