@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, Upload, Trash2, Globe, Lock, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const SUPER_ADMIN = "bhramar123@gmail.com";
@@ -34,13 +33,7 @@ export default function SystemConsole() {
   const [model, setModel] = useState(MODELS[0]);
   const [groqModel, setGroqModel] = useState("llama-3.3-70b-versatile");
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [kbThreshold, setKbThreshold] = useState(0.72);
-  const [allowFallback, setAllowFallback] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // KB
-  const [kbFiles, setKbFiles] = useState<any[]>([]);
-  const [uploading, setUploading] = useState(false);
 
   // Logs / users / audit
   const [logs, setLogs] = useState<any[]>([]);
