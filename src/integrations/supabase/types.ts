@@ -374,6 +374,9 @@ export type Database = {
           case_id: string | null
           created_at: string
           id: string
+          summary: string | null
+          summary_until_message_id: string | null
+          summary_updated_at: string | null
           title: string
           updated_at: string
           user_id: string
@@ -382,6 +385,9 @@ export type Database = {
           case_id?: string | null
           created_at?: string
           id?: string
+          summary?: string | null
+          summary_until_message_id?: string | null
+          summary_updated_at?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -390,6 +396,9 @@ export type Database = {
           case_id?: string | null
           created_at?: string
           id?: string
+          summary?: string | null
+          summary_until_message_id?: string | null
+          summary_updated_at?: string | null
           title?: string
           updated_at?: string
           user_id?: string
