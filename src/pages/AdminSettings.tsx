@@ -7,8 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck, FileText, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { BHRAMAR_DEFAULT_PROMPT } from "@/lib/bhramarPrompt";
 
 const SUPER_ADMIN = "bhramar123@gmail.com";
 
