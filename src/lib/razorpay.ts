@@ -16,7 +16,7 @@ function loadScript(src: string): Promise<boolean> {
   });
 }
 
-export async function startRazorpayCheckout(plan: "advocate" | "firm", userEmail?: string) {
+export async function startRazorpayCheckout(plan: "basic" | "advocate" | "firm" | "firm_pro", userEmail?: string) {
   const ok = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
   if (!ok) { toast.error("Could not load Razorpay. Check your connection."); return; }
 
@@ -47,7 +47,10 @@ export async function startRazorpayCheckout(plan: "advocate" | "firm", userEmail
           },
         });
         if (vErr || !v?.success) toast.error("Payment verification failed. Contact support.");
-        else { toast.success(`Welcome to ${v.tier}!`); window.location.href = "/dashboard"; }
+        else {
+          toast.success(`Welcome to ${v.tier}! Your ${v.plan} plan is now active.`);
+          window.location.href = `/payment-success?plan=${v.plan}&tier=${v.tier}`;
+        }
         resolve();
       },
       modal: { ondismiss: () => resolve() },
