@@ -7,8 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck, FileText, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { BHRAMAR_DEFAULT_PROMPT } from "@/lib/bhramarPrompt";
 
 const SUPER_ADMIN = "bhramar123@gmail.com";
 
@@ -104,16 +105,26 @@ export default function AdminSettings() {
             <p className="text-xs text-muted-foreground mt-1.5">All models route through Lovable AI Gateway — no API key needed.</p>
           </div>
           <div>
-            <Label className="text-sm">System prompt override</Label>
+            <div className="flex items-center justify-between mb-1.5">
+              <Label className="text-sm">System prompt override</Label>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setSystemPrompt(BHRAMAR_DEFAULT_PROMPT)}>
+                  <FileText className="h-3.5 w-3.5" /> Load built-in
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setSystemPrompt("")}>
+                  <RotateCcw className="h-3.5 w-3.5" /> Reset to built-in
+                </Button>
+              </div>
+            </div>
             <Textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={20}
-              placeholder="Leave empty to use the built-in Bhramar Master Prompt. Anything you write here completely replaces it."
-              className="mt-1.5 font-mono text-xs"
+              placeholder="Leave empty to use the built-in Bhramar Master Prompt (senior-advocate persona). Anything you write here completely replaces it."
+              className="font-mono text-xs"
             />
             <p className="text-xs text-muted-foreground mt-1.5">
-              {systemPrompt ? `${systemPrompt.length} chars — will replace built-in prompt.` : "Empty — built-in Bhramar Master Prompt is in use."}
+              {systemPrompt ? `${systemPrompt.length} chars — will replace built-in prompt.` : "Empty — built-in Bhramar Master Prompt (senior-advocate persona) is in use."}
             </p>
           </div>
           <Button onClick={save} disabled={!loaded || saving} className="bg-gold hover:bg-gold-bright text-primary-foreground">
