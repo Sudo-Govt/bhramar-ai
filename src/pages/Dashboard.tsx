@@ -342,7 +342,7 @@ type ChatBodyProps = {
 
 function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyProps) {
   return (
-    <div className="relative flex-1 overflow-y-auto aurora-bg">
+    <div className="relative flex-1 min-h-0 overflow-y-auto aurora-bg">
       <div className="relative z-10">
         {messages.length === 0 ? (
           <div className="h-full min-h-[60vh] flex flex-col items-center justify-center px-6 text-center max-w-2xl mx-auto py-10">
@@ -667,6 +667,7 @@ export default function Dashboard() {
         },
         body: JSON.stringify({
           case_id: activeCaseId,
+          conversation_id: convId,
           messages: [...priorMessages.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: text }],
         }),
       });
@@ -781,7 +782,7 @@ export default function Dashboard() {
       </Sheet>
 
       {/* Center */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 min-h-0">
         <header className="h-14 border-b border-border/60 flex items-center justify-between px-4 md:px-6 glass-subtle">
           <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={() => setMobileLeft(true)}>

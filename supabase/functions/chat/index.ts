@@ -99,13 +99,18 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json();
-    const messages: ChatMessage[] = Array.isArray(body?.messages) ? body.messages : [];
+    const fullMessages: ChatMessage[] = Array.isArray(body?.messages) ? body.messages : [];
     const caseId: string | null = body?.case_id || null;
-    if (!messages.length) {
+    const conversationId: string | null = body?.conversation_id || null;
+    if (!fullMessages.length) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Keep only the last 6 turns verbatim. Older context comes from the rolling summary.
+    const RECENT_KEEP = 6;
+    const messages: ChatMessage[] =
+      fullMessages.length > RECENT_KEEP ? fullMessages.slice(-RECENT_KEEP) : fullMessages;
 
     // Load tier, demographics, admin AI settings.
     let tierLabel = "Free Individual";
@@ -201,8 +206,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Load rolling factual summary for this conversation (older messages folded in).
+    let summaryBlock = "";
+    if (conversationId) {
+      try {
+        const { data: conv } = await supabase
+          .from("conversations").select("summary").eq("id", conversationId).eq("user_id", userId).maybeSingle();
+        if (conv?.summary && conv.summary.trim()) {
+          summaryBlock = `\n\n---\nCONVERSATION SUMMARY SO FAR (factual record of earlier turns — treat as ground truth, do not contradict; do not invent beyond this):\n${conv.summary}`;
+        }
+      } catch (e) { console.error("summary load failed", e); }
+    }
+
     const tierBlock = `\n\n---\nSESSION CONTEXT — USER TIER: ${tierLabel}`;
-    const systemPrompt = `${baseSystem}${tierBlock}${demoBlock}${caseBlock}`;
+    const systemPrompt = `${baseSystem}${tierBlock}${demoBlock}${caseBlock}${summaryBlock}`;
+
+    // Fire-and-forget rolling summariser when there's enough history to fold.
+    if (conversationId && fullMessages.length > RECENT_KEEP + 2) {
+      try {
+        fetch(`${SUPABASE_URL}/functions/v1/summarize-conversation`, {
+          method: "POST",
+          headers: { Authorization: authHeader, "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_id: conversationId }),
+        }).catch((e) => console.error("summariser trigger failed", e));
+      } catch (e) { console.error("summariser dispatch threw", e); }
+    }
 
     const isOpenAI = chatModel.startsWith("openai/");
     const payload = {
