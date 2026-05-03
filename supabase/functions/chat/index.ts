@@ -99,13 +99,18 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json();
-    const messages: ChatMessage[] = Array.isArray(body?.messages) ? body.messages : [];
+    const fullMessages: ChatMessage[] = Array.isArray(body?.messages) ? body.messages : [];
     const caseId: string | null = body?.case_id || null;
-    if (!messages.length) {
+    const conversationId: string | null = body?.conversation_id || null;
+    if (!fullMessages.length) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Keep only the last 6 turns verbatim. Older context comes from the rolling summary.
+    const RECENT_KEEP = 6;
+    const messages: ChatMessage[] =
+      fullMessages.length > RECENT_KEEP ? fullMessages.slice(-RECENT_KEEP) : fullMessages;
 
     // Load tier, demographics, admin AI settings.
     let tierLabel = "Free Individual";
