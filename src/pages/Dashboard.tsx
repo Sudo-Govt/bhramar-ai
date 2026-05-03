@@ -667,6 +667,7 @@ export default function Dashboard() {
         },
         body: JSON.stringify({
           case_id: activeCaseId,
+          conversation_id: convId,
           messages: [...priorMessages.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: text }],
         }),
       });
