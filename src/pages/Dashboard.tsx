@@ -23,6 +23,7 @@ import { NewsPanel } from "@/components/NewsPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { User, Building2 } from "lucide-react";
 import logoIcon from "@/assets/bhramar-logo.png";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null; archived_at?: string | null };
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
@@ -791,9 +792,12 @@ export default function Dashboard() {
               <span className="hidden sm:inline text-xs text-muted-foreground truncate">· {activeCase.client_name}</span>
             )}
           </div>
-          <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => setMobileRight(true)}>
-            <PanelRightOpen className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => setMobileRight(true)}>
+              <PanelRightOpen className="h-4 w-4" />
+            </Button>
+          </div>
         </header>
         <ChatBody
           messages={messages}
