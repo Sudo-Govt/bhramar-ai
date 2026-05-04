@@ -14,6 +14,7 @@ import Pricing from "./pages/Pricing.tsx";
 import PaymentSuccess from "./pages/PaymentSuccess.tsx";
 import Profile from "./pages/Profile.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Onboarding from "./pages/Onboarding.tsx";
 import DashboardRouter from "./pages/dashboards/DashboardRouter.tsx";
 import AdvocateDashboard from "./pages/dashboards/AdvocateDashboard.tsx";
 import EnterpriseDashboard from "./pages/dashboards/EnterpriseDashboard.tsx";
