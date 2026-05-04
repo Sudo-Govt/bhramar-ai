@@ -55,56 +55,273 @@ export default function AdvocateDashboard() {
 // ============ OVERVIEW ============
 function Overview() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ cases: 0, clients: 0, tasksOpen: 0, eventsWeek: 0, invoicesUnpaid: 0, revenue: 0 });
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ cases: 0, hearingsToday: 0, tasksDue: 0, tasksOverdue: 0, billed: 0, pending: 0, retainers: 0 });
+  const [hearings, setHearings] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [recentCases, setRecentCases] = useState<any[]>([]);
+  const [billingHistory, setBillingHistory] = useState<{ month: string; amount: number }[]>([]);
+  const [notices, setNotices] = useState<{ kind: "danger" | "warn" | "info"; text: string }[]>([]);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!user) return;
-    (async () => {
-      const weekAhead = new Date(); weekAhead.setDate(weekAhead.getDate() + 7);
-      const [cases, clients, tasks, events, invoices, payments] = await Promise.all([
-        supabase.from("cases").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("archived_at", null),
-        supabase.from("clients").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("user_id", user.id).neq("status", "done"),
-        supabase.from("events").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("starts_at", new Date().toISOString()).lte("starts_at", weekAhead.toISOString()),
-        supabase.from("invoices").select("id", { count: "exact", head: true }).eq("user_id", user.id).neq("status", "paid"),
-        supabase.from("case_payments").select("fee_received").eq("user_id", user.id),
-      ]);
-      const revenue = (payments.data || []).reduce((s, p: any) => s + Number(p.fee_received || 0), 0);
-      setStats({
-        cases: cases.count || 0, clients: clients.count || 0, tasksOpen: tasks.count || 0,
-        eventsWeek: events.count || 0, invoicesUnpaid: invoices.count || 0, revenue,
-      });
-    })();
+    setLoading(true);
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(); endOfDay.setHours(23, 59, 59, 999);
+    const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); sixMonthsAgo.setDate(1);
+    const nowIso = new Date().toISOString();
+
+    const [casesRes, hearingsRes, tasksAllRes, tasksOverdueRes, paymentsRes, invoicesRes, recentCasesRes, allCasesRes] = await Promise.all([
+      supabase.from("cases").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("archived_at", null),
+      supabase.from("events").select("*").eq("user_id", user.id).gte("starts_at", startOfDay.toISOString()).lte("starts_at", endOfDay.toISOString()).order("starts_at"),
+      supabase.from("tasks").select("*").eq("user_id", user.id).neq("status", "done").order("due_date", { ascending: true, nullsFirst: false }).limit(5),
+      supabase.from("tasks").select("id", { count: "exact", head: true }).eq("user_id", user.id).neq("status", "done").lt("due_date", nowIso),
+      supabase.from("case_payments").select("fee_received, fee_quoted, occurred_on").eq("user_id", user.id).gte("occurred_on", sixMonthsAgo.toISOString().slice(0, 10)),
+      supabase.from("invoices").select("amount, status").eq("user_id", user.id),
+      supabase.from("cases").select("id, name, case_number, client_name, status, deadline, updated_at").eq("user_id", user.id).is("archived_at", null).order("updated_at", { ascending: false }).limit(5),
+      supabase.from("cases").select("id, name, case_number, deadline").eq("user_id", user.id).is("archived_at", null),
+    ]);
+
+    const monthBucket = new Map<string, number>();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setMonth(d.getMonth() - i);
+      monthBucket.set(d.toLocaleString("en-IN", { month: "short" }), 0);
+    }
+    let billedThisMonth = 0;
+    const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
+    for (const p of (paymentsRes.data || []) as any[]) {
+      const d = new Date(p.occurred_on);
+      const k = d.toLocaleString("en-IN", { month: "short" });
+      monthBucket.set(k, (monthBucket.get(k) || 0) + Number(p.fee_received || 0));
+      if (d >= thisMonth) billedThisMonth += Number(p.fee_received || 0);
+    }
+    const pending = (invoicesRes.data || []).filter((i: any) => i.status !== "paid").reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
+    const retainers = (invoicesRes.data || []).filter((i: any) => i.status === "paid").length;
+
+    // Bhramar Notices
+    const newNotices: typeof notices = [];
+    const today = new Date();
+    for (const c of (allCasesRes.data || []) as any[]) {
+      if (c.deadline) {
+        const days = Math.ceil((+new Date(c.deadline) - +today) / 86400000);
+        if (days >= 0 && days <= 14) newNotices.push({ kind: days <= 3 ? "danger" : "warn", text: `Limitation period for "${c.name}" expires in ${days} day${days === 1 ? "" : "s"}` });
+        else if (days < 0) newNotices.push({ kind: "danger", text: `"${c.name}" deadline passed ${-days} day${-days === 1 ? "" : "s"} ago` });
+      }
+    }
+    if ((tasksOverdueRes.count || 0) > 0) {
+      newNotices.push({ kind: "danger", text: `${tasksOverdueRes.count} task${tasksOverdueRes.count === 1 ? "" : "s"} overdue — review urgently` });
+    }
+    if ((hearingsRes.data || []).length > 0) {
+      newNotices.push({ kind: "info", text: `${hearingsRes.data!.length} hearing${hearingsRes.data!.length === 1 ? "" : "s"} scheduled today` });
+    }
+
+    setStats({
+      cases: casesRes.count || 0,
+      hearingsToday: (hearingsRes.data || []).length,
+      tasksDue: (tasksAllRes.data || []).length,
+      tasksOverdue: tasksOverdueRes.count || 0,
+      billed: billedThisMonth, pending, retainers,
+    });
+    setHearings(hearingsRes.data || []);
+    setTasks(tasksAllRes.data || []);
+    setRecentCases(recentCasesRes.data || []);
+    setBillingHistory(Array.from(monthBucket, ([month, amount]) => ({ month, amount })));
+    setNotices(newNotices);
+    setLoading(false);
   }, [user]);
 
-  const tiles = [
-    { label: "Active Cases", value: stats.cases, icon: Briefcase },
-    { label: "Clients", value: stats.clients, icon: Users },
-    { label: "Open Tasks", value: stats.tasksOpen, icon: CheckCircle2 },
-    { label: "Events (7d)", value: stats.eventsWeek, icon: CalendarIcon },
-    { label: "Unpaid Invoices", value: stats.invoicesUnpaid, icon: FileText },
-    { label: "Revenue (₹)", value: stats.revenue.toLocaleString("en-IN"), icon: IndianRupee },
-  ];
+  useEffect(() => { load(); }, [load]);
+
+  const toggleTask = async (id: string, done: boolean) => {
+    await supabase.from("tasks").update({ status: done ? "done" : "todo", completed_at: done ? new Date().toISOString() : null }).eq("id", id);
+    load();
+  };
+
+  const navigate = useNavigate();
+  const maxBilling = Math.max(1, ...billingHistory.map((b) => b.amount));
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 rounded-lg bg-muted animate-pulse" />)}
+        </div>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="h-64 rounded-lg bg-muted animate-pulse" />
+          <div className="h-64 rounded-lg bg-muted animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {tiles.map((t) => (
-          <Card key={t.label} className="p-4 bg-card/60 border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">{t.label}</span>
-              <t.icon className="h-4 w-4 text-gold" />
-            </div>
-            <div className="text-2xl font-semibold text-foreground">{t.value}</div>
-          </Card>
-        ))}
+      {/* ROW 1 — KEY NUMBERS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-5 bg-card border-border hover:border-gold/40 transition-colors">
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Active cases</span>
+            <Briefcase className="h-4 w-4 text-gold" />
+          </div>
+          <div className="text-3xl font-bold text-foreground">{stats.cases}</div>
+          <div className="text-xs text-muted-foreground mt-1">cases on your desk</div>
+        </Card>
+
+        <Card className="p-5 bg-card border-border hover:border-blue-500/40 transition-colors">
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Today's hearings</span>
+            <CalendarIcon className="h-4 w-4 text-blue-400" />
+          </div>
+          <div className="text-3xl font-bold text-foreground">{stats.hearingsToday}</div>
+          <div className="text-xs text-muted-foreground mt-1 truncate">{hearings.slice(0, 2).map((h) => h.location).filter(Boolean).join(" · ") || "no hearings"}</div>
+        </Card>
+
+        <Card className={`p-5 bg-card border-border transition-colors ${stats.tasksOverdue > 0 ? "hover:border-destructive/40" : "hover:border-gold/40"}`}>
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Pending tasks</span>
+            <AlertCircle className={`h-4 w-4 ${stats.tasksOverdue > 0 ? "text-destructive" : "text-gold"}`} />
+          </div>
+          <div className="text-3xl font-bold text-foreground">{stats.tasksDue}</div>
+          <div className={`text-xs mt-1 ${stats.tasksOverdue > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+            {stats.tasksOverdue > 0 ? `${stats.tasksOverdue} overdue` : "all on track"}
+          </div>
+        </Card>
+
+        <Card className="p-5 bg-card border-border hover:border-gold/40 transition-colors">
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">AI tokens today</span>
+            <Sparkles className="h-4 w-4 text-gold" />
+          </div>
+          <div className="text-3xl font-bold text-foreground">∞</div>
+          <div className="h-1.5 w-full rounded-full bg-muted mt-2 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-gold to-gold-bright" style={{ width: "20%" }} />
+          </div>
+        </Card>
       </div>
-      <Card className="p-6 bg-card/60 border-border">
-        <h2 className="text-sm font-semibold mb-2 text-foreground">Welcome back</h2>
-        <p className="text-sm text-muted-foreground">
-          Use the sidebar to manage cases, clients, finances, calendar, notes, files, and your AI assistant.
-          Everything is wired to your private workspace and synced in real time.
-        </p>
+
+      {/* ROW 2 — TODAY'S FOCUS */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card className="p-5 bg-card border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-blue-400" /> Today's hearings</h3>
+            <span className="text-xs text-muted-foreground">{hearings.length} scheduled</span>
+          </div>
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {hearings.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No hearings today. Use this calm.</p>}
+            {hearings.map((h) => {
+              const t = new Date(h.starts_at);
+              const morning = t.getHours() < 12;
+              return (
+                <div key={h.id} className={`p-3 rounded-md border-l-4 ${morning ? "border-l-blue-400 bg-blue-400/5" : "border-l-orange-400 bg-orange-400/5"}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-foreground">{h.title}</div>
+                    <span className="text-xs font-mono">{t.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                  {h.location && <div className="text-xs text-muted-foreground mt-1">{h.location}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card className="p-5 bg-card border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground flex items-center gap-2"><AlertCircle className="h-4 w-4 text-gold" /> Urgent tasks</h3>
+            {stats.tasksOverdue > 0 && <Badge variant="destructive">{stats.tasksOverdue} overdue</Badge>}
+          </div>
+          <div className="space-y-2">
+            {tasks.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">Inbox zero. 🎯</p>}
+            {tasks.map((t) => {
+              const overdue = t.due_date && new Date(t.due_date) < new Date();
+              return (
+                <button key={t.id} onClick={() => toggleTask(t.id, true)} className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent/50 text-left">
+                  <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-foreground truncate">{t.title}</div>
+                    {t.due_date && <div className={`text-xs ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>{new Date(t.due_date).toLocaleDateString("en-IN")}</div>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {/* ROW 3 — CASE ACTIVITY */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 p-5 bg-card border-border">
+          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2"><Briefcase className="h-4 w-4 text-gold" /> Recent cases</h3>
+          <div className="space-y-2">
+            {recentCases.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">No cases yet. Create one from the AI chat.</p>}
+            {recentCases.map((c) => (
+              <div key={c.id} className="flex items-center justify-between p-3 rounded-md hover:bg-accent/50 border border-transparent hover:border-border">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground truncate">{c.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{c.client_name || "—"} · #{c.case_number}</div>
+                </div>
+                <Badge variant={c.status === "Active" ? "default" : "secondary"}>{c.status}</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-5 bg-card border-border">
+          <h3 className="font-semibold text-foreground mb-4">Quick actions</h3>
+          <div className="grid gap-2">
+            <Button variant="outline" className="justify-start" onClick={() => navigate("/dashboard/advocate/cases")}><Plus className="h-4 w-4 mr-2" /> New case</Button>
+            <Button variant="outline" className="justify-start" onClick={() => navigate("/dashboard/advocate/clients")}><Plus className="h-4 w-4 mr-2" /> New client</Button>
+            <Button variant="outline" className="justify-start" onClick={() => navigate("/dashboard/advocate/files")}><FileText className="h-4 w-4 mr-2" /> Draft document</Button>
+            <Button className="justify-start bg-gold hover:bg-gold-bright text-primary-foreground" onClick={() => navigate("/app")}><Sparkles className="h-4 w-4 mr-2" /> Ask Bhramar</Button>
+          </div>
+        </Card>
+      </div>
+
+      {/* ROW 4 — FINANCIAL */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="p-5 bg-card border-border">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">This month billed</div>
+          <div className="text-3xl font-bold text-foreground mt-2">₹{stats.billed.toLocaleString("en-IN")}</div>
+        </Card>
+        <Card className="p-5 bg-card border-border">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">Pending collections</div>
+          <div className="text-3xl font-bold text-orange-400 mt-2">₹{stats.pending.toLocaleString("en-IN")}</div>
+        </Card>
+        <Card className="p-5 bg-card border-border">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">Retainers active</div>
+          <div className="text-3xl font-bold text-foreground mt-2">{stats.retainers}</div>
+        </Card>
+      </div>
+
+      <Card className="p-5 bg-card border-border">
+        <h3 className="font-semibold text-foreground mb-4">Billing — last 6 months</h3>
+        <div className="flex items-end gap-3 h-32">
+          {billingHistory.map((b) => (
+            <div key={b.month} className="flex-1 flex flex-col items-center gap-1.5">
+              <div className="w-full bg-gradient-to-t from-gold to-gold-bright rounded-t" style={{ height: `${(b.amount / maxBilling) * 100}%`, minHeight: b.amount > 0 ? "4px" : "1px" }} />
+              <div className="text-[10px] text-muted-foreground">{b.month}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* ROW 5 — AI INSIGHTS */}
+      <Card className="p-5 bg-card border-border">
+        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2"><Sparkles className="h-4 w-4 text-gold" /> Bhramar Notices</h3>
+        <div className="space-y-2">
+          {notices.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">No urgent matters detected. Bhramar is monitoring.</p>}
+          {notices.map((n, i) => (
+            <div
+              key={i}
+              className={`p-3 rounded-md border-l-4 text-sm ${
+                n.kind === "danger" ? "border-l-destructive bg-destructive/5 text-destructive"
+                : n.kind === "warn" ? "border-l-gold bg-gold/5 text-foreground"
+                : "border-l-blue-400 bg-blue-400/5 text-foreground"
+              }`}
+            >
+              {n.text}
+            </div>
+          ))}
+        </div>
       </Card>
     </div>
   );

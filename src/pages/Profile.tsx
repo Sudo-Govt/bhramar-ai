@@ -5,7 +5,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { BhramarLogo } from "@/components/BhramarLogo";
-import { ArrowLeft, MessageSquare, FileText, FolderClosed, LogOut, AlertTriangle, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MessageSquare, FileText, FolderClosed, LogOut, AlertTriangle, Save, ShieldCheck, Copy, BadgeCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 import { DemographicsForm, type Demographics } from "@/components/DemographicsForm";
@@ -68,6 +71,88 @@ export default function Profile() {
               {profile?.subscription_tier || "Free"} Plan
             </span>
           </div>
+        </Card>
+
+        <Card className="p-6 border-gold/40 bg-gradient-to-br from-gold/5 to-transparent">
+          <div className="flex items-start gap-3 mb-4">
+            <BadgeCheck className="h-6 w-6 text-gold mt-0.5" />
+            <div className="flex-1">
+              <h2 className="font-display text-lg font-semibold">Advocate identity</h2>
+              <p className="text-sm text-muted-foreground">Your professional profile on the bhramar.ai network.</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">User type</Label>
+              <Select
+                value={profile?.user_type || "citizen"}
+                onValueChange={(v) => setProfile({ ...(profile || {}), user_type: v })}
+              >
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="citizen">Citizen</SelectItem>
+                  <SelectItem value="advocate">Advocate</SelectItem>
+                  <SelectItem value="firm_member">Firm member</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {profile?.advocate_id && (profile?.user_type === "advocate" || profile?.user_type === "firm_member") && (
+              <div className="sm:col-span-2 p-4 rounded-lg bg-card border border-gold/30">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Your Advocate ID</div>
+                <div className="flex items-center gap-3">
+                  <code className="font-display text-2xl font-bold text-gold tracking-wider">{profile.advocate_id}</code>
+                  <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(profile.advocate_id); toast.success("Advocate ID copied"); }}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Share this ID so other advocates can find you for Team Up.</p>
+              </div>
+            )}
+
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bar Council</Label>
+              <Input className="mt-1" placeholder="Bar Council of Kerala" value={profile?.bar_council || ""} onChange={(e) => setProfile({ ...(profile || {}), bar_council: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Enrollment Number</Label>
+              <Input className="mt-1" placeholder="K/1234/2018" value={profile?.enrollment_number || ""} onChange={(e) => setProfile({ ...(profile || {}), enrollment_number: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Court of practice</Label>
+              <Input className="mt-1" placeholder="Kerala High Court" value={profile?.court_of_practice || ""} onChange={(e) => setProfile({ ...(profile || {}), court_of_practice: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Years of experience</Label>
+              <Input className="mt-1" type="number" min={0} value={profile?.years_experience ?? ""} onChange={(e) => setProfile({ ...(profile || {}), years_experience: e.target.value === "" ? null : Number(e.target.value) })} />
+            </div>
+            <div className="sm:col-span-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Specializations (comma separated)</Label>
+              <Input className="mt-1" placeholder="Criminal, Family, Property" value={(profile?.specializations || []).join(", ")} onChange={(e) => setProfile({ ...(profile || {}), specializations: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} />
+            </div>
+          </div>
+
+          <Button
+            className="mt-4 bg-gold hover:bg-gold-bright text-primary-foreground"
+            onClick={async () => {
+              if (!user) return;
+              const { error } = await supabase.from("profiles").update({
+                user_type: profile?.user_type || "citizen",
+                bar_council: profile?.bar_council ?? null,
+                enrollment_number: profile?.enrollment_number ?? null,
+                court_of_practice: profile?.court_of_practice ?? null,
+                years_experience: profile?.years_experience ?? null,
+                specializations: profile?.specializations || [],
+              }).eq("id", user.id);
+              if (error) { toast.error(error.message); return; }
+              const { data: refreshed } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+              setProfile(refreshed);
+              toast.success("Advocate identity saved");
+            }}
+          >
+            <Save className="h-4 w-4" /> Save identity
+          </Button>
         </Card>
 
         <Card className="p-6">
