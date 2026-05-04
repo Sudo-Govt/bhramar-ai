@@ -60,8 +60,8 @@ const skip = async () => {
     await supabase.from("profiles").update({ user_type: userType }).eq("id", user.id);
     setSaving(false);
     if (userType === "citizen") {
-      await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-      setStep(3);
+    setStep(3);
+    }
     } else {
       setStep(2);
     }
