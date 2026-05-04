@@ -343,7 +343,7 @@ type ChatBodyProps = {
 function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyProps) {
   return (
     <div className="relative flex-1 min-h-0 overflow-y-auto aurora-bg">
-      <div className="relative z-10">
+      <div className="relative z-10 min-h-full">
         {messages.length === 0 ? (
           <div className="h-full min-h-[60vh] flex flex-col items-center justify-center px-6 text-center max-w-2xl mx-auto py-10">
             <div className="rounded-3xl glass p-5 mb-6 shadow-glass">
