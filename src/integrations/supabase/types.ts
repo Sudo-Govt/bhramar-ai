@@ -955,6 +955,7 @@ export type Database = {
           is_available_for_emergency: boolean
           marital_status: string | null
           occupation: string | null
+          onboarding_completed: boolean
           physical_condition: string | null
           plan_name: string | null
           prior_case_history: string | null
@@ -991,6 +992,7 @@ export type Database = {
           is_available_for_emergency?: boolean
           marital_status?: string | null
           occupation?: string | null
+          onboarding_completed?: boolean
           physical_condition?: string | null
           plan_name?: string | null
           prior_case_history?: string | null
@@ -1027,6 +1029,7 @@ export type Database = {
           is_available_for_emergency?: boolean
           marital_status?: string | null
           occupation?: string | null
+          onboarding_completed?: boolean
           physical_condition?: string | null
           plan_name?: string | null
           prior_case_history?: string | null
