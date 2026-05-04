@@ -73,26 +73,33 @@ const skip = async () => {
       toast.error("Please fill enrollment number, state and court");
       return;
     }
-    setSaving(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .update({
-        enrollment_number: enrollment.trim(),
-        bar_council: barCouncil.trim() || null,
-        state,
-        court_of_practice: court,
-        specializations: specs,
-      })
-      .eq("id", user.id)
-      .select("advocate_id")
-      .maybeSingle();
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setAdvocateId(data?.advocate_id ?? null);
-    setStep(3);
+    setSaving(true);const { error } = await supabase
+  .from("profiles")
+  .update({
+    enrollment_number: enrollment.trim(),
+    bar_council: barCouncil.trim() || null,
+    state,
+    court_of_practice: court,
+    specializations: specs,
+  })
+  .eq("id", user.id);
+
+if (error) {
+  setSaving(false);
+  toast.error(error.message);
+  return;
+}
+
+// Fetch advocate_id separately — DB trigger runs after update
+const { data: fresh } = await supabase
+  .from("profiles")
+  .select("advocate_id")
+  .eq("id", user.id)
+  .maybeSingle();
+
+setSaving(false);
+setAdvocateId(fresh?.advocate_id ?? null);
+setStep(3);
   };
 
   const copyId = () => {
