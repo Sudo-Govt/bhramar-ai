@@ -134,11 +134,13 @@ Deno.serve(async (req) => {
     let provider: "groq" | "gemini" | "lovable" = "gemini";
     let groqModel = "llama-3.3-70b-versatile";
     try {
-      const [{ data: prof }, { data: settings }] = await Promise.all([
+      const [{ data: prof }, { data: settings }, { data: userCases }, { data: userClients }] = await Promise.all([
         supabase.from("profiles").select(
-          "subscription_tier, full_name, age, gender, religion, marital_status, has_children, occupation, earning_bracket, family_background, physical_condition, prior_case_history, state, district"
+          "subscription_tier, full_name, age, gender, religion, marital_status, has_children, occupation, earning_bracket, family_background, physical_condition, prior_case_history, state, district, user_type, advocate_id, bar_council, enrollment_number, court_of_practice, years_experience, specializations, firm_role, firm_id"
         ).eq("id", userId).maybeSingle(),
         supabase.from("ai_settings").select("model, system_prompt, provider, groq_model").eq("id", 1).maybeSingle(),
+        supabase.from("cases").select("name, case_number, client_name, status").eq("user_id", userId).is("archived_at", null).limit(20),
+        supabase.from("clients").select("full_name").eq("user_id", userId).limit(20),
       ]);
       const t = (prof?.subscription_tier as string | undefined) || "Free";
       if (t === "Free") tierLabel = "Free Individual";
@@ -151,21 +153,37 @@ Deno.serve(async (req) => {
       if (settings?.groq_model) groqModel = settings.groq_model;
 
       if (prof) {
+        const userType = (prof.user_type as string) || "citizen";
+        const caseList = (userCases || []).map((c: any) => `${c.name}${c.case_number ? ` (${c.case_number})` : ""}`).join("; ") || "(none)";
+        const clientList = (userClients || []).map((c: any) => c.full_name).filter(Boolean).join("; ") || "(none)";
         const lines: string[] = [];
+        lines.push(`User type: ${userType}`);
         if (prof.full_name) lines.push(`Name: ${prof.full_name}`);
-        if (prof.age != null) lines.push(`Age: ${prof.age}`);
-        if (prof.gender) lines.push(`Gender: ${prof.gender}`);
-        if (prof.religion) lines.push(`Religion: ${prof.religion}`);
         if (prof.state || prof.district) lines.push(`Location: ${[prof.district, prof.state].filter(Boolean).join(", ")}, India`);
-        if (prof.marital_status) lines.push(`Marital status: ${prof.marital_status}${prof.has_children ? " (has children)" : ""}`);
-        if (prof.occupation) lines.push(`Occupation: ${prof.occupation}`);
-        if (prof.earning_bracket) lines.push(`Earning bracket: ${prof.earning_bracket}`);
-        if (prof.physical_condition) lines.push(`Physical condition: ${prof.physical_condition}`);
-        if (prof.family_background) lines.push(`Family background: ${prof.family_background}`);
-        if (prof.prior_case_history) lines.push(`Prior case history: ${prof.prior_case_history}`);
-        if (lines.length) {
-          demoBlock = `\n\n---\nUSER PROFILE:\n${lines.join("\n")}`;
+
+        if (userType === "advocate" || userType === "firm_member") {
+          if (prof.advocate_id) lines.push(`Advocate ID: ${prof.advocate_id}`);
+          if (prof.bar_council) lines.push(`Bar Council: ${prof.bar_council}`);
+          if (prof.enrollment_number) lines.push(`Enrollment Number: ${prof.enrollment_number}`);
+          if (prof.court_of_practice) lines.push(`Court of Practice: ${prof.court_of_practice}`);
+          if (prof.years_experience != null) lines.push(`Years of experience: ${prof.years_experience}`);
+          if (Array.isArray(prof.specializations) && prof.specializations.length) lines.push(`Specialization: ${prof.specializations.join(", ")}`);
+          if (userType === "firm_member" && prof.firm_role) lines.push(`Role in firm: ${prof.firm_role}`);
+          lines.push(`Active cases: ${caseList}`);
+          lines.push(`Clients: ${clientList}`);
+          lines.push("");
+          lines.push(userType === "firm_member"
+            ? "You are assisting a member of a legal firm. Be professional and structured. When asked about a case, check both personal and shared cases. You can suggest task delegation to team members when relevant."
+            : "You are assisting a practicing advocate. Use proper legal terminology. Be precise and cite exact sections. Assume they understand legal concepts — no need to over-explain basics. Focus on procedure, strategy, and precedents.");
+        } else {
+          if (prof.age != null) lines.push(`Age: ${prof.age}`);
+          if (prof.gender) lines.push(`Gender: ${prof.gender}`);
+          if (prof.occupation) lines.push(`Occupation: ${prof.occupation}`);
+          if (caseList !== "(none)") lines.push(`Active matters: ${caseList}`);
+          lines.push("");
+          lines.push("You are helping a common citizen. Use very simple language. Avoid legal jargon. Always explain what they should do next in practical steps. Be warm and reassuring — legal problems are stressful.");
         }
+        demoBlock = `\n\n---\nUSER PROFILE:\n${lines.join("\n")}`;
       }
     } catch (e) {
       console.error("context lookup failed", e);
