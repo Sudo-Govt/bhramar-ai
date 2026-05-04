@@ -935,79 +935,112 @@ export type Database = {
       }
       profiles: {
         Row: {
+          advocate_id: string | null
           age: number | null
           avatar_url: string | null
+          bar_council: string | null
           court_of_practice: string | null
           created_at: string
           district: string | null
           earning_bracket: string | null
           email: string | null
+          enrollment_number: string | null
           family_background: string | null
+          firm_id: string | null
+          firm_role: string | null
           full_name: string | null
           gender: string | null
           has_children: boolean | null
           id: string
+          is_available_for_emergency: boolean
           marital_status: string | null
           occupation: string | null
           physical_condition: string | null
           plan_name: string | null
           prior_case_history: string | null
           religion: string | null
+          specializations: string[] | null
           state: string | null
           subscription_expires_at: string | null
           subscription_started_at: string | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
           updated_at: string
+          user_type: string
+          vakeel_reviews_count: number
+          vakeel_score: number
+          years_experience: number | null
         }
         Insert: {
+          advocate_id?: string | null
           age?: number | null
           avatar_url?: string | null
+          bar_council?: string | null
           court_of_practice?: string | null
           created_at?: string
           district?: string | null
           earning_bracket?: string | null
           email?: string | null
+          enrollment_number?: string | null
           family_background?: string | null
+          firm_id?: string | null
+          firm_role?: string | null
           full_name?: string | null
           gender?: string | null
           has_children?: boolean | null
           id: string
+          is_available_for_emergency?: boolean
           marital_status?: string | null
           occupation?: string | null
           physical_condition?: string | null
           plan_name?: string | null
           prior_case_history?: string | null
           religion?: string | null
+          specializations?: string[] | null
           state?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
+          user_type?: string
+          vakeel_reviews_count?: number
+          vakeel_score?: number
+          years_experience?: number | null
         }
         Update: {
+          advocate_id?: string | null
           age?: number | null
           avatar_url?: string | null
+          bar_council?: string | null
           court_of_practice?: string | null
           created_at?: string
           district?: string | null
           earning_bracket?: string | null
           email?: string | null
+          enrollment_number?: string | null
           family_background?: string | null
+          firm_id?: string | null
+          firm_role?: string | null
           full_name?: string | null
           gender?: string | null
           has_children?: boolean | null
           id?: string
+          is_available_for_emergency?: boolean
           marital_status?: string | null
           occupation?: string | null
           physical_condition?: string | null
           plan_name?: string | null
           prior_case_history?: string | null
           religion?: string | null
+          specializations?: string[] | null
           state?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
           updated_at?: string
+          user_type?: string
+          vakeel_reviews_count?: number
+          vakeel_score?: number
+          years_experience?: number | null
         }
         Relationships: []
       }
@@ -1392,7 +1425,25 @@ export type Database = {
       }
       archive_case: { Args: { _case_id: string }; Returns: undefined }
       delete_case_with_log: { Args: { _case_id: string }; Returns: undefined }
+      generate_advocate_id: { Args: { _state: string }; Returns: string }
       generate_case_number: { Args: never; Returns: string }
+      get_public_profile: {
+        Args: { _advocate_id: string }
+        Returns: {
+          advocate_id: string
+          bar_council: string
+          court_of_practice: string
+          district: string
+          enrollment_number: string
+          full_name: string
+          specializations: string[]
+          state: string
+          user_type: string
+          vakeel_reviews_count: number
+          vakeel_score: number
+          years_experience: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1420,6 +1471,7 @@ export type Database = {
           source: Database["public"]["Enums"]["chunk_source"]
         }[]
       }
+      state_code: { Args: { _state: string }; Returns: string }
       unarchive_case: { Args: { _case_id: string }; Returns: undefined }
     }
     Enums: {
