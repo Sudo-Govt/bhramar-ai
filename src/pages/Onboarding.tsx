@@ -40,11 +40,12 @@ export default function Onboarding() {
     })();
   }, [user, navigate]);
 
-  const skip = async () => {
-    if (!user) return;
+const skip = async () => {
+  if (user) {
     await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-    navigate("/dashboard", { replace: true });
-  };
+  }
+  navigate("/dashboard", { replace: true });
+};
 
   const finish = async () => {
     if (!user) return;
