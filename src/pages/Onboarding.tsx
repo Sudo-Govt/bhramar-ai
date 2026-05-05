@@ -60,8 +60,7 @@ const skip = async () => {
     await supabase.from("profiles").update({ user_type: userType }).eq("id", user.id);
     setSaving(false);
     if (userType === "citizen") {
-    setStep(3);
-    }
+      setStep(3);
     } else {
       setStep(2);
     }
