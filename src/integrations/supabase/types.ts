@@ -283,6 +283,38 @@ export type Database = {
           },
         ]
       }
+      chat_summaries: {
+        Row: {
+          case_id: string | null
+          created_at: string | null
+          id: string
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string | null
+          id?: string
+          summary: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string | null
+          id?: string
+          summary?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_summaries_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
