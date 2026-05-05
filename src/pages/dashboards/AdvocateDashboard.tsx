@@ -16,13 +16,14 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Briefcase, Users, IndianRupee, Calendar as CalendarIcon,
   FolderOpen, Sparkles, Settings, Plus, Trash2, CheckCircle2, Circle,
-  Mail, Video, FileText, Clock, AlertCircle, StickyNote, Mic, Phone,
+  Mail, Video, FileText, Clock, AlertCircle, StickyNote, Mic, Phone, UsersRound,
 } from "lucide-react";
 
 const nav: NavItem[] = [
   { to: "/dashboard/advocate", label: "Overview", icon: LayoutDashboard },
   { to: "/dashboard/advocate/cases", label: "Cases", icon: Briefcase },
   { to: "/dashboard/advocate/clients", label: "Clients", icon: Users },
+  { to: "/teams", label: "Team Up", icon: UsersRound },
   { to: "/dashboard/advocate/finance", label: "Finance", icon: IndianRupee },
   { to: "/dashboard/advocate/calendar", label: "Calendar & Tasks", icon: CalendarIcon },
   { to: "/dashboard/advocate/notes", label: "Notes", icon: StickyNote },
