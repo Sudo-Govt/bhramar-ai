@@ -108,9 +108,6 @@ export default function AdminSettings() {
             <div className="flex items-center justify-between mb-1.5">
               <Label className="text-sm">System prompt override</Label>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setSystemPrompt(BHRAMAR_DEFAULT_PROMPT)}>
-                  <FileText className="h-3.5 w-3.5" /> Load built-in
-                </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setSystemPrompt("")}>
                   <RotateCcw className="h-3.5 w-3.5" /> Reset to built-in
                 </Button>
