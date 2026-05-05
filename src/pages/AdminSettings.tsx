@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, ShieldCheck, FileText, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { BHRAMAR_DEFAULT_PROMPT } from "@/lib/bhramarPrompt";
+// BHRAMAR_DEFAULT_PROMPT removed — system prompt is now built dynamically per-user
 
 const SUPER_ADMIN = "bhramar123@gmail.com";
 
