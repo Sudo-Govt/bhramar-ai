@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell, NavItem } from "./shared/DashboardShell";
+import { NewsPanel } from "@/components/NewsPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -923,6 +924,26 @@ function FilesSection() {
         </Card>
       </TabsContent>
     </Tabs>
+  );
+}
+
+// ============ LEGAL NEWS ============
+function NewsSection() {
+  return (
+    <div className="grid lg:grid-cols-[1fr_360px] gap-4">
+      <Card className="p-6 bg-gradient-to-br from-gold/10 via-card to-card border-gold/30">
+        <div className="flex items-start gap-3">
+          <Newspaper className="h-6 w-6 text-gold" />
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Personal legal news desk</h2>
+            <p className="text-sm text-muted-foreground mt-1">Track Supreme Court, High Court, Bar Council, and legislation updates relevant to your practice.</p>
+          </div>
+        </div>
+      </Card>
+      <Card className="p-4 bg-card/60 border-border">
+        <NewsPanel />
+      </Card>
+    </div>
   );
 }
 
