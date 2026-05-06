@@ -32,8 +32,8 @@ export default function TeamsList() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const allowed = tier === "Advocate" || tier === "Firm" || tier === "Firm Pro" || tier === "Pro Plus";
-  const isAdvocateTier = tier === "Advocate";
+  const allowed = tier === "Pro" || tier === "Firm";
+  const isAdvocateTier = tier === "Pro";
   const ownedCount = teams.filter((t) => t.owner_id === user?.id).length;
 
   const load = async () => {

@@ -283,6 +283,79 @@ export type Database = {
           },
         ]
       }
+      cell_messages: {
+        Row: {
+          cell_id: string
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          cell_id: string
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          cell_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cell_messages_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "court_cells"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cell_notices: {
+        Row: {
+          body: string
+          cell_id: string
+          created_at: string
+          id: string
+          pinned: boolean
+          posted_by: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          cell_id: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          posted_by: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          cell_id?: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          posted_by?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cell_notices_cell_id_fkey"
+            columns: ["cell_id"]
+            isOneToOne: false
+            referencedRelation: "court_cells"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_summaries: {
         Row: {
           case_id: string | null
@@ -444,6 +517,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      court_cells: {
+        Row: {
+          city: string | null
+          court_name: string
+          created_at: string
+          description: string | null
+          id: string
+          level: string
+          slug: string
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          court_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          level: string
+          slug: string
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          court_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          level?: string
+          slug?: string
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       document_chunks: {
         Row: {
@@ -892,6 +1001,42 @@ export type Database = {
           item_count?: number
           name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      legal_news_cache: {
+        Row: {
+          cache_key: string
+          category: string | null
+          court: string | null
+          created_at: string
+          id: string
+          items: Json
+          refreshed_at: string
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          category?: string | null
+          court?: string | null
+          created_at?: string
+          id?: string
+          items?: Json
+          refreshed_at?: string
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          category?: string | null
+          court?: string | null
+          created_at?: string
+          id?: string
+          items?: Json
+          refreshed_at?: string
+          state?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1711,6 +1856,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_cell_member: {
+        Args: { _cell_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_firm_member: { Args: { _firm_id: string }; Returns: boolean }
       is_firm_owner: { Args: { _firm_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
@@ -1721,6 +1870,18 @@ export type Database = {
       is_team_owner: {
         Args: { _team_id: string; _user_id: string }
         Returns: boolean
+      }
+      list_cell_members: {
+        Args: { _cell_id: string }
+        Returns: {
+          advocate_id: string
+          court_of_practice: string
+          full_name: string
+          profile_id: string
+          specializations: string[]
+          state: string
+          vakeel_score: number
+        }[]
       }
       match_chunks: {
         Args: {
@@ -1738,6 +1899,26 @@ export type Database = {
           similarity: number
           source: Database["public"]["Enums"]["chunk_source"]
         }[]
+      }
+      my_court_cell: {
+        Args: never
+        Returns: {
+          city: string | null
+          court_name: string
+          created_at: string
+          description: string | null
+          id: string
+          level: string
+          slug: string
+          state: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "court_cells"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       state_code: { Args: { _state: string }; Returns: string }
       unarchive_case: { Args: { _case_id: string }; Returns: undefined }

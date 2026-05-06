@@ -26,6 +26,7 @@ import Refund from "./pages/legal/Refund.tsx";
 import Contact from "./pages/legal/Contact.tsx";
 import TeamsList from "./pages/teams/TeamsList.tsx";
 import TeamWorkspace from "./pages/teams/TeamWorkspace.tsx";
+import Network from "./pages/Network.tsx";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,9 @@ const App = () => (
               <Route path="/system" element={<ProtectedRoute><SystemConsole /></ProtectedRoute>} />
               <Route path="/teams" element={<ProtectedRoute><TeamsList /></ProtectedRoute>} />
               <Route path="/teams/:id" element={<ProtectedRoute><TeamWorkspace /></ProtectedRoute>} />
+              <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
+              <Route path="/network/browse" element={<ProtectedRoute><Network /></ProtectedRoute>} />
+              <Route path="/network/cell/:id" element={<ProtectedRoute><Network /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

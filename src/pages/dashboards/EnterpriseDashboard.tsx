@@ -16,6 +16,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, LifeBuoy, BarChart3, FileText, Shield, Archive,
   Plus, Trash2, Clock, AlertCircle, IndianRupee, Briefcase, TrendingUp, UsersRound,
+  Network as NetworkIcon,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 
@@ -23,6 +24,7 @@ const nav: NavItem[] = [
   { to: "/dashboard/enterprise", label: "Overview & KPIs", icon: LayoutDashboard },
   { to: "/dashboard/enterprise/team", label: "Advocate Team", icon: Users },
   { to: "/teams", label: "Team Up", icon: UsersRound },
+  { to: "/network", label: "Court Cells", icon: NetworkIcon },
   { to: "/dashboard/enterprise/support", label: "Support Queue", icon: LifeBuoy },
   { to: "/dashboard/enterprise/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/dashboard/enterprise/invoices", label: "Invoices & Payments", icon: FileText },
