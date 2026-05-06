@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Scale } from "lucide-react";
 
+const ONBOARDING_DONE_KEY = "bhramar.onboardingCompleted";
+
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -12,6 +14,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) { setOnboardChecked(true); return; }
+    if (localStorage.getItem(ONBOARDING_DONE_KEY) === user.id) {
+      setNeedsOnboard(false);
+      setOnboardChecked(true);
+      return;
+    }
     (async () => {
       const { data, error } = await supabase.from("profiles").select("onboarding_completed").eq("id", user.id).maybeSingle();
       if (error) {
