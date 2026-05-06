@@ -30,5 +30,5 @@ export default function DashboardRouter() {
   }
   if (tier === "Firm") return <Navigate to="/dashboard/enterprise" replace />;
   if (tier === "Pro") return <Navigate to="/dashboard/advocate" replace />;
-  return <Navigate to="/profile" replace />;
+  return <Navigate to="/app" replace />;
 }
