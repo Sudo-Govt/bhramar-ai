@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import logoImg from "@/assets/bhramar-logo.png";
 
+const ONBOARDING_DONE_KEY = "bhramar.onboardingCompleted";
+
 // ─── constants ───────────────────────────────────────────────────────────────
 
 type UserType = "citizen" | "advocate" | "firm_member";
@@ -208,6 +210,7 @@ export default function Onboarding() {
     const { error } = await saveProfile({ onboarding_completed: true });
     setSaving(false);
     if (error) { toast.error("Could not save — please try again"); return; }
+    localStorage.setItem(ONBOARDING_DONE_KEY, user.id);
     window.dispatchEvent(new Event("bhramar:onboarding-complete"));
     navigate("/app", { replace: true });
   };
@@ -256,6 +259,7 @@ export default function Onboarding() {
     setSaving(false);
     if (error) { toast.error("Could not save — please try again"); return; }
     toast.success("Welcome to Bhramar.ai! 🎉");
+    localStorage.setItem(ONBOARDING_DONE_KEY, user.id);
     window.dispatchEvent(new Event("bhramar:onboarding-complete"));
     navigate("/app", { replace: true });
   };
