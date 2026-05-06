@@ -208,6 +208,7 @@ export default function Onboarding() {
     const { error } = await saveProfile({ onboarding_completed: true });
     setSaving(false);
     if (error) { toast.error("Could not save — please try again"); return; }
+    window.dispatchEvent(new Event("bhramar:onboarding-complete"));
     navigate("/app", { replace: true });
   };
 
@@ -255,6 +256,7 @@ export default function Onboarding() {
     setSaving(false);
     if (error) { toast.error("Could not save — please try again"); return; }
     toast.success("Welcome to Bhramar.ai! 🎉");
+    window.dispatchEvent(new Event("bhramar:onboarding-complete"));
     navigate("/app", { replace: true });
   };
 
