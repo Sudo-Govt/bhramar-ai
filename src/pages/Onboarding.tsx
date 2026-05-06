@@ -173,6 +173,20 @@ export default function Onboarding() {
 
   const totalSteps = userType === "citizen" ? 2 : 3;
 
+  const saveProfile = async (values: Record<string, unknown>) => {
+    if (!user) throw new Error("You must be logged in to continue");
+    return supabase
+      .from("profiles")
+      .upsert({
+        id: user.id,
+        email: user.email ?? null,
+        full_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
+        ...values,
+      } as any, { onConflict: "id" })
+      .select("advocate_id,onboarding_completed")
+      .maybeSingle();
+  };
+
   // Redirect if already onboarded
   useEffect(() => {
     if (!user) return;
@@ -191,10 +205,7 @@ export default function Onboarding() {
   const doSkip = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ onboarding_completed: true })
-      .eq("id", user.id);
+    const { error } = await saveProfile({ onboarding_completed: true });
     setSaving(false);
     if (error) { toast.error("Could not save — please try again"); return; }
     navigate("/app", { replace: true });
@@ -203,10 +214,7 @@ export default function Onboarding() {
   const submitStep1 = async () => {
     if (!userType || !user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ user_type: userType })
-      .eq("id", user.id);
+    const { error } = await saveProfile({ user_type: userType });
     setSaving(false);
     if (error) { toast.error("Could not save — please try again"); return; }
     if (userType === "citizen") {
