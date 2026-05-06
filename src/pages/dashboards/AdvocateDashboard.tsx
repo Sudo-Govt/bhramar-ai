@@ -17,6 +17,7 @@ import {
   LayoutDashboard, Briefcase, Users, IndianRupee, Calendar as CalendarIcon,
   FolderOpen, Sparkles, Settings, Plus, Trash2, CheckCircle2, Circle,
   Mail, Video, FileText, Clock, AlertCircle, StickyNote, Mic, Phone, UsersRound,
+  Network as NetworkIcon, Newspaper,
 } from "lucide-react";
 
 const nav: NavItem[] = [
@@ -24,6 +25,8 @@ const nav: NavItem[] = [
   { to: "/dashboard/advocate/cases", label: "Cases", icon: Briefcase },
   { to: "/dashboard/advocate/clients", label: "Clients", icon: Users },
   { to: "/teams", label: "Team Up", icon: UsersRound },
+  { to: "/network", label: "Court Cells", icon: NetworkIcon },
+  { to: "/dashboard/advocate/news", label: "Legal News", icon: Newspaper },
   { to: "/dashboard/advocate/finance", label: "Finance", icon: IndianRupee },
   { to: "/dashboard/advocate/calendar", label: "Calendar & Tasks", icon: CalendarIcon },
   { to: "/dashboard/advocate/notes", label: "Notes", icon: StickyNote },
@@ -40,6 +43,7 @@ export default function AdvocateDashboard() {
         <Route index element={<Overview />} />
         <Route path="cases" element={<CasesSection />} />
         <Route path="clients" element={<ClientsSection />} />
+        <Route path="news" element={<NewsSection />} />
         <Route path="finance" element={<FinanceSection />} />
         <Route path="calendar" element={<CalendarSection />} />
         <Route path="notes" element={<NotesSection />} />
