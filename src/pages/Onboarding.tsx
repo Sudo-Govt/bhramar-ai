@@ -241,25 +241,17 @@ export default function Onboarding() {
     if (userType === "firm_member" && firmName.trim()) {
       payload.firm_name = firmName.trim();
     }
-    const { error } = await supabase.from("profiles").update(payload).eq("id", user.id);
+    const { data: saved, error } = await saveProfile(payload);
     if (error) { setSaving(false); toast.error(error.message); return; }
-    const { data: fresh } = await supabase
-      .from("profiles")
-      .select("advocate_id")
-      .eq("id", user.id)
-      .maybeSingle();
     setSaving(false);
-    setAdvocateId(fresh?.advocate_id ?? null);
+    setAdvocateId(saved?.advocate_id ?? null);
     setStep(3);
   };
 
   const finish = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ onboarding_completed: true })
-      .eq("id", user.id);
+    const { error } = await saveProfile({ onboarding_completed: true });
     setSaving(false);
     if (error) { toast.error("Could not save — please try again"); return; }
     toast.success("Welcome to Bhramar.ai! 🎉");
