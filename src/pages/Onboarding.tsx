@@ -189,43 +189,52 @@ export default function Onboarding() {
       .maybeSingle();
   };
 
-  // Redirect if already onboarded
+  // Redirect if already onboarded (localStorage first to avoid race)
   useEffect(() => {
     if (!user) return;
+    if (localStorage.getItem(ONBOARDING_DONE_KEY) === user.id) {
+      navigate("/app", { replace: true });
+      return;
+    }
     (async () => {
       const { data } = await supabase
         .from("profiles")
         .select("onboarding_completed")
         .eq("id", user.id)
         .maybeSingle();
-      if (data?.onboarding_completed) navigate("/app", { replace: true });
+      if (data?.onboarding_completed) {
+        localStorage.setItem(ONBOARDING_DONE_KEY, user.id);
+        navigate("/app", { replace: true });
+      }
     })();
   }, [user, navigate]);
 
   // ── helpers ─────────────────────────────────────────────────────────────────
 
-  const doSkip = async () => {
+  const completeAndExit = async (extra: Record<string, unknown> = {}) => {
     if (!user) return;
-    setSaving(true);
-    const { error } = await saveProfile({ onboarding_completed: true });
-    setSaving(false);
-    if (error) { toast.error("Could not save — please try again"); return; }
+    // Set localStorage FIRST so we exit the loop even if DB fails
     localStorage.setItem(ONBOARDING_DONE_KEY, user.id);
     window.dispatchEvent(new Event("bhramar:onboarding-complete"));
+    setSaving(true);
+    const { error } = await saveProfile({ onboarding_completed: true, ...extra });
+    setSaving(false);
+    if (error) {
+      console.error("[onboarding] save failed", error);
+      toast.error("Saved locally — sync may retry later");
+    }
     navigate("/app", { replace: true });
   };
+
+  const doSkip = () => { void completeAndExit(); };
 
   const submitStep1 = async () => {
     if (!userType || !user) return;
     setSaving(true);
     const { error } = await saveProfile({ user_type: userType });
     setSaving(false);
-    if (error) { toast.error("Could not save — please try again"); return; }
-    if (userType === "citizen") {
-      setStep(2); // goes straight to tour (step 2 of 2)
-    } else {
-      setStep(2); // advocate/firm goes to details (step 2 of 3)
-    }
+    if (error) { console.error(error); toast.error("Could not save — please try again"); return; }
+    setStep(2);
   };
 
   const submitStep2Advocate = async () => {
@@ -246,22 +255,15 @@ export default function Onboarding() {
       payload.firm_name = firmName.trim();
     }
     const { data: saved, error } = await saveProfile(payload);
-    if (error) { setSaving(false); toast.error(error.message); return; }
     setSaving(false);
+    if (error) { console.error(error); toast.error(error.message); return; }
     setAdvocateId(saved?.advocate_id ?? null);
     setStep(3);
   };
 
   const finish = async () => {
-    if (!user) return;
-    setSaving(true);
-    const { error } = await saveProfile({ onboarding_completed: true });
-    setSaving(false);
-    if (error) { toast.error("Could not save — please try again"); return; }
     toast.success("Welcome to Bhramar.ai! 🎉");
-    localStorage.setItem(ONBOARDING_DONE_KEY, user.id);
-    window.dispatchEvent(new Event("bhramar:onboarding-complete"));
-    navigate("/app", { replace: true });
+    await completeAndExit();
   };
 
   const copyId = () => {
