@@ -834,6 +834,10 @@ export default function Dashboard() {
           send={send}
           streaming={streaming}
           handleFileUpload={handleFileUpload}
+          profileName={profile?.full_name || user?.email?.split("@")[0]}
+          profileState={profile?.state}
+          activeCaseName={cases.find((c) => c.id === activeCaseId)?.name || null}
+          onPickCase={() => setPickerOpen(true)}
         />
       </main>
 
