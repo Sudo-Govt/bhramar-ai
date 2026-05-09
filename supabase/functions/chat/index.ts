@@ -1,468 +1,271 @@
 // supabase/functions/chat/index.ts
-// Bhramar.ai — Chat Edge Function
-// Fetches full user context (profile, clients, cases, documents, chat history)
-// Builds personalized system prompt and calls Groq llama-3.1-70b
+// Bhramar.ai — Chat edge function (Phase 1: 4-layer context + pgvector RAG + SSE streaming via Lovable AI Gateway)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  buildBhramarSystemPrompt,
+  buildSystemPrompt,
+  type FullContext,
+  type ProfileCtx,
+  type CaseCtx,
+  type ChunkCtx,
   buildChatHistorySummaryPrompt,
-  UserContext,
-  ClientProfile,
-  CaseSummary,
-  DocumentSummary,
 } from '../_shared/bhramarPrompt.ts';
 
-// ─────────────────────────────────────────────────────────────
-// CORS
-// ─────────────────────────────────────────────────────────────
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ─────────────────────────────────────────────────────────────
-// GROQ CONFIG
-// ─────────────────────────────────────────────────────────────
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.1-70b-versatile';
-const MAX_TOKENS = 2048;
+const AI_GATEWAY = 'https://ai.gateway.lovable.dev/v1';
+const EMBED_MODEL = 'google/text-embedding-004';
+const DEFAULT_CHAT_MODEL = 'google/gemini-2.5-flash';
 
-// ─────────────────────────────────────────────────────────────
-// MAIN HANDLER
-// ─────────────────────────────────────────────────────────────
-serve(async (req: Request) => {
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const groqKey = Deno.env.get('GROQ_API_KEY');
-    if (!groqKey) {
-      throw new Error('GROQ_API_KEY is not set');
-    }
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not set');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    // Parse request body
-    const body = await req.json();
-    const {
-      messages,           // array of {role, content} — the current conversation
-      case_id,            // optional: if user is chatting in context of a specific case
-      summarize_history,  // optional: if true, just return a history summary
-    } = body;
-
-    if (!messages || !Array.isArray(messages)) {
-      throw new Error('messages array is required');
-    }
-
-    // ─────────────────────────────────────────────────────────
-    // AUTH — get the calling user
-    // ─────────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (!authHeader) return jsonError('Unauthorized', 401);
 
-    // Use user-scoped client to verify JWT
-    const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !user) return jsonError('Unauthorized', 401);
 
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const supa = createClient(supabaseUrl, serviceKey);
 
-    // Service role client for fetching data
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const body = await req.json();
+    const { messages, case_id, summarize_history } = body as {
+      messages: { role: string; content: string }[];
+      case_id?: string;
+      summarize_history?: boolean;
+    };
+    if (!Array.isArray(messages) || messages.length === 0) return jsonError('messages required', 400);
 
-    // ─────────────────────────────────────────────────────────
-    // SUMMARIZE MODE — return a compressed summary of messages
-    // Used by frontend to compress long chat history
-    // ─────────────────────────────────────────────────────────
+    // Summarize-only mode (non-streaming JSON)
     if (summarize_history) {
-      const summaryPrompt = buildChatHistorySummaryPrompt(messages);
-      const summaryResponse = await callGroq(groqKey, [
-        { role: 'user', content: summaryPrompt }
-      ], 300);
-      return new Response(JSON.stringify({ summary: summaryResponse }), {
+      const summary = await callChatJSON(LOVABLE_API_KEY, DEFAULT_CHAT_MODEL, [
+        { role: 'user', content: buildChatHistorySummaryPrompt(messages) },
+      ]);
+      return new Response(JSON.stringify({ summary }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // ─────────────────────────────────────────────────────────
-    // FETCH USER CONTEXT
-    // ─────────────────────────────────────────────────────────
-    const ctx = await buildUserContext(supabase, user.id, case_id);
+    // ── Build 4-layer context ───────────────────────────────
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+    const ctx = await buildContext(supa, user.id, case_id);
 
-    // ─────────────────────────────────────────────────────────
-    // BUILD SYSTEM PROMPT
-    // ─────────────────────────────────────────────────────────
-    const systemPrompt = buildBhramarSystemPrompt(ctx);
-
-    // ─────────────────────────────────────────────────────────
-    // CALL GROQ
-    // ─────────────────────────────────────────────────────────
-    const groqMessages = [
-      { role: 'system', content: systemPrompt },
-      ...messages,
-    ];
-
-    const reply = await callGroq(groqKey, groqMessages, MAX_TOKENS);
-
-    // ─────────────────────────────────────────────────────────
-    // SAVE MESSAGE TO DB (async, don't block response)
-    // ─────────────────────────────────────────────────────────
-    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
-    if (lastUserMessage) {
-      saveMessages(supabase, user.id, case_id, lastUserMessage.content, reply).catch(console.error);
+    // ── RAG: embed + match_chunks (fail-soft) ───────────────
+    if (lastUser.trim()) {
+      try {
+        const vec = await embed(LOVABLE_API_KEY, lastUser);
+        const { data: chunks } = await supa.rpc('match_chunks', {
+          query_embedding: vec as unknown as string,
+          match_user_id: user.id,
+          match_count: 5,
+          corpus_weight: 1.0,
+        });
+        if (Array.isArray(chunks)) {
+          ctx.ragChunks = chunks.map((c: any): ChunkCtx => ({
+            act_name: c.act_name ?? null,
+            section_label: c.section_label ?? null,
+            content: c.content ?? '',
+            similarity: c.similarity ?? 0,
+          }));
+        }
+      } catch (e) {
+        console.warn('RAG retrieval failed (continuing without):', (e as Error).message);
+      }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // CHECK IF AUTO-SUMMARY IS NEEDED
-    // If this is message 10+, trigger background summarization
-    // ─────────────────────────────────────────────────────────
-    if (messages.length >= 10 && messages.length % 10 === 0) {
-      triggerHistorySummary(supabase, groqKey, user.id, case_id, messages).catch(console.error);
+    const systemPrompt = buildSystemPrompt(ctx);
+
+    // Resolve model (prefer ai_settings)
+    let model = DEFAULT_CHAT_MODEL;
+    try {
+      const { data: s } = await supa.from('ai_settings').select('model').eq('id', 1).single();
+      if (s?.model) model = s.model;
+    } catch { /* ignore */ }
+
+    // ── Stream from Lovable AI Gateway, prefix with sources sidecar ──
+    const upstream = await fetch(`${AI_GATEWAY}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        stream: true,
+        temperature: 0.4,
+        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      }),
+    });
+
+    if (!upstream.ok || !upstream.body) {
+      const t = await upstream.text().catch(() => '');
+      console.error('Gateway error', upstream.status, t.slice(0, 500));
+      if (upstream.status === 429) return jsonError('Rate limit', 429);
+      if (upstream.status === 402) return jsonError('Credits exhausted', 402);
+      return jsonError('AI gateway failed', 500);
     }
 
-    return new Response(JSON.stringify({ reply }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const sources = (ctx.ragChunks || []).map((c) => ({
+      label: [c.act_name, c.section_label].filter(Boolean).join(' — ') || 'Corpus chunk',
+      similarity: c.similarity,
+    }));
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const enc = new TextEncoder();
+        // sidecar: emit sources first
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ sources })}\n\n`));
+
+        const reader = upstream.body!.getReader();
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+        } catch (e) {
+          console.error('stream pipe err', e);
+        } finally {
+          controller.close();
+        }
+      },
     });
 
-  } catch (error) {
-    console.error('Chat function error:', error);
-    return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Fire-and-forget usage log
+    supa.from('usage_logs').insert({ user_id: user.id, kind: 'chat' }).then(() => {});
+
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
     });
+  } catch (e) {
+    console.error('chat fn fatal', e);
+    return jsonError((e as Error).message || 'Internal error', 500);
   }
 });
 
 // ─────────────────────────────────────────────────────────────
-// FETCH USER CONTEXT — all personalization data
-// ─────────────────────────────────────────────────────────────
-async function buildUserContext(
-  supabase: ReturnType<typeof createClient>,
+function jsonError(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function embed(apiKey: string, text: string): Promise<number[]> {
+  const r = await fetch(`${AI_GATEWAY}/embeddings`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: EMBED_MODEL, input: [text.slice(0, 6000)] }),
+  });
+  if (!r.ok) throw new Error(`embed ${r.status}`);
+  const j = await r.json();
+  return j.data[0].embedding as number[];
+}
+
+async function callChatJSON(apiKey: string, model: string, messages: any[]): Promise<string> {
+  const r = await fetch(`${AI_GATEWAY}/chat/completions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages, temperature: 0.3 }),
+  });
+  if (!r.ok) throw new Error(`chat ${r.status}`);
+  const j = await r.json();
+  return j.choices?.[0]?.message?.content || '';
+}
+
+// ─── Context loader ──────────────────────────────────────────
+async function buildContext(
+  supa: ReturnType<typeof createClient>,
   userId: string,
   caseId?: string,
-): Promise<UserContext> {
-
-  // Run all queries in parallel for speed
-  const [profileResult, clientsResult, casesResult, docsResult, historyResult] = await Promise.allSettled([
-    fetchProfile(supabase, userId),
-    fetchClients(supabase, userId),
-    fetchCases(supabase, userId, caseId),
-    fetchDocuments(supabase, userId, caseId),
-    fetchChatHistorySummary(supabase, userId, caseId),
-  ]);
-
-  const profile = profileResult.status === 'fulfilled' ? profileResult.value : null;
-  const clients = clientsResult.status === 'fulfilled' ? clientsResult.value : [];
-  const cases = casesResult.status === 'fulfilled' ? casesResult.value : [];
-  const docs = docsResult.status === 'fulfilled' ? docsResult.value : [];
-  const historySummary = historyResult.status === 'fulfilled' ? historyResult.value : null;
-
-  const ctx: UserContext = {
-    user_id: userId,
-    name: profile?.full_name || profile?.name || 'User',
-    email: profile?.email,
-    plan: normalizePlan(profile?.plan || profile?.subscription_plan || 'citizen'),
-    clients,
-    cases,
-    document_summaries: docs,
-    chat_history_summary: historySummary || undefined,
+): Promise<FullContext> {
+  const { data: profileRow } = await supa.from('profiles').select('*').eq('id', userId).maybeSingle();
+  const profile: ProfileCtx = {
+    id: userId,
+    full_name: profileRow?.full_name ?? null,
+    email: profileRow?.email ?? null,
+    user_type: (profileRow?.user_type as any) || 'citizen',
+    state: profileRow?.state ?? null,
+    district: profileRow?.district ?? null,
+    age: profileRow?.age,
+    gender: profileRow?.gender,
+    occupation: profileRow?.occupation,
+    marital_status: profileRow?.marital_status,
+    earning_bracket: profileRow?.earning_bracket,
+    family_background: profileRow?.family_background,
+    prior_case_history: profileRow?.prior_case_history,
+    physical_condition: profileRow?.physical_condition,
+    advocate_id: profileRow?.advocate_id,
+    bar_council: profileRow?.bar_council,
+    enrollment_number: profileRow?.enrollment_number,
+    court_of_practice: profileRow?.court_of_practice,
+    specializations: profileRow?.specializations,
+    years_experience: profileRow?.years_experience,
+    firm_id: profileRow?.firm_id,
+    firm_role: profileRow?.firm_role,
   };
 
-  // Advocate-specific fields
-  if (profile) {
-    if (profile.advocate_id) ctx.advocate_id = profile.advocate_id;
-    if (profile.bar_council) ctx.bar_council = profile.bar_council;
-    if (profile.enrollment_number) ctx.enrollment_number = profile.enrollment_number;
-    if (profile.court_of_practice) ctx.court_of_practice = profile.court_of_practice;
-    if (profile.specializations) ctx.specializations = profile.specializations;
-    if (profile.years_of_experience) ctx.years_of_experience = profile.years_of_experience;
-    if (profile.state) ctx.state = profile.state;
-    if (profile.preferred_language) ctx.preferred_language = profile.preferred_language;
-    if (profile.firm_name) ctx.firm_name = profile.firm_name;
-    if (profile.role_in_firm) ctx.role_in_firm = profile.role_in_firm;
+  const ctx: FullContext = { profile };
+
+  if (caseId) {
+    const { data: c } = await supa
+      .from('cases')
+      .select('id, name, case_number, client_name, client_id, status, stage, priority, deadline, ai_summary, complaint')
+      .eq('id', caseId)
+      .maybeSingle();
+
+    if (c) {
+      ctx.activeCase = {
+        id: c.id, name: c.name, case_number: c.case_number, client_name: c.client_name,
+        status: c.status, stage: c.stage, priority: c.priority, deadline: c.deadline,
+        ai_summary: c.ai_summary, complaint: c.complaint,
+      } as CaseCtx;
+
+      if (c.client_id) {
+        const { data: cl } = await supa.from('clients')
+          .select('full_name, notes, occupation, age').eq('id', c.client_id).maybeSingle();
+        if (cl) ctx.client = cl as any;
+      }
+
+      const [{ data: docs }, { data: notes }, { data: tasks }] = await Promise.all([
+        supa.from('documents').select('filename, ai_summary').eq('case_id', caseId).order('created_at', { ascending: false }).limit(5),
+        supa.from('notes').select('body, updated_at').eq('case_id', caseId).order('updated_at', { ascending: false }).limit(5),
+        supa.from('tasks').select('title, due_date, status').eq('case_id', caseId).neq('status', 'done').order('due_date', { ascending: true }).limit(8),
+      ]);
+      ctx.documents = (docs as any) || [];
+      ctx.notes = (notes as any) || [];
+      ctx.tasks = (tasks as any) || [];
+    }
+  }
+
+  if (profile.user_type === 'firm_member' && profile.firm_id) {
+    const [{ data: firm }, { count: members }, { count: active }] = await Promise.all([
+      supa.from('firms').select('name').eq('id', profile.firm_id).maybeSingle(),
+      supa.from('firm_members').select('id', { count: 'exact', head: true }).eq('firm_id', profile.firm_id),
+      supa.from('cases').select('id', { count: 'exact', head: true }).eq('firm_id', profile.firm_id).eq('status', 'Active'),
+    ]);
+    if (firm) {
+      ctx.firm = { name: firm.name as string, member_count: members || 0, active_cases: active || 0 };
+    }
   }
 
   return ctx;
-}
-
-// ─────────────────────────────────────────────────────────────
-// FETCH PROFILE
-// ─────────────────────────────────────────────────────────────
-async function fetchProfile(supabase: ReturnType<typeof createClient>, userId: string) {
-  // Try profiles table first, then users table as fallback
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-
-  if (error || !data) {
-    // Fallback to users table if profiles doesn't exist
-    const { data: userData } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    return userData;
-  }
-
-  return data;
-}
-
-// ─────────────────────────────────────────────────────────────
-// FETCH CLIENTS — with all fields that affect legal strategy
-// ─────────────────────────────────────────────────────────────
-async function fetchClients(supabase: ReturnType<typeof createClient>, userId: string): Promise<ClientProfile[]> {
-  const { data, error } = await supabase
-    .from('clients')
-    .select('id, name, age, sex, gender, occupation, phone, email, address, notes')
-    .eq('user_id', userId)
-    .order('name', { ascending: true })
-    .limit(50); // Limit to avoid token overflow
-
-  if (error || !data) return [];
-
-  return data.map(c => ({
-    id: c.id,
-    name: c.name,
-    age: c.age,
-    sex: c.sex || c.gender,
-    occupation: c.occupation,
-    phone: c.phone,
-    email: c.email,
-    address: c.address,
-    notes: c.notes,
-  }));
-}
-
-// ─────────────────────────────────────────────────────────────
-// FETCH CASES
-// ─────────────────────────────────────────────────────────────
-async function fetchCases(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  specificCaseId?: string,
-): Promise<CaseSummary[]> {
-
-  let query = supabase
-    .from('cases')
-    .select('id, title, case_number, client_name, court, status, next_hearing_date, matter_type, description')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-
-  if (specificCaseId) {
-    // If in context of a specific case, put that case first (fetch it + 9 others)
-    const { data: specificCase } = await supabase
-      .from('cases')
-      .select('id, title, case_number, client_name, court, status, next_hearing_date, matter_type, description')
-      .eq('id', specificCaseId)
-      .single();
-
-    const { data: otherCases } = await query.neq('id', specificCaseId).limit(9);
-
-    const allCases = [specificCase, ...(otherCases || [])].filter(Boolean);
-    return allCases.map(mapCase);
-  }
-
-  const { data, error } = await query.limit(15); // top 15 recent cases
-  if (error || !data) return [];
-  return data.map(mapCase);
-}
-
-function mapCase(c: Record<string, unknown>): CaseSummary {
-  return {
-    id: c.id as string,
-    title: c.title as string,
-    case_number: c.case_number as string | undefined,
-    client_name: c.client_name as string | undefined,
-    court: c.court as string | undefined,
-    status: c.status as string | undefined,
-    next_hearing_date: c.next_hearing_date as string | undefined,
-    matter_type: c.matter_type as string | undefined,
-    description: c.description as string | undefined,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-// FETCH DOCUMENTS — OCR summaries only (not full text)
-// ─────────────────────────────────────────────────────────────
-async function fetchDocuments(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  caseId?: string,
-): Promise<DocumentSummary[]> {
-
-  let query = supabase
-    .from('documents')
-    .select('id, name, ocr_summary, case_id, created_at')
-    .eq('user_id', userId)
-    .not('ocr_summary', 'is', null)
-    .order('created_at', { ascending: false });
-
-  if (caseId) {
-    query = query.eq('case_id', caseId);
-  }
-
-  const { data, error } = await query.limit(10);
-  if (error || !data) return [];
-
-  return data.map(d => ({
-    id: d.id,
-    name: d.name,
-    // Truncate OCR summary to 300 chars to save tokens
-    ocr_summary: d.ocr_summary ? String(d.ocr_summary).substring(0, 300) + (d.ocr_summary.length > 300 ? '...' : '') : undefined,
-    case_id: d.case_id,
-    uploaded_at: d.created_at,
-  }));
-}
-
-// ─────────────────────────────────────────────────────────────
-// FETCH CHAT HISTORY SUMMARY
-// Stored in chat_summaries table after auto-summarization
-// ─────────────────────────────────────────────────────────────
-async function fetchChatHistorySummary(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  caseId?: string,
-): Promise<string | null> {
-
-  let query = supabase
-    .from('chat_summaries')
-    .select('summary')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1);
-
-  if (caseId) {
-    query = query.eq('case_id', caseId);
-  }
-
-  const { data, error } = await query.single();
-  if (error || !data) return null;
-  return data.summary;
-}
-
-// ─────────────────────────────────────────────────────────────
-// SAVE MESSAGES TO DB
-// ─────────────────────────────────────────────────────────────
-async function saveMessages(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  caseId: string | undefined,
-  userMessage: string,
-  aiReply: string,
-) {
-  const rows = [
-    {
-      user_id: userId,
-      case_id: caseId || null,
-      role: 'user',
-      content: userMessage,
-    },
-    {
-      user_id: userId,
-      case_id: caseId || null,
-      role: 'assistant',
-      content: aiReply,
-    },
-  ];
-
-  const { error } = await supabase.from('chat_messages').insert(rows);
-  if (error) {
-    console.error('Failed to save messages:', error.message);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// TRIGGER BACKGROUND HISTORY SUMMARIZATION
-// Called every 10 messages to keep context compact
-// ─────────────────────────────────────────────────────────────
-async function triggerHistorySummary(
-  supabase: ReturnType<typeof createClient>,
-  groqKey: string,
-  userId: string,
-  caseId: string | undefined,
-  messages: Array<{ role: string; content: string }>,
-) {
-  const { buildChatHistorySummaryPrompt } = await import('../_shared/bhramarPrompt.ts');
-  const summaryPrompt = buildChatHistorySummaryPrompt(messages);
-  const summary = await callGroq(groqKey, [{ role: 'user', content: summaryPrompt }], 300);
-
-  if (summary) {
-    await supabase.from('chat_summaries').upsert({
-      user_id: userId,
-      case_id: caseId || null,
-      summary,
-      created_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,case_id' });
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// CALL GROQ
-// ─────────────────────────────────────────────────────────────
-async function callGroq(
-  apiKey: string,
-  messages: Array<{ role: string; content: string }>,
-  maxTokens: number = MAX_TOKENS,
-): Promise<string> {
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages,
-      max_tokens: maxTokens,
-      temperature: 0.4,      // Lower = more precise legal answers, less hallucination
-      top_p: 0.9,
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Groq API error ${response.status}: ${errText}`);
-  }
-
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
-
-  if (!content) {
-    throw new Error('Empty response from Groq');
-  }
-
-  return content;
-}
-
-// ─────────────────────────────────────────────────────────────
-// NORMALIZE PLAN — handle any naming variation
-// ─────────────────────────────────────────────────────────────
-function normalizePlan(plan: string): UserContext['plan'] {
-  const p = plan?.toLowerCase().trim();
-  if (p === 'citizen' || p === 'free') return 'citizen';
-  if (p === 'basic') return 'basic';
-  if (p === 'advocate' || p === 'pro') return 'advocate';
-  if (p === 'firm') return 'firm';
-  if (p === 'firm_pro' || p === 'firm pro') return 'firm_pro';
-  if (p === 'enterprise') return 'enterprise';
-  return 'citizen';
 }
