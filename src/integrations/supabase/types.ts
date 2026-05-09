@@ -208,6 +208,35 @@ export type Database = {
         }
         Relationships: []
       }
+      case_prompt_suggestions: {
+        Row: {
+          case_id: string
+          generated_at: string
+          suggestions: Json
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          generated_at?: string
+          suggestions?: Json
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          generated_at?: string
+          suggestions?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_prompt_suggestions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cases: {
         Row: {
           ai_summary: string | null
