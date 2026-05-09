@@ -1,161 +1,139 @@
+# Bhramar.ai "Must-Have" Overhaul — 5-Phase Plan (Revised)
 
-# Bhramar.ai — Major Feature Expansion Plan
+Three corrections from the previous draft are now baked in:
+- **Phase 1:** Layer 3 now explicitly includes a pgvector similarity search against `document_chunks` (existing table — already has `embedding vector` column, `match_chunks` RPC, and `corpus`/`kb`/`user` sources). Top-5 chunks are injected per turn.
+- **Phase 2:** Darbar runs as its own edge function with a `mode` flag, distinct from `chat`.
+- **Phase 3:** Legal Clock seeded with the **full 18 limitation entries** from the spec (not 14).
 
-This is a very large scope (7 sections + 6 viral features). Building it all in one shot will produce something fragile. I propose to ship it in **5 sequential phases**, each phase being a self-contained, working release. You approve this plan once; I then build phase-by-phase and you can verify each before I move on.
-
-If you want a different ordering, tell me and I'll re-plan.
-
----
-
-## Phase 1 — Foundation: Advocate ID, Profile, Personalized AI, Dashboard, Auth fix
-
-The cheapest, highest-leverage layer. Nothing else works without it.
-
-### 1.1 Schema additions (migration)
-- `profiles`: add `advocate_id` (text, unique), `bar_council`, `enrollment_number`, `years_experience`, `specializations` (text[]), `user_type` (enum: citizen | advocate | firm_member), `firm_id`, `firm_role`, `vakeel_score` (numeric, default 0), `vakeel_reviews_count` (int, default 0).
-- DB function `generate_advocate_id(state_code text)` → `BHR-<STATE>-<6 digit>` with uniqueness loop (mirrors existing `generate_case_number`).
-- Trigger on `profiles` insert: if `user_type='advocate'` and no `advocate_id`, generate one from `state`.
-- Backfill: assign IDs to existing advocate rows.
-
-### 1.2 Profile page
-- Show Advocate ID prominently with "copy" button.
-- Editable fields: Bar Council, Enrollment Number, Court of Practice (already exists), Years of Experience, Specializations (multi-select chips), User Type.
-- Public profile route `/u/:advocateId` (read-only view used by Team Up search and Cells).
-
-### 1.3 Personalized AI context (Section 3 + Section 4)
-Edit `supabase/functions/chat/index.ts`:
-- Detect `user_type` from profile.
-- Build user-type-specific context block (Citizen / Advocate / Firm) with the exact templates in your spec.
-- Replace `BASE_SYSTEM` and `BHRAMAR_DEFAULT_PROMPT` with the new master prompt that lists every law in Section 4 (BNS/BNSS/BSA, IPC/CrPC/Evidence, Constitution, Civil, Family, Labour, Corporate, IP, IT/DPDP, National Security, Consumer/other), with the 7 critical rules and tone rules.
-- Inject active cases / clients / firm members into context (already partially done — extend it).
-
-### 1.4 Dashboard rebuild (Section 6)
-Replace `AdvocateDashboard.tsx` and `EnterpriseDashboard.tsx`:
-- Row 1: 4 metric cards (Active Cases, Today's Hearings, Pending Tasks, AI Tokens Today w/ progress).
-- Row 2: Today's Hearings timeline (color-coded AM/PM) + Urgent Tasks panel (checkable).
-- Row 3: Recent Cases list + Quick Actions buttons.
-- Row 4: Financial snapshot — billed, pending, retainers, 6-month bar chart (recharts).
-- Row 5: "Bhramar Notices" — server-side scan flagging limitation, missing docs, stale clients.
-- Firm dashboard: + Team Members Active, Firm Revenue, All-cases count, Team Tasks; Team Activity Feed; Workload bar chart; Weekly hearings grid.
-- Skeleton loaders (`@/components/ui/skeleton`) on every widget.
-- Navy + gold theme via existing tokens; semantic colors (red/gold/green/blue) wired to design tokens — no hardcoded hex.
-
-### 1.5 Google OAuth fix
-Document is in published-domain state. As part of Phase 1, I'll verify `supabase.auth.signInWithOAuth` config and add a clear error UI on `/auth` if the broker returns a 404 (so users know to use the published domain). The infra-side fix (enabling Google in Cloud Auth Settings) the user must toggle — I'll surface a dev-mode hint banner.
+Earlier turns already shipped: onboarding, court cells, basic news panel, teams, `vakeel_score`/`is_available_for_emergency` columns on `profiles`, advocate ID generator. We extend, never duplicate.
 
 ---
 
-## Phase 2 — Team Up (Section 1)
+## Phase 1 — Personalized AI Engine + RAG (Parts 1 + 2)
+**Goal:** Every reply is grounded in WHO is asking, WHICH case, and the relevant LAW chunks.
 
-### 2.1 Schema
-- `teams` (id, name, owner_id, created_at, plan_limits jsonb).
-- `team_members` (team_id, user_id, role, status: pending|active|declined, joined_at).
-- `team_cases` (team_id, case_id) — many-to-many for shared cases.
-- `team_messages` (team_id, user_id, content, created_at) for chat.
-- `team_tasks` (team_id, assignee_id, title, status, due_date).
-- `team_documents` (team_id, file_id, version, edited_by, edited_at) for co-edit history.
-- RLS: team members can read; only owner can add members beyond limit. Plan limit enforced via DB trigger checking `profiles.subscription_tier`:
-  - Advocate: max 3 teams owned, max 3 members each.
-  - Firm/Firm Pro: unlimited.
+### Prompt assembly — `supabase/functions/_shared/bhramarPrompt.ts` (rewrite)
+Four layers, joined with `\n\n---\n\n`:
+1. **L1 Master Identity** — the "7 rules" block from the spec (BNS/BNSS/BSA + 2024 switch logic).
+2. **L2 Advocate / Citizen Identity** — pulled from `profiles`. Two variants by `user_type`.
+3. **L3 Active Case Context** — only when `case_id` is present:
+   - `cases` row (title, number, court, stage, next_hearing_date, opposing party, summary)
+   - `clients` row (name, notes, demographics)
+   - Last 5 `documents` for the case (filename + `ai_summary`)
+   - Last 5 `notes` (newest first)
+   - Open `tasks` (title + due_date)
+   - Last 10 `messages` for the case's conversation
+   - **NEW — RAG chunks:** embed the latest user message via Lovable AI Gateway (`text-embedding-3-small` or Gemini equivalent), then call existing `match_chunks(query_embedding, user_id, 5)` RPC and inject the top-5 hits as a "Relevant Law" sub-block with `act_name + section_label + content`.
+4. **L4 Firm Context** — only when `user_type='firm_member'`: firm name, role, active case count, team list.
 
-### 2.2 UI
-- Sidebar "Team Up" item (visible only to Advocate+ tier).
-- Search by Advocate ID → public profile card → "Send Team Request" with case multi-select OR "Open Collaboration".
-- Notifications inbox (new table `notifications`): incoming requests with Accept/Decline.
-- Team Workspace route `/teams/:id`:
-  - Tabs: Cases · Chat · Tasks · Documents.
-  - Realtime chat via `supabase.channel` subscription.
-  - Document version list per file.
+### Edge function — `supabase/functions/chat/index.ts`
+- Embed query → run `match_chunks` → assemble L1-L4 → call AI provider (existing Lovable AI Gateway path).
+- Cache the embedding for the request lifetime (don't re-embed for retries).
+- Fail-soft: if embedding fails, still send L1+L2+L3 (without RAG) rather than erroring out.
 
----
+### UI — Dashboard chat
+- **AI Context panel** above the input: ✓ Profile chip · ✓ Case chip (or "No case loaded") · doc/note/task counts · "Change case" link.
+- **Smart prompt suggestions** strip — 5 chips generated once per case via a lightweight call, cached in a new `case_prompt_suggestions(case_id pk, suggestions jsonb, generated_at)` table.
 
-## Phase 3 — Advocate Cells & Court Network (Section 2) + Legal News (Section 5)
+### Migration P1
+```sql
+create table case_prompt_suggestions (
+  case_id uuid primary key references cases(id) on delete cascade,
+  suggestions jsonb not null default '[]',
+  generated_at timestamptz not null default now()
+);
+-- RLS: select/insert/update if user owns the case.
+```
 
-### 3.1 Cells
-- `court_cells` table seeded with: Supreme Court, all 25 High Courts, major district courts (start with ~150 entries; expandable).
-- `cell_memberships` auto-derived from `profiles.court_of_practice` (view).
-- `cell_notices` (cell_id, title, body, posted_by, created_at).
-- `cell_messages` for group chat.
-- Routes:
-  - `/network` — your Cell home (members list + Notice Board + Group Chat).
-  - `/network/browse` — Supreme → High Court → District tree.
-  - `/network/cell/:id` — any cell's public view.
-- Each member row has a "Team Up" CTA wired to Phase 2.
-
-### 3.2 Legal News (sidebar item, Advocate+)
-- Edge function `legal-news` already exists — extend it:
-  - Use Lovable AI (`google/gemini-2.5-flash` w/ Google Search grounding) to fetch: SC + 25 HC judgments, BCI/state council circulars, UGC notices, new legislation.
-  - Personalize: top section = user's state council + court-of-practice; middle = SC/HC; bottom = national.
-  - Cache per (state, court, day) in a `legal_news_cache` table.
-- News card UI: headline, source, date, Act/Section tags, Read More, "Ask Bhramar about this" → opens chat with the judgment text pre-injected as context.
-- Filters: court, Act, category, state.
+**Acceptance:** Inside a case, AI replies cite at least one section from injected RAG chunks AND mention the case by name.
 
 ---
 
-## Phase 4 — Six Viral Features
+## Phase 2 — Dashboard Rebuild + Darbar Mode (Parts 3 + 7)
 
-### 4.1 Vakeel Score
-- `advocate_reviews` table (advocate_id, reviewer_user_id, rating 1-5, comment, case_id, created_at).
-- Score formula: weighted blend of `cases_count * 0.2 + win_rate * 0.4 + avg_rating * 0.3 + response_time_score * 0.1`. Materialized in `profiles.vakeel_score`, recomputed by a DB function called on review insert.
-- Display: stars + numeric on every public profile, on Cells listings, Team Up search results.
+### Dashboards
+- **AdvocateDashboard.tsx** — 5 rows: Numbers · War Room (hearings + urgent tasks) · Case Intelligence (recent + quick actions) · Financial Snapshot (recharts on `case_payments`) · Bhramar Notices.
+- **`dashboard-notices` edge function** — scans the user's cases + tasks + limitation periods, returns flagged items ("hearing in 3 days, 0 tasks", "limitation expires in N days", "doc not summarized").
+- **EnterpriseDashboard.tsx** extensions: team online count, firm revenue, workload bar chart, activity feed via Realtime on `audit_log`, weekly hearings grid.
 
-### 4.2 Legal Clock — Limitation Calculator
-- Route `/tools/legal-clock` (public, no login).
-- Form: incident type (dropdown of common causes), incident date, jurisdiction.
-- Lookup table `limitation_periods` seeded from Limitation Act 1963 schedules.
-- Output: days remaining, deadline date, court/forum, exact form/section, "Share via WhatsApp" button (uses `wa.me/?text=...`).
+### Darbar Mode — `/cases/:id/darbar`
+- New edge function **`supabase/functions/darbar/index.ts`** with a **`mode` flag** in body (`"bench" | "opposing" | "advisor" | "auto"`, default `auto`). Same 4-layer context loader as `chat`, plus a Darbar-specific system prompt that simulates Bench + Opposing + Advisor in a single turn.
+- Three-column dark-courtroom UI (navy/gold tokens already in theme): Bench questions | Advocate chat | Bhramar private notes.
+- "End Session" → AI summary saved as a `notes` row on the case + WhatsApp share card.
 
-### 4.3 Darbar Mode — Hearing Prep
-- Route `/cases/:id/darbar`.
-- New chat surface that calls `chat` edge function with a special system prompt: "You are simultaneously the opposing counsel AND the bench. Ask hostile questions, raise objections, force the advocate to defend each argument."
-- Pre-loads case file as context (already supported in current `chat` function).
-- "End Session" produces a markdown summary saved as a note.
+**Acceptance:** A 10-turn moot session ends with a saved prep note linked to the case.
 
-### 4.4 Kanoon Ki Pathshala
-- Route `/learn`.
-- `lessons` table seeded (start with 30 BNS sections in simple Hindi).
-- Daily-section view + 5-question quiz (`quiz_attempts` table).
-- `learn_leaderboard` view.
-- Share-score card generated as PNG (html2canvas) for WhatsApp.
+---
 
-### 4.5 Emergency Legal Button
-- Floating red FAB on Citizen dashboard.
-- Opens dialog: emergency type, brief description, location (geolocation API).
-- Server function `emergency-match`: finds 3 nearest available advocates (by `state`/`district` + `is_available_for_emergency` flag) sorted by Vakeel Score.
-- One-tap `tel:` button + in-app paid consultation flow (Razorpay order with 15% platform fee logged in `emergency_consultations` table).
+## Phase 3 — Viral & Trust Tools (Parts 4 + 5 + 6)
 
-### 4.6 Client WhatsApp Bridge
-- Per-advocate WhatsApp Business API setup (requires advocate's own WABA token — stored as a per-user secret in a new `user_integrations` table, encrypted).
-- Edge function `wa-send` proxies to `https://graph.facebook.com/v18.0/<phone_number_id>/messages`.
-- UI: from any case page, "Update Client on WhatsApp" button → templated message editor → send.
-- Audit log entry per send.
-- Note: this requires the advocate to have an approved WABA — I'll add an onboarding wizard but actual WABA approval is on them.
+### Legal Clock — public route `/tools/legal-clock`
+Seed `limitation_periods` with **all 18 entries** from the spec:
+1. Suit on a contract — 3y (Art. 55)
+2. Recovery of money lent — 3y (Art. 19)
+3. Cheque bounce / NI Act — 1m for complaint (S. 142)
+4. Consumer complaint — 2y (CPA 2019)
+5. Motor accident claim — 6m before MACT
+6. Service matter / Government — 3y
+7. Property possession — 12y (Art. 64/65)
+8. Rent recovery — 3y
+9. Matrimonial — divorce cooling-off — 1y
+10. Appeal HC from Sessions — 60d (CrPC)
+11. Appeal SC from HC — 90d
+12. Writ petition — no strict limit, laches flagged
+13. POCSO complaint — no limitation, flagged
+14. Habeas corpus — none, urgent flag
+15. Specific performance — 3y (Art. 54)
+16. Recovery of immovable property by mortgagee — 12y
+17. Industrial dispute reference — 3y from cause
+18. Arbitration award challenge (Sec 34) — 3m + 30d grace
+
+### Vakeel Score
+- New table `advocate_reviews` + DB trigger that recomputes `profiles.vakeel_score` on insert using the spec formula.
+- `<VakeelBadge />` component used on profile, network cards, team-up search, emergency results.
+
+### Emergency Legal Button
+- Citizen FAB + dialog (type / description / state-district / optional geolocation).
+- New edge function `emergency-match` filters `is_available_for_emergency=true` + state, ordered by `vakeel_score`, returns top 3.
+- Result cards: name + Vakeel badge + `tel:` button + "Paid Consultation" → reuses existing Razorpay order function with new plan code `emergency`.
+- New table `emergency_consultations` logging every request.
+
+### Migration P3
+```sql
+create table limitation_periods ( ... 18 rows seeded );
+create table advocate_reviews (... unique(advocate_id, reviewer_user_id, case_id));
+create or replace function recompute_vakeel_score(_advocate uuid) returns void ...;
+create trigger trg_review_recompute after insert on advocate_reviews ...;
+create table emergency_consultations ( ... );
+create table notifications ( ... );  -- used by P4 too
+```
+RLS: `limitation_periods` public read; `advocate_reviews` insert by reviewer; `emergency_consultations` visible to both citizen + matched advocate; `notifications` per-user.
+
+**Acceptance:** Public WhatsApp link computes a deadline; a citizen can reach a top-rated advocate in under 60 seconds.
+
+---
+
+## Phase 4 — Network + Onboarding Polish (Parts 8 + 9)
+
+- **Onboarding "Watch Bhramar learn about you"** screen — animated 4-line summary using their actual profile + a hardcoded sample interaction templated to their court/specialization.
+- **Network.tsx upgrade** — three tabs: My Cell · Browse Cells (SC → 25 HCs → District tree) · **Find a Colleague** (filters: specialization, court, district, score range). Cards include Vakeel badge + "Team Up" + "Refer Case" (writes to `notifications`).
+
+**Acceptance:** New advocate finishes onboarding in 90s with a visible "aha" moment; network browsable as a tree.
 
 ---
 
 ## Phase 5 — Polish & Hardening
-
-- Mobile responsiveness pass on every new screen.
-- Loading skeletons everywhere.
-- E2E sanity on existing Razorpay flow + super-admin gating (untouched but verified).
-- Toast-based error handling on every new mutation.
-
----
-
-## Technical Notes (for reference)
-
-- All new tables get RLS. Cross-user reads (Cells, Team Up search, public profile) go through SECURITY DEFINER RPCs that return only public columns.
-- Realtime: `team_messages`, `cell_messages`, `notifications` added to `supabase_realtime` publication.
-- Roles: continue to use `user_roles` + `has_role`; do **not** store roles on profiles.
-- AI: continue using Lovable AI Gateway (no extra keys). News grounding uses `google/gemini-2.5-flash` with Google Search tool.
-- Razorpay flow, super-admin (`bhramar123@gmail.com`), existing case/chat/auth: untouched.
+- Mobile responsive audit on every new page (AI Context panel, Darbar, Legal Clock, Network, Dashboard rows).
+- Skeleton loaders on dashboard rows, Darbar, Legal Clock results, Network listings.
+- Toast error handling on every new mutation (suggestions, review, emergency, darbar end, notification).
+- RLS verification on `case_prompt_suggestions`, `advocate_reviews`, `emergency_consultations`, `notifications`, `limitation_periods`.
+- Tone pass — "AI" → "Bhramar" in all new strings.
 
 ---
 
-## What I need from you to start
+## What we will NOT touch
+Razorpay flow, super-admin gating (`bhramar123@gmail.com`), auth flow, `CreateCaseDialog`, `ingest-document`, `summarize-conversation`, RLS on existing tables.
 
-1. Approve this phased plan (or tell me to merge phases / drop something).
-2. Confirm: should the "App download" plan stay cancelled? (You said yes earlier — I'll keep it cancelled.)
-3. For Phase 4.6 (WhatsApp Bridge) — confirm you want **per-advocate WABA tokens** (each advocate brings their own) vs a single platform-wide WhatsApp number. Per-advocate is what your spec implies and what makes them look professional, but it requires each advocate to set up WABA. I'll go with per-advocate unless you say otherwise.
+---
 
-Once approved I start Phase 1 immediately.
+**Ready to start Phase 1 on approval.** Each phase ends with a working preview before moving on.
