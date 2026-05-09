@@ -413,12 +413,32 @@ type InputBarProps = {
   send: () => void;
   streaming: boolean;
   handleFileUpload: (f: File) => void;
+  profileName?: string | null;
+  profileState?: string | null;
+  activeCaseName?: string | null;
+  onPickCase?: () => void;
 };
 
-function InputBar({ input, setInput, send, streaming, handleFileUpload }: InputBarProps) {
+function InputBar({ input, setInput, send, streaming, handleFileUpload, profileName, profileState, activeCaseName, onPickCase }: InputBarProps) {
   return (
     <div className="border-t border-border/60 p-3 md:p-4 glass-subtle">
       <div className="max-w-3xl mx-auto">
+        {/* AI Context strip */}
+        <div className="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
+          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2 py-0.5 text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {profileName || "You"}{profileState ? ` · ${profileState}` : ""}
+          </span>
+          <button
+            type="button"
+            onClick={onPickCase}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors ${activeCaseName ? "border-gold/60 text-gold hover:bg-gold/10" : "border-border/60 text-muted-foreground hover:bg-muted/30"}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${activeCaseName ? "bg-gold" : "bg-muted-foreground/50"}`} />
+            {activeCaseName ? `Case: ${activeCaseName}` : "No case loaded · pick one"}
+          </button>
+          <span className="text-muted-foreground/70 ml-auto hidden sm:inline">Bhramar uses your profile + this case as context</span>
+        </div>
         <div className="flex items-end gap-2 rounded-2xl glass focus-within:border-gold/60 transition-colors p-2">
           <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-gold shrink-0" asChild>
             <label className="cursor-pointer flex items-center justify-center">
