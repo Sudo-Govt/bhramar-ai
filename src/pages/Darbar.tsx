@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Gavel, Send, Square, Sparkles, Share2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { renderMarkdown } from "@/lib/markdown";
+import { MiniMarkdown } from "@/lib/markdown";
 
 type Mode = "auto" | "bench" | "opposing" | "advisor";
 type Msg = { role: "user" | "assistant"; content: string };
