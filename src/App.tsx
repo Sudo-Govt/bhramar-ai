@@ -27,6 +27,7 @@ import Contact from "./pages/legal/Contact.tsx";
 import TeamsList from "./pages/teams/TeamsList.tsx";
 import TeamWorkspace from "./pages/teams/TeamWorkspace.tsx";
 import Network from "./pages/Network.tsx";
+import Darbar from "./pages/Darbar.tsx";
 
 const queryClient = new QueryClient();
 
