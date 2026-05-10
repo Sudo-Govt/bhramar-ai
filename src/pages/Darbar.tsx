@@ -215,7 +215,7 @@ export default function Darbar() {
                     {m.role === "user" ? "You" : mode === "bench" ? "Bench" : mode === "opposing" ? "Opposing" : "Advisor"}
                   </Badge>
                   <div className={`prose prose-invert prose-sm max-w-none rounded-md p-3 ${m.role === "user" ? "bg-gold/10 border border-gold/30 inline-block text-left" : "bg-black/30 border border-white/10"}`}>
-                    {renderMarkdown(m.content || (streaming && i === messages.length - 1 ? "…" : ""))}
+                    <MiniMarkdown text={m.content || (streaming && i === messages.length - 1 ? "…" : "")} />
                   </div>
                 </div>
               ))}
