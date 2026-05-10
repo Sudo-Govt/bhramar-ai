@@ -271,7 +271,7 @@ function PaneCard({ title, tone, body, streaming }: { title: string; tone: "benc
       </div>
       <div className="p-4 overflow-y-auto flex-1 prose prose-invert prose-sm max-w-none">
         {body
-          ? renderMarkdown(body)
+          ? <MiniMarkdown text={body} />
           : <p className="text-white/40 italic text-sm">{streaming ? "Listening…" : "Awaiting submission."}</p>}
       </div>
     </Card>
