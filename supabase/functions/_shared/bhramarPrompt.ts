@@ -184,8 +184,50 @@ export function buildSystemPrompt(ctx: FullContext): string {
   return parts.join('\n\n---\n\n');
 }
 
+// ─── Darbar (Moot Court) Prompt ──────────────────────────────
+export type DarbarMode = 'bench' | 'opposing' | 'advisor' | 'auto';
+
+export function buildDarbarPrompt(ctx: FullContext, mode: DarbarMode): string {
+  const base = buildSystemPrompt(ctx);
+
+  const modeBlocks: Record<DarbarMode, string> = {
+    bench: `### DARBAR MODE — BENCH
+You are now a sitting Indian judge presiding over this matter. Speak as the Bench would in open court.
+- Ask sharp procedural and factual questions.
+- Test the advocate on jurisdiction, limitation, locus, maintainability.
+- Cite sections from the retrieved Relevant Law where the advocate's argument is weak.
+- Stay formal: "Mr./Ms. Counsel, …".
+- Keep each turn under 120 words. End with the single hardest question the advocate must answer.`,
+    opposing: `### DARBAR MODE — OPPOSING COUNSEL
+You are the opposing counsel for this matter. Argue forcefully against the advocate's position.
+- Identify the weakest link in their case theory and attack it.
+- Cite contrary authorities and unfavourable precedents from the Relevant Law block.
+- Concede nothing. Pose hypotheticals that break their narrative.
+- Keep each turn sharp and under 150 words.`,
+    advisor: `### DARBAR MODE — PRIVATE ADVISOR
+You are Bhramar speaking privately to the advocate between rounds. The Bench cannot hear you.
+- Coach the advocate: what to concede, what to fight, how to reframe.
+- Suggest the next 2–3 questions the Bench is likely to ask and how to answer.
+- Surface citations from the Relevant Law block as ammunition.
+- Keep it tactical, in bullet points, under 200 words.`,
+    auto: `### DARBAR MODE — FULL COURT SIMULATION
+Run a single round of moot court for this matter. In ONE response, output three clearly labelled sections, in this order:
+
+**BENCH:** A sitting judge's question or observation (formal, sharp, ≤100 words).
+**OPPOSING:** The opposing counsel's rebuttal (forceful, cites Relevant Law, ≤120 words).
+**BHRAMAR (private):** Your private advice to the advocate on how to respond (tactical bullets, ≤150 words).
+
+Use markdown headings exactly as shown. Cite sections from the Relevant Law block in BENCH and OPPOSING when they apply.`,
+  };
+
+  return `${base}\n\n---\n\n${modeBlocks[mode]}`;
+}
+
 // Legacy exports kept so older imports don't crash during refactor.
 export type UserContext = FullContext;
 export const buildBhramarSystemPrompt = (ctx: any) => buildSystemPrompt(ctx);
 export const buildChatHistorySummaryPrompt = (messages: { role: string; content: string }[]) =>
   `Summarize the following legal conversation in <=180 words, preserving key facts, parties, statutes, and outstanding questions.\n\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}`;
+
+export const buildDarbarEndSummaryPrompt = (messages: { role: string; content: string }[]) =>
+  `You are Bhramar. The advocate just finished a Darbar (moot court) prep session. Produce a one-page CASE PREP NOTE in markdown with these sections: **Strongest arguments**, **Weakest links**, **Likely Bench questions**, **Citations to memorise**, **Next 3 actions**. Keep it under 350 words. Transcript:\n\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}`;
