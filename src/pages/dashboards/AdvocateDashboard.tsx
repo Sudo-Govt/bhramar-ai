@@ -373,6 +373,7 @@ function CasesSection() {
                 <th className="text-left px-4 py-2">Stage</th>
                 <th className="text-left px-4 py-2">Priority</th>
                 <th className="text-left px-4 py-2">Deadline</th>
+                <th className="text-right px-4 py-2">Darbar</th>
               </tr>
             </thead>
             <tbody>
@@ -395,11 +396,16 @@ function CasesSection() {
                         </span>
                       ) : <span className="text-muted-foreground">—</span>}
                     </td>
+                    <td className="px-4 py-2 text-right">
+                      <Button size="sm" variant="outline" className="h-7 border-gold/40 text-gold hover:bg-gold/10" onClick={() => navigate(`/cases/${c.id}/darbar`)}>
+                        Moot
+                      </Button>
+                    </td>
                   </tr>
                 );
               })}
               {cases.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">No cases yet. Create one from the AI chat.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">No cases yet. Create one from the AI chat.</td></tr>
               )}
             </tbody>
           </table>
