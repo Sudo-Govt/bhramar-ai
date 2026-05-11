@@ -146,6 +146,26 @@ export default function Profile() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Specializations (comma separated)</Label>
               <Input className="mt-1" placeholder="Criminal, Family, Property" value={(profile?.specializations || []).join(", ")} onChange={(e) => setProfile({ ...(profile || {}), specializations: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} />
             </div>
+
+            {(profile?.user_type === "advocate" || profile?.user_type === "firm_member") && (
+              <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-lg border border-border bg-card/50">
+                <div>
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive" /> Available for emergency consultations
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Citizens in distress will see you in emergency matches.</p>
+                </div>
+                <Switch
+                  checked={!!profile?.is_available_for_emergency}
+                  onCheckedChange={async (v) => {
+                    setProfile({ ...(profile || {}), is_available_for_emergency: v });
+                    if (!user) return;
+                    const { error } = await supabase.from("profiles").update({ is_available_for_emergency: v }).eq("id", user.id);
+                    if (error) toast.error(error.message); else toast.success(v ? "You're now available for emergencies" : "Emergency availability off");
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <Button
