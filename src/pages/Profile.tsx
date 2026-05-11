@@ -258,6 +258,30 @@ export default function Profile() {
           </Card>
         </div>
 
+        {(profile?.user_type === "advocate" || profile?.user_type === "firm_member") && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-semibold">Reviews</h2>
+              <VakeelBadge score={profile?.vakeel_score} reviewsCount={profile?.vakeel_reviews_count} />
+            </div>
+            {reviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No reviews yet. Your Vakeel Score will appear here once clients review your work.</p>
+            ) : (
+              <ul className="space-y-3">
+                {reviews.map((r) => (
+                  <li key={r.id} className="p-3 rounded-lg border border-border">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-gold font-semibold">{"★".repeat(r.rating)}<span className="text-muted-foreground">{"★".repeat(5 - r.rating)}</span></div>
+                      <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</div>
+                    </div>
+                    {r.comment && <p className="text-sm">{r.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
+
         <Card className="p-6">
           <h2 className="font-display text-lg font-semibold mb-4">Subscription</h2>
           <p className="text-sm text-muted-foreground mb-4">You're on the {profile?.subscription_tier || "Free"} plan. Upgrade for unlimited queries and document analysis.</p>
