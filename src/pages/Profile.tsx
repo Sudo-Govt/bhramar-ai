@@ -74,7 +74,12 @@ export default function Profile() {
               {(profile?.full_name || user?.email || "U")[0].toUpperCase()}
             </div>
             <div>
-              <div className="font-display text-lg font-semibold">{profile?.full_name || "Advocate"}</div>
+              <div className="font-display text-lg font-semibold flex items-center gap-2 flex-wrap">
+                {profile?.full_name || "Advocate"}
+                {(profile?.user_type === "advocate" || profile?.user_type === "firm_member") && (
+                  <VakeelBadge score={profile?.vakeel_score} reviewsCount={profile?.vakeel_reviews_count} size="sm" />
+                )}
+              </div>
               <div className="text-sm text-muted-foreground">{user?.email}</div>
             </div>
             <span className="ml-auto px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-xs font-semibold">
