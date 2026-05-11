@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { User, Building2 } from "lucide-react";
 import logoIcon from "@/assets/bhramar-logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { EmergencyButton } from "@/components/EmergencyButton";
 
 type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null; archived_at?: string | null };
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
@@ -922,6 +923,9 @@ export default function Dashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Emergency FAB — Free tier only */}
+      {tier === "Free" && <EmergencyButton variant="floating" />}
     </div>
   );
 }
