@@ -14,6 +14,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      advocate_reviews: {
+        Row: {
+          advocate_id: string
+          case_id: string | null
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          reviewer_user_id: string
+        }
+        Insert: {
+          advocate_id: string
+          case_id?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          reviewer_user_id: string
+        }
+        Update: {
+          advocate_id?: string
+          case_id?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          reviewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advocate_reviews_advocate_id_fkey"
+            columns: ["advocate_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advocate_reviews_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advocate_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_settings: {
         Row: {
           allow_general_fallback: boolean
@@ -683,6 +735,57 @@ export type Database = {
           },
         ]
       }
+      emergency_consultations: {
+        Row: {
+          advocate_id: string
+          citizen_user_id: string | null
+          created_at: string
+          description: string | null
+          district: string | null
+          id: string
+          issue_type: string
+          state: string | null
+          status: string
+        }
+        Insert: {
+          advocate_id: string
+          citizen_user_id?: string | null
+          created_at?: string
+          description?: string | null
+          district?: string | null
+          id?: string
+          issue_type: string
+          state?: string | null
+          status?: string
+        }
+        Update: {
+          advocate_id?: string
+          citizen_user_id?: string | null
+          created_at?: string
+          description?: string | null
+          district?: string | null
+          id?: string
+          issue_type?: string
+          state?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_consultations_advocate_id_fkey"
+            columns: ["advocate_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_consultations_citizen_user_id_fkey"
+            columns: ["citizen_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           case_id: string | null
@@ -1066,6 +1169,39 @@ export type Database = {
           refreshed_at?: string
           state?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      limitation_periods: {
+        Row: {
+          act_reference: string
+          category: string
+          description: string
+          id: string
+          period_days: number | null
+          period_label: string
+          sort_order: number
+          urgent_flag: boolean
+        }
+        Insert: {
+          act_reference: string
+          category: string
+          description: string
+          id?: string
+          period_days?: number | null
+          period_label: string
+          sort_order?: number
+          urgent_flag?: boolean
+        }
+        Update: {
+          act_reference?: string
+          category?: string
+          description?: string
+          id?: string
+          period_days?: number | null
+          period_label?: string
+          sort_order?: number
+          urgent_flag?: boolean
         }
         Relationships: []
       }
@@ -1948,6 +2084,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      recompute_vakeel_score: {
+        Args: { _advocate: string }
+        Returns: undefined
       }
       state_code: { Args: { _state: string }; Returns: string }
       unarchive_case: { Args: { _case_id: string }; Returns: undefined }
