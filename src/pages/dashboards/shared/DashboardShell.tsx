@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { BhramarLogo } from "@/components/BhramarLogo";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import logoIcon from "@/assets/bhramar-logo.png";
@@ -60,6 +60,9 @@ export function DashboardShell({
           })}
         </nav>
         <div className="p-3 border-t border-border space-y-1">
+          <Link to="/tools/legal-clock" className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded">
+            <Clock className="h-3.5 w-3.5" /> Legal Clock
+          </Link>
           <Link to="/app" className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded">
             <ArrowLeft className="h-3.5 w-3.5" /> Back to AI chat
           </Link>

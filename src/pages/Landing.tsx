@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logoImg from "@/assets/bhramar-logo.png";
+import { EmergencyButton } from "@/components/EmergencyButton";
 
 export default function Landing() {
   const { user } = useAuth();
@@ -34,8 +35,11 @@ export default function Landing() {
         <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
         <Link to="/refund" className="hover:text-foreground">Refund</Link>
         <Link to="/contact" className="hover:text-foreground">Contact</Link>
+        <Link to="/tools/legal-clock" className="hover:text-foreground">Legal Clock</Link>
         <span className="hidden sm:inline">© {new Date().getFullYear()} Bhramar.ai</span>
       </footer>
+
+      <EmergencyButton variant="floating" />
     </div>
   );
 }

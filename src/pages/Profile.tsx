@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 import { DemographicsForm, type Demographics } from "@/components/DemographicsForm";
+import { VakeelBadge } from "@/components/VakeelBadge";
+import { Switch } from "@/components/ui/switch";
 
 const SUPER_ADMIN = "bhramar123@gmail.com";
 
@@ -20,6 +22,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ queries: 0, docs: 0, cases: 0 });
+  const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +36,13 @@ export default function Profile() {
         supabase.from("cases").select("*", { count: "exact", head: true }).eq("user_id", user.id),
       ]);
       setStats({ queries: q || 0, docs: d || 0, cases: c || 0 });
+      const { data: rv } = await supabase
+        .from("advocate_reviews")
+        .select("id, rating, comment, created_at")
+        .eq("advocate_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setReviews(rv || []);
     })();
   }, [user]);
 
@@ -64,7 +74,12 @@ export default function Profile() {
               {(profile?.full_name || user?.email || "U")[0].toUpperCase()}
             </div>
             <div>
-              <div className="font-display text-lg font-semibold">{profile?.full_name || "Advocate"}</div>
+              <div className="font-display text-lg font-semibold flex items-center gap-2 flex-wrap">
+                {profile?.full_name || "Advocate"}
+                {(profile?.user_type === "advocate" || profile?.user_type === "firm_member") && (
+                  <VakeelBadge score={profile?.vakeel_score} reviewsCount={profile?.vakeel_reviews_count} size="sm" />
+                )}
+              </div>
               <div className="text-sm text-muted-foreground">{user?.email}</div>
             </div>
             <span className="ml-auto px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-xs font-semibold">
@@ -131,6 +146,26 @@ export default function Profile() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Specializations (comma separated)</Label>
               <Input className="mt-1" placeholder="Criminal, Family, Property" value={(profile?.specializations || []).join(", ")} onChange={(e) => setProfile({ ...(profile || {}), specializations: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} />
             </div>
+
+            {(profile?.user_type === "advocate" || profile?.user_type === "firm_member") && (
+              <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-lg border border-border bg-card/50">
+                <div>
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive" /> Available for emergency consultations
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Citizens in distress will see you in emergency matches.</p>
+                </div>
+                <Switch
+                  checked={!!profile?.is_available_for_emergency}
+                  onCheckedChange={async (v) => {
+                    setProfile({ ...(profile || {}), is_available_for_emergency: v });
+                    if (!user) return;
+                    const { error } = await supabase.from("profiles").update({ is_available_for_emergency: v }).eq("id", user.id);
+                    if (error) toast.error(error.message); else toast.success(v ? "You're now available for emergencies" : "Emergency availability off");
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <Button
@@ -222,6 +257,30 @@ export default function Profile() {
             <div className="text-xs text-muted-foreground mt-1">Cases created</div>
           </Card>
         </div>
+
+        {(profile?.user_type === "advocate" || profile?.user_type === "firm_member") && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-semibold">Reviews</h2>
+              <VakeelBadge score={profile?.vakeel_score} reviewsCount={profile?.vakeel_reviews_count} />
+            </div>
+            {reviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No reviews yet. Your Vakeel Score will appear here once clients review your work.</p>
+            ) : (
+              <ul className="space-y-3">
+                {reviews.map((r) => (
+                  <li key={r.id} className="p-3 rounded-lg border border-border">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-gold font-semibold">{"★".repeat(r.rating)}<span className="text-muted-foreground">{"★".repeat(5 - r.rating)}</span></div>
+                      <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</div>
+                    </div>
+                    {r.comment && <p className="text-sm">{r.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
 
         <Card className="p-6">
           <h2 className="font-display text-lg font-semibold mb-4">Subscription</h2>

@@ -10,6 +10,7 @@ const PLANS: Record<string, { amount: number; label: string }> = {
   advocate: { amount: 49900,  label: "Advocate" },  // ₹499
   firm:     { amount: 299900, label: "Firm" },      // ₹2,999
   firm_pro: { amount: 499900, label: "Firm Pro" },  // ₹4,999
+  emergency:{ amount: 99900,  label: "Emergency Consultation" }, // ₹999
 };
 
 Deno.serve(async (req) => {

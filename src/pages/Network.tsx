@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, Building2, Megaphone, MessageSquare, Network as NetworkIcon, Send, Users, UserPlus } from "lucide-react";
+import { VakeelBadge } from "@/components/VakeelBadge";
 
 type Cell = { id: string; court_name: string; state: string | null; city: string | null; level: string; slug: string; description: string | null };
 type Member = { profile_id: string; full_name: string | null; advocate_id: string | null; court_of_practice: string | null; specializations: string[] | null; vakeel_score: number | null };
@@ -121,7 +122,7 @@ export default function Network() {
               <Tabs defaultValue="members">
                 <TabsList className="grid grid-cols-3 w-full max-w-xl"><TabsTrigger value="members">Members</TabsTrigger><TabsTrigger value="notices">Notices</TabsTrigger><TabsTrigger value="chat">Chat</TabsTrigger></TabsList>
                 <TabsContent value="members" className="grid md:grid-cols-2 gap-3 mt-4">
-                  {members.map((m) => <Card key={m.profile_id} className="p-4"><div className="flex items-start justify-between gap-3"><div><div className="font-semibold">{m.full_name || "Advocate"}</div><div className="text-xs text-gold font-mono">{m.advocate_id || "ID pending"}</div><div className="text-xs text-muted-foreground mt-1">{m.court_of_practice}</div></div><Link to="/teams"><Button size="sm" variant="outline"><Users className="h-4 w-4" /> Team</Button></Link></div><div className="flex flex-wrap gap-1 mt-3">{(m.specializations || []).slice(0, 3).map((s) => <Badge key={s} variant="secondary">{s}</Badge>)}</div></Card>)}
+                  {members.map((m) => <Card key={m.profile_id} className="p-4"><div className="flex items-start justify-between gap-3"><div><div className="font-semibold flex items-center gap-2 flex-wrap">{m.full_name || "Advocate"}<VakeelBadge score={m.vakeel_score ?? 0} size="sm" /></div><div className="text-xs text-gold font-mono">{m.advocate_id || "ID pending"}</div><div className="text-xs text-muted-foreground mt-1">{m.court_of_practice}</div></div><Link to="/teams"><Button size="sm" variant="outline"><Users className="h-4 w-4" /> Team</Button></Link></div><div className="flex flex-wrap gap-1 mt-3">{(m.specializations || []).slice(0, 3).map((s) => <Badge key={s} variant="secondary">{s}</Badge>)}</div></Card>)}
                   {members.length === 0 && <Card className="p-8 text-center text-muted-foreground md:col-span-2">No members visible yet for this cell.</Card>}
                 </TabsContent>
                 <TabsContent value="notices" className="grid lg:grid-cols-[1fr_320px] gap-4 mt-4">
