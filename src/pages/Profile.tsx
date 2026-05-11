@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { TwoFactorSetup } from "@/components/TwoFactorSetup";
 import { DemographicsForm, type Demographics } from "@/components/DemographicsForm";
+import { VakeelBadge } from "@/components/VakeelBadge";
+import { Switch } from "@/components/ui/switch";
 
 const SUPER_ADMIN = "bhramar123@gmail.com";
 
@@ -20,6 +22,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ queries: 0, docs: 0, cases: 0 });
+  const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -33,6 +36,13 @@ export default function Profile() {
         supabase.from("cases").select("*", { count: "exact", head: true }).eq("user_id", user.id),
       ]);
       setStats({ queries: q || 0, docs: d || 0, cases: c || 0 });
+      const { data: rv } = await supabase
+        .from("advocate_reviews")
+        .select("id, rating, comment, created_at")
+        .eq("advocate_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setReviews(rv || []);
     })();
   }, [user]);
 
