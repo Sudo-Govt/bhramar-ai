@@ -28,6 +28,7 @@ import TeamsList from "./pages/teams/TeamsList.tsx";
 import TeamWorkspace from "./pages/teams/TeamWorkspace.tsx";
 import Network from "./pages/Network.tsx";
 import Darbar from "./pages/Darbar.tsx";
+import LegalClock from "./pages/tools/LegalClock.tsx";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/network/browse" element={<ProtectedRoute><Network /></ProtectedRoute>} />
               <Route path="/network/cell/:id" element={<ProtectedRoute><Network /></ProtectedRoute>} />
               <Route path="/cases/:id/darbar" element={<ProtectedRoute><Darbar /></ProtectedRoute>} />
+              <Route path="/tools/legal-clock" element={<LegalClock />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
