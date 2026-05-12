@@ -36,8 +36,10 @@ function splitAuto(text: string) {
 export default function Darbar() {
   const { id: caseId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [caseRow, setCaseRow] = useState<any>(null);
   const [mode, setMode] = useState<Mode>("auto");
+  const [mobilePane, setMobilePane] = useState<Pane>("bench");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [streaming, setStreaming] = useState(false);
