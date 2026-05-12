@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Gavel, Send, Square, Sparkles, Share2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MiniMarkdown } from "@/lib/markdown";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Mode = "auto" | "bench" | "opposing" | "advisor";
+type Pane = "bench" | "opposing" | "advisor";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const SECTION_RE = /\*\*(BENCH|OPPOSING|BHRAMAR \(private\)):\*\*([\s\S]*?)(?=\n\*\*(?:BENCH|OPPOSING|BHRAMAR \(private\)):\*\*|$)/g;
