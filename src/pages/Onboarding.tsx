@@ -261,10 +261,35 @@ export default function Onboarding() {
     setStep(3);
   };
 
+  const [welcomeLines, setWelcomeLines] = useState<string[] | null>(null);
+
   const finish = async () => {
-    toast.success("Welcome to Bhramar.ai! 🎉");
-    await completeAndExit();
+    if (!user) return;
+    setSaving(true);
+    localStorage.setItem(ONBOARDING_DONE_KEY, user.id);
+    window.dispatchEvent(new Event("bhramar:onboarding-complete"));
+    const { error } = await saveProfile({ onboarding_completed: true });
+    setSaving(false);
+    if (error) {
+      console.error(error);
+      toast.error("Saved locally — sync may retry later");
+    }
+    const lines: string[] = [];
+    const spec = specs[0];
+    if (userType !== "citizen" && spec && court && state) {
+      lines.push(`Noted. You practise ${spec} at ${court}, ${state}.`);
+    } else if (userType !== "citizen" && court && state) {
+      lines.push(`Noted. You practise at ${court}, ${state}.`);
+    }
+    if (userType !== "citizen" && advocateId) {
+      lines.push(`Your Vakeel ID is ${advocateId}. Welcome to the network.`);
+    }
+    lines.push("Bhramar grounds every answer in BNS, BNSS, and BSA — your court's precedents first.");
+    lines.push("Your first case is one tap away. Let's begin.");
+    setWelcomeLines(lines);
   };
+
+  const enterApp = () => navigate("/app", { replace: true });
 
   const copyId = () => {
     if (!advocateId) return;
