@@ -31,6 +31,7 @@ interface Advocate {
 
 export function EmergencyButton({ variant = "floating" }: { variant?: "floating" | "inline" }) {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [issueType, setIssueType] = useState("Criminal");
   const [description, setDescription] = useState("");
