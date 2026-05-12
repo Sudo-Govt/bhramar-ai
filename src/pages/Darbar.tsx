@@ -198,13 +198,28 @@ export default function Darbar() {
       </header>
 
       {/* Body — three columns when auto, single transcript otherwise */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-3 p-3 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-3 gap-3 p-3 overflow-hidden">
         {mode === "auto" ? (
-          <>
-            <PaneCard title="Bench" tone="bench" body={auto?.bench || ""} streaming={streaming} />
-            <PaneCard title="Opposing counsel" tone="opposing" body={auto?.opposing || ""} streaming={streaming} />
-            <PaneCard title="Bhramar — private notes" tone="advisor" body={auto?.advisor || ""} streaming={streaming} />
-          </>
+          isMobile ? (
+            <>
+              <Tabs value={mobilePane} onValueChange={(v) => setMobilePane(v as Pane)} className="shrink-0">
+                <TabsList className="grid grid-cols-3 w-full bg-white/5 border border-white/10">
+                  <TabsTrigger value="bench">Bench</TabsTrigger>
+                  <TabsTrigger value="opposing">Opposing</TabsTrigger>
+                  <TabsTrigger value="advisor">Advisor</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {mobilePane === "bench" && <PaneCard title="Bench" tone="bench" body={auto?.bench || ""} streaming={streaming} />}
+              {mobilePane === "opposing" && <PaneCard title="Opposing counsel" tone="opposing" body={auto?.opposing || ""} streaming={streaming} />}
+              {mobilePane === "advisor" && <PaneCard title="Bhramar — private notes" tone="advisor" body={auto?.advisor || ""} streaming={streaming} />}
+            </>
+          ) : (
+            <>
+              <PaneCard title="Bench" tone="bench" body={auto?.bench || ""} streaming={streaming} />
+              <PaneCard title="Opposing counsel" tone="opposing" body={auto?.opposing || ""} streaming={streaming} />
+              <PaneCard title="Bhramar — private notes" tone="advisor" body={auto?.advisor || ""} streaming={streaming} />
+            </>
+          )
         ) : (
           <Card className="lg:col-span-3 bg-white/5 border-white/10 p-4 overflow-y-auto" ref={scrollRef as any}>
             <div className="space-y-4">
