@@ -623,6 +623,60 @@ export default function Onboarding() {
           )}
         </div>
       </main>
+      {welcomeLines && <WelcomeScreen lines={welcomeLines} onEnter={enterApp} />}
+    </div>
+  );
+}
+
+function WelcomeScreen({ lines, onEnter }: { lines: string[]; onEnter: () => void }) {
+  const [visible, setVisible] = useState<string[]>(() => lines.map(() => ""));
+  const [showButton, setShowButton] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < lines.length; i++) {
+        if (cancelled) return;
+        const full = lines[i];
+        for (let j = 1; j <= full.length; j++) {
+          if (cancelled) return;
+          await new Promise((r) => setTimeout(r, 18));
+          setVisible((v) => {
+            const copy = [...v];
+            copy[i] = full.slice(0, j);
+            return copy;
+          });
+        }
+        if (i === 0) setShowButton(true);
+        if (i < lines.length - 1) await new Promise((r) => setTimeout(r, 400));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lines]);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center px-6 animate-fade-in">
+      <img src={logoImg} alt="Bhramar.ai" className="h-16 w-16 object-contain mb-10" />
+      <div className="max-w-xl w-full text-center space-y-5">
+        {lines.map((full, i) => (
+          <p key={i} className="text-lg md:text-xl text-foreground leading-relaxed min-h-[1.75rem]">
+            {visible[i]}
+            {visible[i] && visible[i].length < full.length && (
+              <span className="ml-0.5 inline-block w-0.5 h-5 bg-gold animate-pulse align-middle" />
+            )}
+          </p>
+        ))}
+      </div>
+      {showButton && (
+        <Button
+          onClick={onEnter}
+          className="mt-12 h-12 px-8 bg-gradient-aurora text-primary-foreground shadow-gold font-semibold rounded-xl animate-fade-in"
+        >
+          Open Bhramar <ArrowRight className="h-4 w-4 ml-1" />
+        </Button>
+      )}
     </div>
   );
 }
