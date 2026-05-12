@@ -116,109 +116,124 @@ export function EmergencyButton({ variant = "floating" }: { variant?: "floating"
         </Button>
       )}
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" /> Emergency Legal Help
-            </DialogTitle>
-            <DialogDescription>
-              Tell Bhramar what's wrong. We'll connect you to a top-rated advocate available right now.
-            </DialogDescription>
-          </DialogHeader>
-
-          {!results ? (
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Issue type</label>
-                <Select value={issueType} onValueChange={setIssueType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {ISSUE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+      {(() => {
+        const body = (
+          <>
+            {submitting && !results && (
+              <div className="space-y-2 pt-2">
+                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
               </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">What happened?</label>
-                <Textarea
-                  rows={3}
-                  placeholder="Briefly describe your situation…"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            )}
+            {!results ? (
+              <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">State</label>
-                  <Select value={stateName} onValueChange={(v) => { setStateName(v); setDistrict(""); }}>
-                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {INDIA_STATES.map((s) => <SelectItem key={s.state} value={s.state}>{s.state}</SelectItem>)}
+                  <label className="text-xs text-muted-foreground mb-1 block">Issue type</label>
+                  <Select value={issueType} onValueChange={setIssueType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ISSUE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">District</label>
-                  <Select value={district} onValueChange={setDistrict} disabled={!stateName}>
-                    <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {districts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-xs text-muted-foreground mb-1 block">What happened?</label>
+                  <Textarea rows={3} placeholder="Briefly describe your situation…" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">State</label>
+                    <Select value={stateName} onValueChange={(v) => { setStateName(v); setDistrict(""); }}>
+                      <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {INDIA_STATES.map((s) => <SelectItem key={s.state} value={s.state}>{s.state}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">District</label>
+                    <Select value={district} onValueChange={setDistrict} disabled={!stateName}>
+                      <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {districts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2" variant="destructive">
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+                  Find an advocate now
+                </Button>
               </div>
-              <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2" variant="destructive">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
-                Find an advocate now
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <h3 className="font-semibold">Top advocates available now</h3>
-              {results.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No advocates flagged as available right now. Please try again shortly.
-                </p>
-              )}
-              {results.map((a) => (
-                <Card key={a.id} className="p-4">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold">{a.full_name || "Advocate"}</span>
-                        <VakeelBadge score={a.vakeel_score} reviewsCount={a.vakeel_reviews_count} size="sm" />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {a.court_of_practice || a.bar_council || "Bar Council"}
-                        {a.state ? ` · ${a.state}` : ""}
+            ) : (
+              <div className="space-y-3">
+                <h3 className="font-semibold">Top advocates available now</h3>
+                {results.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No advocates flagged as available right now. Please try again shortly.</p>
+                )}
+                {results.map((a) => (
+                  <Card key={a.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{a.full_name || "Advocate"}</span>
+                          <VakeelBadge score={a.vakeel_score} reviewsCount={a.vakeel_reviews_count} size="sm" />
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {a.court_of_practice || a.bar_council || "Bar Council"}{a.state ? ` · ${a.state}` : ""}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => logConsult(a.id)}
-                      asChild
-                    >
-                      <a href={`tel:`} onClick={(e) => { e.preventDefault(); logConsult(a.id); toast.success("Contact request logged. Advocate will be notified."); }}>
-                        <Phone className="h-4 w-4" /> Call
-                      </a>
-                    </Button>
-                    <Button size="sm" className="gap-2" onClick={() => bookPaid(a.id)}>
-                      <IndianRupee className="h-4 w-4" /> Paid Consultation
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-              <Button variant="ghost" className="w-full" onClick={() => setResults(null)}>
-                Search again
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant="outline" className="gap-2" asChild>
+                        <a href={`tel:`} onClick={(e) => { e.preventDefault(); logConsult(a.id); toast.success("Contact request logged. Advocate will be notified."); }}>
+                          <Phone className="h-4 w-4" /> Call
+                        </a>
+                      </Button>
+                      <Button size="sm" className="gap-2" onClick={() => bookPaid(a.id)}>
+                        <IndianRupee className="h-4 w-4" /> Paid Consultation
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+                <Button variant="ghost" className="w-full" onClick={() => setResults(null)}>Search again</Button>
+              </div>
+            )}
+          </>
+        );
+
+        if (isMobile) {
+          return (
+            <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+              <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-2xl">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-destructive" /> Emergency Legal Help
+                  </SheetTitle>
+                  <SheetDescription>
+                    Tell Bhramar what's wrong. We'll connect you to a top-rated advocate available right now.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-4">{body}</div>
+              </SheetContent>
+            </Sheet>
+          );
+        }
+        return (
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" /> Emergency Legal Help
+                </DialogTitle>
+                <DialogDescription>
+                  Tell Bhramar what's wrong. We'll connect you to a top-rated advocate available right now.
+                </DialogDescription>
+              </DialogHeader>
+              {body}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </>
   );
 }
