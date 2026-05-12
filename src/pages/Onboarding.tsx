@@ -261,10 +261,35 @@ export default function Onboarding() {
     setStep(3);
   };
 
+  const [welcomeLines, setWelcomeLines] = useState<string[] | null>(null);
+
   const finish = async () => {
-    toast.success("Welcome to Bhramar.ai! 🎉");
-    await completeAndExit();
+    if (!user) return;
+    setSaving(true);
+    localStorage.setItem(ONBOARDING_DONE_KEY, user.id);
+    window.dispatchEvent(new Event("bhramar:onboarding-complete"));
+    const { error } = await saveProfile({ onboarding_completed: true });
+    setSaving(false);
+    if (error) {
+      console.error(error);
+      toast.error("Saved locally — sync may retry later");
+    }
+    const lines: string[] = [];
+    const spec = specs[0];
+    if (userType !== "citizen" && spec && court && state) {
+      lines.push(`Noted. You practise ${spec} at ${court}, ${state}.`);
+    } else if (userType !== "citizen" && court && state) {
+      lines.push(`Noted. You practise at ${court}, ${state}.`);
+    }
+    if (userType !== "citizen" && advocateId) {
+      lines.push(`Your Vakeel ID is ${advocateId}. Welcome to the network.`);
+    }
+    lines.push("Bhramar grounds every answer in BNS, BNSS, and BSA — your court's precedents first.");
+    lines.push("Your first case is one tap away. Let's begin.");
+    setWelcomeLines(lines);
   };
+
+  const enterApp = () => navigate("/app", { replace: true });
 
   const copyId = () => {
     if (!advocateId) return;
@@ -598,6 +623,60 @@ export default function Onboarding() {
           )}
         </div>
       </main>
+      {welcomeLines && <WelcomeScreen lines={welcomeLines} onEnter={enterApp} />}
+    </div>
+  );
+}
+
+function WelcomeScreen({ lines, onEnter }: { lines: string[]; onEnter: () => void }) {
+  const [visible, setVisible] = useState<string[]>(() => lines.map(() => ""));
+  const [showButton, setShowButton] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < lines.length; i++) {
+        if (cancelled) return;
+        const full = lines[i];
+        for (let j = 1; j <= full.length; j++) {
+          if (cancelled) return;
+          await new Promise((r) => setTimeout(r, 18));
+          setVisible((v) => {
+            const copy = [...v];
+            copy[i] = full.slice(0, j);
+            return copy;
+          });
+        }
+        if (i === 0) setShowButton(true);
+        if (i < lines.length - 1) await new Promise((r) => setTimeout(r, 400));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lines]);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center px-6 animate-fade-in">
+      <img src={logoImg} alt="Bhramar.ai" className="h-16 w-16 object-contain mb-10" />
+      <div className="max-w-xl w-full text-center space-y-5">
+        {lines.map((full, i) => (
+          <p key={i} className="text-lg md:text-xl text-foreground leading-relaxed min-h-[1.75rem]">
+            {visible[i]}
+            {visible[i] && visible[i].length < full.length && (
+              <span className="ml-0.5 inline-block w-0.5 h-5 bg-gold animate-pulse align-middle" />
+            )}
+          </p>
+        ))}
+      </div>
+      {showButton && (
+        <Button
+          onClick={onEnter}
+          className="mt-12 h-12 px-8 bg-gradient-aurora text-primary-foreground shadow-gold font-semibold rounded-xl animate-fade-in"
+        >
+          Open Bhramar <ArrowRight className="h-4 w-4 ml-1" />
+        </Button>
+      )}
     </div>
   );
 }
