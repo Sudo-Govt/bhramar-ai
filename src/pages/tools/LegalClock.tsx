@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Clock, Search, AlertTriangle, Share2, ArrowLeft } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import logoImg from "@/assets/bhramar-logo.png";
 
 interface Lp {
