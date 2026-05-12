@@ -130,7 +130,13 @@ export default function LegalClock() {
               />
             </div>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-              {loading && <p className="text-sm text-muted-foreground p-4">Loading…</p>}
+              {loading && [0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-3 rounded-lg border border-border space-y-2">
+                  <div className="flex items-center gap-2"><Skeleton className="h-4 w-16" /><Skeleton className="h-4 w-12 ml-auto" /></div>
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
               {!loading && filtered.length === 0 && (
                 <p className="text-sm text-muted-foreground p-4">No matches.</p>
               )}
