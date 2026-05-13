@@ -1422,6 +1422,85 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          prompt_text: string
+          version_label: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          prompt_text: string
+          version_label: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          prompt_text?: string
+          version_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rag_upload_queue: {
+        Row: {
+          error_message: string | null
+          file_path: string
+          file_size_bytes: number | null
+          id: string
+          original_filename: string
+          processed_at: string | null
+          source: string
+          status: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          error_message?: string | null
+          file_path: string
+          file_size_bytes?: number | null
+          id?: string
+          original_filename: string
+          processed_at?: string | null
+          source: string
+          status?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          error_message?: string | null
+          file_path?: string
+          file_size_bytes?: number | null
+          id?: string
+          original_filename?: string
+          processed_at?: string | null
+          source?: string
+          status?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rag_upload_queue_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       razorpay_orders: {
         Row: {
           amount: number
@@ -1562,6 +1641,35 @@ export type Database = {
             columns: ["firm_id"]
             isOneToOne: false
             referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_config: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

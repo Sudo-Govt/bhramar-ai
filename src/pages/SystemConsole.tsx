@@ -27,6 +27,7 @@ const MODELS = [
 export default function SystemConsole() {
   const { user, loading } = useAuth();
   const isAdmin = (user?.email || "").toLowerCase() === SUPER_ADMIN;
+  if (!loading && isAdmin) return <Navigate to="/admin" replace />;
 
   // AI settings
   const [provider, setProvider] = useState("gemini");
