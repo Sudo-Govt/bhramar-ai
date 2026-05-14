@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { X } from "lucide-react";
+
+const EMERGENCY_DISMISSED_KEY = "bhramar.emergencyDismissed";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -33,6 +36,10 @@ export function EmergencyButton({ variant = "floating" }: { variant?: "floating"
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(EMERGENCY_DISMISSED_KEY) === "1";
+  });
   const [issueType, setIssueType] = useState("Criminal");
   const [description, setDescription] = useState("");
   const [stateName, setStateName] = useState("");
@@ -41,6 +48,11 @@ export function EmergencyButton({ variant = "floating" }: { variant?: "floating"
   const [results, setResults] = useState<Advocate[] | null>(null);
 
   const districts = INDIA_STATES.find((s) => s.state === stateName)?.districts ?? [];
+
+  const dismissForever = () => {
+    try { localStorage.setItem(EMERGENCY_DISMISSED_KEY, "1"); } catch {}
+    setDismissed(true);
+  };
 
   const reset = () => {
     setIssueType("Criminal");
@@ -103,17 +115,45 @@ export function EmergencyButton({ variant = "floating" }: { variant?: "floating"
   return (
     <>
       {variant === "floating" ? (
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Emergency legal help"
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-destructive text-destructive-foreground shadow-lg shadow-destructive/40 flex items-center justify-center hover:scale-105 transition-transform animate-pulse"
-        >
-          <AlertTriangle className="h-6 w-6" />
-        </button>
+        !dismissed && (
+          <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+            <button
+              onClick={dismissForever}
+              aria-label="Hide emergency button"
+              title="Hide forever"
+              className="h-6 w-6 rounded-full bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted shadow-card flex items-center justify-center transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Emergency legal help"
+              className="h-14 w-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
+            >
+              <AlertTriangle className="h-6 w-6" />
+            </button>
+          </div>
+        )
       ) : (
-        <Button onClick={() => setOpen(true)} variant="destructive" className="gap-2">
-          <AlertTriangle className="h-4 w-4" /> Emergency Legal Help
-        </Button>
+        <div className="inline-flex items-center gap-1">
+          {!dismissed && (
+            <Button onClick={() => setOpen(true)} variant="destructive" className="gap-2">
+              <AlertTriangle className="h-4 w-4" /> Emergency Legal Help
+            </Button>
+          )}
+          {!dismissed && (
+            <Button
+              onClick={dismissForever}
+              variant="ghost"
+              size="icon"
+              aria-label="Hide emergency button"
+              title="Hide forever"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       )}
 
       {(() => {
