@@ -30,6 +30,7 @@ import Network from "./pages/Network.tsx";
 import Darbar from "./pages/Darbar.tsx";
 import LegalClock from "./pages/tools/LegalClock.tsx";
 import Admin from "./pages/Admin.tsx";
+import { DocsHome, DocsArticle } from "./pages/Docs.tsx";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,8 @@ const App = () => (
               <Route path="/cases/:id/darbar" element={<ProtectedRoute><Darbar /></ProtectedRoute>} />
               <Route path="/tools/legal-clock" element={<LegalClock />} />
               <Route path="/admin/*" element={<Admin />} />
+              <Route path="/docs" element={<DocsHome />} />
+              <Route path="/docs/:slug" element={<DocsArticle />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
