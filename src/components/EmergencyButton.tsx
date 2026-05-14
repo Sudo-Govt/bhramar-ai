@@ -36,6 +36,10 @@ export function EmergencyButton({ variant = "floating" }: { variant?: "floating"
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(EMERGENCY_DISMISSED_KEY) === "1";
+  });
   const [issueType, setIssueType] = useState("Criminal");
   const [description, setDescription] = useState("");
   const [stateName, setStateName] = useState("");
@@ -44,6 +48,11 @@ export function EmergencyButton({ variant = "floating" }: { variant?: "floating"
   const [results, setResults] = useState<Advocate[] | null>(null);
 
   const districts = INDIA_STATES.find((s) => s.state === stateName)?.districts ?? [];
+
+  const dismissForever = () => {
+    try { localStorage.setItem(EMERGENCY_DISMISSED_KEY, "1"); } catch {}
+    setDismissed(true);
+  };
 
   const reset = () => {
     setIssueType("Criminal");
