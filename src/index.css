@@ -377,4 +377,31 @@
     to   { opacity: 1; transform: translateX(0); }
   }
   .animate-slide-in-right { animation: slide-in-right 0.2s ease-out both; }
+
+  /* ── Transparent panels with wallpaper visibility ── */
+  .dark body {
+    background-color: transparent !important;
+  }
+
+  /* Main app shell panels - semi-transparent to show wallpaper */
+  .dark [class*="bg-background"],
+  .dark [class*="bg-card"] {
+    background-color: hsl(var(--background) / 0.75) !important;
+  }
+
+  /* Sidebar specifically - frosted glass effect */
+  .dark aside,
+  .dark nav {
+    background-color: hsl(225 10% 11% / 0.80) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Cards and panels - semi-transparent with blur */
+  .dark .card,
+  .dark [class*="Card"] {
+    background-color: hsl(225 8% 16% / 0.70) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 }
