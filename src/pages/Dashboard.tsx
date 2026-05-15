@@ -5,21 +5,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { BhramarLogo } from "@/components/BhramarLogo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MiniMarkdown, extractCitations } from "@/lib/markdown";
 import {
   Plus, Send, Paperclip, Mic, MessageSquare, FolderClosed,
   FileText, StickyNote, Search, Copy, Bookmark, Share2, Save,
-  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
   ChevronRight, Upload, Crown, Menu, IndianRupee, History,
-  Archive, ArchiveRestore, Trash2, ArrowLeft, Clock,
+  Archive, ArchiveRestore, Trash2, ArrowLeft, Clock, Network,
+  MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tier } from "@/hooks/useEffectiveTier";
 import { CreateCaseDialog } from "@/components/CreateCaseDialog";
 import { PaymentTracker } from "@/components/PaymentTracker";
-import { NewsPanel } from "@/components/NewsPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { User, Building2 } from "lucide-react";
 import logoIcon from "@/assets/bhramar-logo.png";
@@ -29,16 +27,74 @@ import { EmergencyButton } from "@/components/EmergencyButton";
 type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null; archived_at?: string | null };
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
 type MsgRow = { id?: string; role: "user" | "assistant"; content: string; citations?: string[] };
+type TabType = "chat" | "cases" | "network" | "darbar" | "notes";
 
 // ============================================================================
-// Sub-components are defined OUTSIDE the page component on purpose.
-// Defining them inside would create a fresh component type on every render,
-// remounting the <Textarea> on every keystroke and dismissing the mobile keyboard.
+// Icon Rail Component (56px)
 // ============================================================================
 
-type SidebarProps = {
-  leftOpen: boolean;
-  setLeftOpen: (v: boolean) => void;
+type IconRailProps = {
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
+  tier: Tier;
+};
+
+function IconRail({ activeTab, setActiveTab, tier }: IconRailProps) {
+  const tabs: { id: TabType; icon: any; label: string; available: boolean }[] = [
+    { id: "chat", icon: MessageSquare, label: "Chat", available: true },
+    { id: "cases", icon: FolderClosed, label: "Cases", available: tier === "Pro" || tier === "Firm" },
+    { id: "network", icon: Network, label: "Network", available: tier === "Firm" },
+    { id: "darbar", icon: Crown, label: "Darbar", available: true },
+    { id: "notes", icon: StickyNote, label: "Notes", available: true },
+  ];
+
+  return (
+    <div className="w-16 border-r border-border/60 bg-background/40 backdrop-blur-sm flex flex-col items-center py-4 gap-2 shrink-0">
+      {/* Logo mark */}
+      <img src={logoIcon} alt="Bhramar" className="h-8 w-8 object-contain mb-2" />
+
+      {/* Tab buttons */}
+      {tabs.map((tab) => {
+        if (!tab.available) return null;
+        const Icon = tab.icon;
+        return (
+          <div key={tab.id} className="group relative">
+            <button
+              onClick={() => setActiveTab(tab.id)}
+              className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
+                activeTab === tab.id
+                  ? "bg-gradient-aurora shadow-gold text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              }`}
+              title={tab.label}
+            >
+              <Icon className="h-5 w-5" />
+            </button>
+            {/* Tooltip */}
+            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-foreground text-background px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+              {tab.label}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Profile at bottom */}
+      <Link to="/dashboard" className="h-10 w-10 rounded-xl bg-gradient-aurora flex items-center justify-center text-primary-foreground font-bold text-xs hover:shadow-gold transition-shadow" title="Profile">
+        P
+      </Link>
+    </div>
+  );
+}
+
+// ============================================================================
+// Side Panel Component (260px, content changes based on activeTab)
+// ============================================================================
+
+type SidePanelProps = {
+  activeTab: TabType;
   cases: CaseRow[];
   activeCaseId: string | null;
   setActiveCaseId: (id: string) => void;
@@ -62,286 +118,192 @@ type SidebarProps = {
   daysLeft: number | null;
 };
 
-function Sidebar(props: SidebarProps) {
-  const { leftOpen, setLeftOpen, cases, activeCaseId, setActiveCaseId,
+function SidePanel(props: SidePanelProps) {
+  const {
+    activeTab, cases, activeCaseId, setActiveCaseId,
     conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail,
     tier, freeChatHistory, setActiveFreeConv, isDevAccount, openPicker,
-    showArchived, setShowArchived, onArchiveCase, onUnarchiveCase, onAskDeleteCase, daysLeft } = props;
+    showArchived, setShowArchived, onArchiveCase, onUnarchiveCase, onAskDeleteCase, daysLeft
+  } = props;
 
   const isPremium = tier === "Pro" || tier === "Firm";
   const visibleCases = cases.filter((c) => showArchived ? !!c.archived_at : !c.archived_at);
   const archivedCount = cases.filter((c) => !!c.archived_at).length;
 
   return (
-    <aside className={`relative bg-sidebar/70 backdrop-blur-xl border-r border-sidebar-border flex flex-col h-full ${leftOpen ? "w-72" : "w-16"} transition-[width] duration-200`}>
-      <div className="p-3 border-b border-sidebar-border flex items-center justify-between">
-        {leftOpen ? <BhramarLogo /> : <img src={logoIcon} alt="Bhramar.ai" className="h-6 w-6 object-contain mx-auto" />}
-        <Button variant="ghost" size="icon" className="hidden md:flex h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setLeftOpen(!leftOpen)}>
-          {leftOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-        </Button>
+    <aside className="w-60 border-r border-border/60 bg-sidebar/50 backdrop-blur-md flex flex-col h-full shrink-0 overflow-hidden">
+      {/* Header: Logo + Label */}
+      <div className="p-3 border-b border-border/60 flex items-center gap-2 shrink-0">
+        <BhramarLogo />
       </div>
 
-      <div className="p-3">
-        {isPremium ? (
+      {/* Content based on activeTab */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {/* CHAT TAB */}
+        {activeTab === "chat" && (
           <>
-            <Button onClick={newCase} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
-              <Plus className="h-4 w-4" /> {leftOpen && "Create case"}
+            <Button onClick={newChat} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-9 justify-start hover:opacity-95 text-sm">
+              <Plus className="h-4 w-4" /> New chat
             </Button>
-            {leftOpen && (
-              <Button onClick={newChat} variant="ghost" className="w-full mt-2 h-9 justify-start text-muted-foreground hover:text-foreground">
-                <MessageSquare className="h-4 w-4" /> New chat
-              </Button>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-4 mb-2">
+              <History className="h-3 w-3 inline mr-1" /> {isPremium ? "Conversations" : "Chat History"}
+            </div>
+            {(isPremium ? conversations : freeChatHistory).length === 0 && (
+              <div className="text-xs text-muted-foreground px-2 py-3">
+                {isPremium ? "Start a conversation to get going." : "Your past chats will appear here."}
+              </div>
             )}
+            {(isPremium ? conversations : freeChatHistory).map((cv) => (
+              <button
+                key={cv.id}
+                onClick={() => isPremium ? setActiveConvId(cv.id) : setActiveFreeConv(cv)}
+                className={`w-full text-left text-xs p-2 rounded-md truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"}`}
+                title={cv.title}
+              >
+                {cv.title}
+              </button>
+            ))}
           </>
-        ) : (
-          <Button onClick={newChat} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-10 justify-start hover:opacity-95">
-            <MessageSquare className="h-4 w-4" /> {leftOpen && "New chat"}
-          </Button>
         )}
-      </div>
 
-      {leftOpen && (
-        <div className="flex-1 overflow-y-auto px-3 pb-3">
-          {isPremium ? (
-            <>
-              <div className="flex items-center justify-between px-2 mt-2 mb-2">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                  {showArchived ? "Archived" : "Cases"}
-                </div>
-                {showArchived ? (
-                  <button onClick={() => setShowArchived(false)} className="text-[10px] text-gold/80 hover:text-gold flex items-center gap-1">
-                    <ArrowLeft className="h-3 w-3" /> Back
-                  </button>
-                ) : archivedCount > 0 ? (
-                  <button onClick={() => setShowArchived(true)} className="text-[10px] text-muted-foreground hover:text-gold flex items-center gap-1">
-                    <Archive className="h-3 w-3" /> {archivedCount}
-                  </button>
-                ) : null}
-              </div>
-
-              {visibleCases.length === 0 && (
-                <div className="text-xs text-muted-foreground px-2 py-3">
-                  {showArchived ? "No archived cases." : <>No cases yet. Click <span className="text-gold">Create case</span> to start.</>}
-                </div>
-              )}
-              {visibleCases.map((c) => (
-                <div
-                  key={c.id}
-                  className={`relative p-2.5 rounded-xl mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-sidebar-accent/60"}`}
-                >
-                  <button onClick={() => setActiveCaseId(c.id)} className="w-full text-left">
-                    <div className="flex items-start justify-between gap-2 pr-12">
-                      <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {c.case_number && <span className="text-[10px] font-mono text-gold/80">#{c.case_number}</span>}
-                          {c.client_name && <span className="text-xs text-muted-foreground truncate">· {c.client_name}</span>}
-                        </div>
-                      </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                        c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
-                        c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
-                      }`}>{c.status}</span>
-                    </div>
-                  </button>
-                  <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {showArchived ? (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onUnarchiveCase(c.id); }}
-                          className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
-                          title="Restore"
-                        ><ArchiveRestore className="h-3.5 w-3.5" /></button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onAskDeleteCase(c); }}
-                          className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-background/60"
-                          title="Delete forever"
-                        ><Trash2 className="h-3.5 w-3.5" /></button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onArchiveCase(c.id); }}
-                        className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
-                        title="Archive case"
-                      ><Archive className="h-3.5 w-3.5" /></button>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {!showArchived && activeCaseId && conversations.length > 0 && (
-                <>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-5 mb-2">Conversations</div>
-                  {conversations.map((cv) => (
-                    <button
-                      key={cv.id}
-                      onClick={() => setActiveConvId(cv.id)}
-                      className={`w-full text-left text-xs p-2 rounded-md mb-0.5 truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"}`}
-                    >{cv.title}</button>
-                  ))}
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-2 mb-2 flex items-center gap-1.5">
-                <History className="h-3 w-3" /> Chat history
-              </div>
-              {freeChatHistory.length === 0 && (
-                <div className="text-xs text-muted-foreground px-2 py-3">Your past chats will appear here.</div>
-              )}
-              {freeChatHistory.map((cv) => (
-                <button
-                  key={cv.id}
-                  onClick={() => setActiveFreeConv(cv)}
-                  className={`w-full text-left text-xs p-2 rounded-md mb-0.5 truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"}`}
-                >{cv.title}</button>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      <div className="border-t border-sidebar-border p-3">
-        {leftOpen && (
-          isPremium && daysLeft !== null ? (
-            <div className="w-full mb-2 h-9 px-3 rounded-md border border-gold/40 text-gold flex items-center justify-center gap-2 text-xs font-medium">
-              <Clock className="h-3.5 w-3.5" />
-              {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "Subscription expired"}
-            </div>
-          ) : !isPremium ? (
-            <Link to="/pricing">
-              <Button variant="outline" className="w-full mb-2 h-9 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold">
-                <Crown className="h-3.5 w-3.5" /> Upgrade to Pro
-              </Button>
-            </Link>
-          ) : null
-        )}
-        {leftOpen && isDevAccount && (
-          <Link to="/system">
-            <Button variant="outline" className="w-full mb-2 h-9 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold">
-              <Crown className="h-3.5 w-3.5" /> SYSTEM
+        {/* CASES TAB */}
+        {activeTab === "cases" && isPremium && (
+          <>
+            <Button onClick={newCase} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-9 justify-start hover:opacity-95 text-sm">
+              <Plus className="h-4 w-4" /> Create case
             </Button>
-          </Link>
-        )}
-        <Link to="/dashboard">
-          <div className="flex items-center gap-2.5 p-1.5 rounded-md hover:bg-sidebar-accent/60 cursor-pointer">
-            <div className="h-8 w-8 rounded-full bg-gradient-aurora flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
-              {(profile?.full_name || userEmail || "U")[0].toUpperCase()}
+            <div className="flex items-center justify-between px-2 mt-4 mb-2">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                {showArchived ? "Archived" : "Cases"}
+              </div>
+              {showArchived ? (
+                <button onClick={() => setShowArchived(false)} className="text-[10px] text-gold/80 hover:text-gold flex items-center gap-1">
+                  <ArrowLeft className="h-3 w-3" /> Back
+                </button>
+              ) : archivedCount > 0 ? (
+                <button onClick={() => setShowArchived(true)} className="text-[10px] text-muted-foreground hover:text-gold flex items-center gap-1">
+                  <Archive className="h-3 w-3" /> {archivedCount}
+                </button>
+              ) : null}
             </div>
-            {leftOpen && (
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{profile?.full_name || "Advocate"}</div>
-                <div className="text-[11px] text-gold">
-                  {tier} Plan
-                  {isDevAccount && (
+            {visibleCases.length === 0 && (
+              <div className="text-xs text-muted-foreground px-2 py-3">
+                {showArchived ? "No archived cases." : <>No cases yet. Click <span className="text-gold">Create case</span> to start.</>}
+              </div>
+            )}
+            {visibleCases.map((c) => (
+              <div
+                key={c.id}
+                className={`relative p-2.5 rounded-lg mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-accent/40"}`}
+              >
+                <button onClick={() => setActiveCaseId(c.id)} className="w-full text-left">
+                  <div className="flex items-start justify-between gap-2 pr-10">
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-xs font-semibold truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {c.case_number && <span className="text-[10px] font-mono text-gold/80">#{c.case_number}</span>}
+                        {c.client_name && <span className="text-[10px] text-muted-foreground truncate">· {c.client_name}</span>}
+                      </div>
+                    </div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
+                      c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
+                      c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
+                    }`}>{c.status}</span>
+                  </div>
+                </button>
+                <div className="absolute right-1 top-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {showArchived ? (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onUnarchiveCase(c.id); }}
+                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
+                        title="Restore"
+                      ><ArchiveRestore className="h-3 w-3" /></button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onAskDeleteCase(c); }}
+                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-background/60"
+                        title="Delete forever"
+                      ><Trash2 className="h-3 w-3" /></button>
+                    </>
+                  ) : (
                     <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPicker?.(); }}
-                      className="ml-2 underline opacity-70 hover:opacity-100"
-                    >switch</button>
+                      onClick={(e) => { e.stopPropagation(); onArchiveCase(c.id); }}
+                      className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
+                      title="Archive case"
+                    ><Archive className="h-3 w-3" /></button>
                   )}
                 </div>
               </div>
-            )}
+            ))}
+          </>
+        )}
+
+        {/* NETWORK TAB */}
+        {activeTab === "network" && tier === "Firm" && (
+          <>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mb-3">Connected Users</div>
+            <div className="text-xs text-muted-foreground px-2 py-3">Coming soon: Collaborate with other advocates.</div>
+          </>
+        )}
+
+        {/* DARBAR TAB */}
+        {activeTab === "darbar" && (
+          <>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mb-3">Darbar</div>
+            <div className="text-xs text-muted-foreground px-2 py-3">Coming soon: Public legal marketplace.</div>
+          </>
+        )}
+
+        {/* NOTES TAB */}
+        {activeTab === "notes" && (
+          <>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mb-3">Personal Notes</div>
+            <div className="text-xs text-muted-foreground px-2 py-3">Notes related to active case will be displayed in the main area.</div>
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-border/60 p-2 space-y-2 shrink-0">
+        {isPremium && daysLeft !== null && (
+          <div className="w-full h-8 px-2 rounded-md border border-gold/40 text-gold flex items-center justify-center gap-1.5 text-[11px] font-medium">
+            <Clock className="h-3 w-3" />
+            {daysLeft > 0 ? `${daysLeft}d left` : "Expired"}
           </div>
-        </Link>
+        )}
+        {!isPremium && (
+          <Link to="/pricing">
+            <Button variant="outline" className="w-full h-8 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold text-xs">
+              <Crown className="h-3 w-3" /> Upgrade
+            </Button>
+          </Link>
+        )}
+        {isDevAccount && (
+          <Button
+            variant="outline"
+            onClick={openPicker}
+            className="w-full h-8 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold text-xs"
+          >
+            <Crown className="h-3 w-3" /> Switch
+          </Button>
+        )}
       </div>
     </aside>
   );
 }
 
-type RightPanelProps = {
-  rightOpen: boolean;
-  setRightOpen: (v: boolean) => void;
-  messages: MsgRow[];
-  notes: string;
-  saveNotes: (v: string) => void;
-  activeCaseId: string | null;
-  handleFileUpload: (f: File) => void;
-  isPremium: boolean;
-};
-
-function RightPanel(props: RightPanelProps) {
-  const { rightOpen, setRightOpen, messages, notes, saveNotes, activeCaseId, handleFileUpload, isPremium } = props;
-  return (
-    <aside className={`bg-card/60 backdrop-blur-xl border-l border-border flex flex-col h-full ${rightOpen ? "w-80" : "w-12"} transition-[width] duration-200`}>
-      <div className="p-2 border-b border-border flex items-center justify-between">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setRightOpen(!rightOpen)}>
-          {rightOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-        </Button>
-      </div>
-      {rightOpen && (
-        <Tabs defaultValue="documents" className="flex-1 flex flex-col">
-          <TabsList className={`grid ${isPremium ? "grid-cols-4" : "grid-cols-3"} mx-3 mt-2 glass-subtle`}>
-            <TabsTrigger value="documents" className="text-xs"><FileText className="h-3.5 w-3.5 mr-1" /> Docs</TabsTrigger>
-            <TabsTrigger value="research" className="text-xs"><Search className="h-3.5 w-3.5 mr-1" /> Research</TabsTrigger>
-            <TabsTrigger value="notes" className="text-xs"><StickyNote className="h-3.5 w-3.5 mr-1" /> Notes</TabsTrigger>
-            {isPremium && (
-              <TabsTrigger value="payments" className="text-xs"><IndianRupee className="h-3.5 w-3.5 mr-1" /> Fees</TabsTrigger>
-            )}
-          </TabsList>
-          <div className="flex-1 overflow-y-auto p-4">
-            <TabsContent value="documents" className="mt-0 space-y-3">
-              <label className="block">
-                <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
-                <div className="glass border-2 border-dashed border-gold/40 rounded-2xl p-6 text-center hover:bg-gold/5 transition-colors cursor-pointer">
-                  <Upload className="h-6 w-6 text-gold mx-auto mb-2" />
-                  <div className="text-sm font-medium">Drop a file or click</div>
-                  <div className="text-xs text-muted-foreground mt-1">PDF, DOCX, images</div>
-                </div>
-              </label>
-              <p className="text-xs text-muted-foreground">Files attach to the active case folder.</p>
-            </TabsContent>
-            <TabsContent value="research" className="mt-0">
-              {messages.filter((m) => m.role === "assistant" && m.citations?.length).slice(-1).map((m, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Cited in latest answer</div>
-                  {m.citations!.map((c) => (
-                    <div key={c} className="flex items-center justify-between p-3 rounded-xl glass border border-gold/30">
-                      <span className="text-sm font-medium text-gold">{c}</span>
-                      <ChevronRight className="h-4 w-4 text-gold" />
-                    </div>
-                  ))}
-                </div>
-              ))}
-              {!messages.some((m) => m.citations?.length) && (
-                <div className="text-sm text-muted-foreground">Citations will appear here after your first AI response.</div>
-              )}
-            </TabsContent>
-            <TabsContent value="notes" className="mt-0">
-              <Textarea
-                value={notes}
-                onChange={(e) => saveNotes(e.target.value)}
-                placeholder="Personal notes for this case..."
-                className="min-h-[300px] resize-none glass border-border"
-                disabled={!activeCaseId}
-              />
-              <p className="text-xs text-muted-foreground mt-2">{activeCaseId ? "Auto-saved" : "Select a case to take notes"}</p>
-            </TabsContent>
-            {isPremium && (
-              <TabsContent value="payments" className="mt-0">
-                <PaymentTracker caseId={activeCaseId} />
-              </TabsContent>
-            )}
-          </div>
-          <div className="px-4 pb-4">
-            <NewsPanel />
-          </div>
-        </Tabs>
-      )}
-    </aside>
-  );
-}
+// ============================================================================
+// Chat Body
+// ============================================================================
 
 type ChatBodyProps = {
   messages: MsgRow[];
-  setInput: (s: string) => void;
   saveNotes: (s: string) => void;
   notes: string;
   bottomRef: React.RefObject<HTMLDivElement>;
 };
 
-function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyProps) {
+function ChatBody({ messages, saveNotes, notes, bottomRef }: ChatBodyProps) {
   return (
     <div className="relative flex-1 min-h-0 overflow-y-auto">
       <div className="relative z-10">
@@ -408,6 +370,10 @@ function ChatBody({ messages, setInput, saveNotes, notes, bottomRef }: ChatBodyP
   );
 }
 
+// ============================================================================
+// Input Bar
+// ============================================================================
+
 type InputBarProps = {
   input: string;
   setInput: (s: string) => void;
@@ -433,7 +399,7 @@ function InputBar({ input, setInput, send, streaming, handleFileUpload, profileN
           <button
             type="button"
             onClick={onPickCase}
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors ${activeCaseName ? "border-gold/60 text-gold hover:bg-gold/10" : "border-border/60 text-muted-foreground hover:bg-muted/30"}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors ${activeCaseName ? "border-gold/60 text-gold hover:bg-gold/10" : "border-border/60 text-muted-foreground"}`}
           >
             <span className={`h-1.5 w-1.5 rounded-full ${activeCaseName ? "bg-gold" : "bg-muted-foreground/50"}`} />
             {activeCaseName ? `Case: ${activeCaseName}` : "No case loaded · pick one"}
@@ -471,7 +437,7 @@ function InputBar({ input, setInput, send, streaming, handleFileUpload, profileN
 }
 
 // ============================================================================
-// Page component
+// Main Dashboard Page
 // ============================================================================
 
 export default function Dashboard() {
@@ -485,16 +451,14 @@ export default function Dashboard() {
   const [messages, setMessages] = useState<MsgRow[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
-  const [mobileLeft, setMobileLeft] = useState(false);
-  const [mobileRight, setMobileRight] = useState(false);
   const [notes, setNotes] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const [createCaseOpen, setCreateCaseOpen] = useState(false);
   const [freeChatHistory, setFreeChatHistory] = useState<ConvRow[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CaseRow | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("chat");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Dev role override for bhramar123@gmail.com
   const isDevAccount = (user?.email || "").toLowerCase() === "bhramar123@gmail.com";
@@ -717,13 +681,12 @@ export default function Dashboard() {
           let line = buffer.slice(0, nlIdx);
           buffer = buffer.slice(nlIdx + 1);
           if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue; // skip blank lines, "event:" lines, etc.
+          if (!line.startsWith("data: ")) continue;
           const data = line.slice(6).trim();
           if (!data) continue;
           if (data === "[DONE]") { done = true; break; }
           try {
             const json = JSON.parse(data);
-            // sources sidecar event
             if (Array.isArray(json?.sources)) { finalSources = json.sources; continue; }
             const delta = json.choices?.[0]?.delta?.content as string | undefined;
             if (delta) {
@@ -735,7 +698,6 @@ export default function Dashboard() {
               });
             }
           } catch {
-            // Partial JSON line — re-buffer this line and wait for more bytes.
             buffer = `data: ${data}\n` + buffer;
             break;
           }
@@ -766,10 +728,11 @@ export default function Dashboard() {
 
   return (
     <div className="h-[100dvh] w-full flex bg-background text-foreground overflow-hidden">
-      {/* Desktop sidebar */}
+      {/* Desktop: Icon Rail + Side Panel */}
       <div className="hidden md:flex">
-        <Sidebar
-          leftOpen={leftOpen} setLeftOpen={setLeftOpen}
+        <IconRail activeTab={activeTab} setActiveTab={setActiveTab} tier={tier} />
+        <SidePanel
+          activeTab={activeTab}
           cases={cases} activeCaseId={activeCaseId} setActiveCaseId={setActiveCaseId}
           conversations={conversations} activeConvId={activeConvId} setActiveConvId={setActiveConvId}
           newCase={newCase} newChat={newChat} profile={profile} userEmail={user?.email}
@@ -781,20 +744,20 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Mobile sidebar */}
-      <Sheet open={mobileLeft} onOpenChange={setMobileLeft}>
-        <SheetContent side="left" className="p-0 w-72 bg-sidebar border-sidebar-border">
-          <Sidebar
-            leftOpen={true} setLeftOpen={() => setMobileLeft(false)}
+      {/* Mobile: Hamburger menu */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="p-0 w-80 bg-sidebar border-sidebar-border">
+          <SidePanel
+            activeTab={activeTab}
             cases={cases} activeCaseId={activeCaseId}
-            setActiveCaseId={(id) => { setActiveCaseId(id); setMobileLeft(false); }}
+            setActiveCaseId={(id) => { setActiveCaseId(id); setMobileMenuOpen(false); }}
             conversations={conversations} activeConvId={activeConvId}
-            setActiveConvId={(id) => { setActiveConvId(id); setMobileLeft(false); }}
-            newCase={newCase} newChat={() => { newChat(); setMobileLeft(false); }}
+            setActiveConvId={(id) => { setActiveConvId(id); setMobileMenuOpen(false); }}
+            newCase={newCase} newChat={() => { newChat(); setMobileMenuOpen(false); }}
             profile={profile} userEmail={user?.email}
             tier={tier} freeChatHistory={freeChatHistory}
-            setActiveFreeConv={(cv) => { setActiveFreeConv(cv); setMobileLeft(false); }}
-            isDevAccount={isDevAccount} openPicker={() => { setMobileLeft(false); setPickerOpen(true); }}
+            setActiveFreeConv={(cv) => { setActiveFreeConv(cv); setMobileMenuOpen(false); }}
+            isDevAccount={isDevAccount} openPicker={() => { setMobileMenuOpen(false); setPickerOpen(true); }}
             showArchived={showArchived} setShowArchived={setShowArchived}
             onArchiveCase={onArchiveCase} onUnarchiveCase={onUnarchiveCase}
             onAskDeleteCase={setDeleteTarget} daysLeft={daysLeft}
@@ -802,11 +765,12 @@ export default function Dashboard() {
         </SheetContent>
       </Sheet>
 
-      {/* Center */}
+      {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 min-h-0">
+        {/* Header */}
         <header className="h-14 border-b border-border/60 flex items-center justify-between px-4 md:px-6 glass-subtle">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={() => setMobileLeft(true)}>
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={() => setMobileMenuOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
             <FolderClosed className="h-4 w-4 text-gold shrink-0" />
@@ -815,57 +779,67 @@ export default function Dashboard() {
               <span className="hidden sm:inline text-xs text-muted-foreground truncate">· {activeCase.client_name}</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => setMobileRight(true)}>
-              <PanelRightOpen className="h-4 w-4" />
-            </Button>
-          </div>
+          <ThemeToggle />
         </header>
-        <ChatBody
-          messages={messages}
-          setInput={setInput}
-          saveNotes={saveNotes}
-          notes={notes}
-          bottomRef={bottomRef}
-        />
-        <InputBar
-          input={input}
-          setInput={setInput}
-          send={send}
-          streaming={streaming}
-          handleFileUpload={handleFileUpload}
-          profileName={profile?.full_name || user?.email?.split("@")[0]}
-          profileState={profile?.state}
-          activeCaseName={cases.find((c) => c.id === activeCaseId)?.name || null}
-          onPickCase={() => setPickerOpen(true)}
-        />
+
+        {/* Main Content - Different views based on activeTab */}
+        {activeTab === "chat" ? (
+          <>
+            <ChatBody
+              messages={messages}
+              saveNotes={saveNotes}
+              notes={notes}
+              bottomRef={bottomRef}
+            />
+            <InputBar
+              input={input}
+              setInput={setInput}
+              send={send}
+              streaming={streaming}
+              handleFileUpload={handleFileUpload}
+              profileName={profile?.full_name || user?.email?.split("@")[0]}
+              profileState={profile?.state}
+              activeCaseName={cases.find((c) => c.id === activeCaseId)?.name || null}
+              onPickCase={() => setActiveTab("cases")}
+            />
+          </>
+        ) : activeTab === "cases" ? (
+          <div className="flex-1 overflow-y-auto p-6 text-center">
+            <div className="max-w-2xl mx-auto">
+              <FolderClosed className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold mb-2">Cases</h2>
+              <p className="text-muted-foreground">Select a case from the left panel to view details.</p>
+            </div>
+          </div>
+        ) : activeTab === "notes" ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-2xl font-semibold mb-4">Notes</h2>
+              <Textarea
+                value={notes}
+                onChange={(e) => saveNotes(e.target.value)}
+                placeholder="Personal notes for this case..."
+                className="min-h-[400px] resize-none glass border-border"
+                disabled={!activeCaseId}
+              />
+              <p className="text-xs text-muted-foreground mt-2">{activeCaseId ? "Auto-saved" : "Select a case to take notes"}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-6 text-center">
+            <div className="max-w-2xl mx-auto">
+              <Network className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+              <p className="text-muted-foreground">Coming soon.</p>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Desktop right panel */}
-      <div className="hidden lg:flex">
-        <RightPanel
-          rightOpen={rightOpen} setRightOpen={setRightOpen}
-          messages={messages} notes={notes} saveNotes={saveNotes}
-          activeCaseId={activeCaseId} handleFileUpload={handleFileUpload} isPremium={isPremium}
-        />
-      </div>
-
-      {/* Mobile right panel */}
-      <Sheet open={mobileRight} onOpenChange={setMobileRight}>
-        <SheetContent side="right" className="p-0 w-80 bg-card border-border">
-          <RightPanel
-            rightOpen={true} setRightOpen={() => setMobileRight(false)}
-            messages={messages} notes={notes} saveNotes={saveNotes}
-            activeCaseId={activeCaseId} handleFileUpload={handleFileUpload} isPremium={isPremium}
-          />
-        </SheetContent>
-      </Sheet>
-
-      {/* Create case dialog (premium) */}
+      {/* Create case dialog */}
       <CreateCaseDialog open={createCaseOpen} onOpenChange={setCreateCaseOpen} onCreated={onCaseCreated} />
 
-      {/* Dev role picker for bhramar123@gmail.com */}
+      {/* Dev role picker */}
       {isDevAccount && (
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
           <DialogContent className="glass-strong border-gold/30 max-w-lg">
