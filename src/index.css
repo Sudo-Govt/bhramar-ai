@@ -172,7 +172,30 @@
   .shadow-card { box-shadow: var(--shadow-card); }
   .shadow-glass { box-shadow: var(--shadow-glass); }
   .text-balance { text-wrap: balance; }
-  .border-gold { border-color: hsl(var(--gold)); }
+  .border-gold { border-color: hsl(var(--gold)); /* ── Video background ── */
+  .video-bg-wrap {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+  }
+  .video-bg-wrap video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.12;
+    pointer-events: none;
+  }
+  .video-bg-overlay {
+    position: absolute;
+    inset: 0;
+    background: hsl(225 9% 13% / 0.85);
+    pointer-events: none;
+  }
 
   /* ── Glass surfaces ── */
   .glass {
