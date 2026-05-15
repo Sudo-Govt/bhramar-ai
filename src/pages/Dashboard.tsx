@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { BhramarLogo } from "@/components/BhramarLogo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MiniMarkdown, extractCitations } from "@/lib/markdown";
 import {
@@ -12,12 +13,13 @@ import {
   FileText, StickyNote, Search, Copy, Bookmark, Share2, Save,
   ChevronRight, Upload, Crown, Menu, IndianRupee, History,
   Archive, ArchiveRestore, Trash2, ArrowLeft, Clock, Network,
-  MoreVertical,
+  Newspaper, ExternalLink, Users, Gavel,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tier } from "@/hooks/useEffectiveTier";
 import { CreateCaseDialog } from "@/components/CreateCaseDialog";
 import { PaymentTracker } from "@/components/PaymentTracker";
+import { NewsPanel } from "@/components/NewsPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { User, Building2 } from "lucide-react";
 import logoIcon from "@/assets/bhramar-logo.png";
@@ -43,8 +45,8 @@ function IconRail({ activeTab, setActiveTab, tier }: IconRailProps) {
   const tabs: { id: TabType; icon: any; label: string; available: boolean }[] = [
     { id: "chat", icon: MessageSquare, label: "Chat", available: true },
     { id: "cases", icon: FolderClosed, label: "Cases", available: tier === "Pro" || tier === "Firm" },
-    { id: "network", icon: Network, label: "Network", available: tier === "Firm" },
-    { id: "darbar", icon: Crown, label: "Darbar", available: true },
+    { id: "network", icon: Users, label: "Network", available: tier === "Firm" },
+    { id: "darbar", icon: Gavel, label: "Darbar", available: true },
     { id: "notes", icon: StickyNote, label: "Notes", available: true },
   ];
 
@@ -773,10 +775,16 @@ export default function Dashboard() {
             <Button variant="ghost" size="icon" className="md:hidden h-8 w-8" onClick={() => setMobileMenuOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <FolderClosed className="h-4 w-4 text-gold shrink-0" />
-            <span className="font-medium text-sm truncate">{activeCase?.name || "Select a case"}</span>
-            {activeCase?.client_name && (
-              <span className="hidden sm:inline text-xs text-muted-foreground truncate">· {activeCase.client_name}</span>
+            {activeTab === "chat" ? (
+              <>
+                <FolderClosed className="h-4 w-4 text-gold shrink-0" />
+                <span className="font-medium text-sm truncate">{activeCase?.name || "Select a case"}</span>
+                {activeCase?.client_name && (
+                  <span className="hidden sm:inline text-xs text-muted-foreground truncate">· {activeCase.client_name}</span>
+                )}
+              </>
+            ) : (
+              <span className="font-medium text-sm truncate capitalize">{activeTab}</span>
             )}
           </div>
           <ThemeToggle />
@@ -804,36 +812,74 @@ export default function Dashboard() {
             />
           </>
         ) : activeTab === "cases" ? (
-          <div className="flex-1 overflow-y-auto p-6 text-center">
-            <div className="max-w-2xl mx-auto">
-              <FolderClosed className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold mb-2">Cases</h2>
-              <p className="text-muted-foreground">Select a case from the left panel to view details.</p>
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl font-semibold mb-6">My Cases</h2>
+              {cases.length === 0 ? (
+                <div className="text-center py-12">
+                  <FolderClosed className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No cases yet. Create one from the sidebar to start.</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {cases.filter(c => !c.archived_at).map((c) => (
+                    <div key={c.id} className="glass border border-gold/20 rounded-xl p-4 hover:border-gold/40 transition-colors cursor-pointer" onClick={() => setActiveCaseId(c.id)}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold truncate text-gold">{c.name}</h3>
+                          {c.case_number && <p className="text-xs text-muted-foreground">#{c.case_number}</p>}
+                        </div>
+                        <span className={`text-[9px] px-2 py-1 rounded-full font-semibold shrink-0 ${
+                          c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
+                          c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
+                        }`}>{c.status}</span>
+                      </div>
+                      {c.client_name && <p className="text-xs text-muted-foreground">Client: {c.client_name}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : activeTab === "notes" ? (
           <div className="flex-1 overflow-y-auto p-6">
             <div className="max-w-3xl mx-auto">
               <h2 className="text-2xl font-semibold mb-4">Notes</h2>
-              <Textarea
-                value={notes}
-                onChange={(e) => saveNotes(e.target.value)}
-                placeholder="Personal notes for this case..."
-                className="min-h-[400px] resize-none glass border-border"
-                disabled={!activeCaseId}
-              />
-              <p className="text-xs text-muted-foreground mt-2">{activeCaseId ? "Auto-saved" : "Select a case to take notes"}</p>
+              {!activeCaseId ? (
+                <div className="text-center py-12">
+                  <StickyNote className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <p className="text-muted-foreground">Select a case to take notes.</p>
+                </div>
+              ) : (
+                <>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => saveNotes(e.target.value)}
+                    placeholder="Personal notes for this case..."
+                    className="min-h-[400px] resize-none glass border-border"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">Auto-saved</p>
+                </>
+              )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === "network" ? (
           <div className="flex-1 overflow-y-auto p-6 text-center">
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-2xl mx-auto py-12">
               <Network className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
-              <p className="text-muted-foreground">Coming soon.</p>
+              <h2 className="text-2xl font-semibold mb-2">Network</h2>
+              <p className="text-muted-foreground">Coming soon: Collaborate with other advocates in your firm.</p>
             </div>
           </div>
-        )}
+        ) : activeTab === "darbar" ? (
+          <div className="flex-1 overflow-y-auto p-6 text-center">
+            <div className="max-w-2xl mx-auto py-12">
+              <Gavel className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold mb-2">Darbar</h2>
+              <p className="text-muted-foreground">Coming soon: Public legal marketplace and case listings.</p>
+            </div>
+          </div>
+        ) : null}
       </main>
 
       {/* Create case dialog */}
