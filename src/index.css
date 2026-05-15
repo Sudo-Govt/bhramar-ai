@@ -140,7 +140,7 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 14px;
     font-feature-settings: "ss01", "cv11";
-    background-image: var(--gradient-hero);
+    background-color: hsl(225 9% 13%);
     background-attachment: fixed;
   }
 
@@ -150,7 +150,6 @@
     font-weight: 700;
   }
 
-  /* Consistent font sizes */
   h1 { font-size: 1.75rem; }
   h2 { font-size: 1.375rem; }
   h3 { font-size: 1.125rem; }
