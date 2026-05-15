@@ -5,287 +5,302 @@ import { useAuth } from "@/hooks/useAuth";
 import { BhramarLogo } from "@/components/BhramarLogo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MiniMarkdown, extractCitations } from "@/lib/markdown";
 import {
   Plus, Send, Paperclip, Mic, MessageSquare, FolderClosed,
-  FileText, StickyNote, Search, Copy, Bookmark, Share2, Save,
-  ChevronRight, Upload, Crown, Menu, IndianRupee, History,
-  Archive, ArchiveRestore, Trash2, ArrowLeft, Clock, Network,
-  Newspaper, ExternalLink, Users, Gavel, LogOut, Settings,
+  StickyNote, Copy, Bookmark, Share2, Save, Crown, History,
+  Archive, ArchiveRestore, Trash2, ArrowLeft, Clock, Users,
+  Gavel, LogOut, Settings, ChevronLeft, ChevronRight, User,
+  Building2, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tier } from "@/hooks/useEffectiveTier";
 import { CreateCaseDialog } from "@/components/CreateCaseDialog";
-import { PaymentTracker } from "@/components/PaymentTracker";
-import { NewsPanel } from "@/components/NewsPanel";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { User, Building2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import logoIcon from "@/assets/bhramar-logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmergencyButton } from "@/components/EmergencyButton";
 
-type CaseRow = { id: string; name: string; client_name: string | null; status: "Active" | "Closed" | "Draft"; case_number?: string | null; archived_at?: string | null };
+type CaseRow = {
+  id: string; name: string; client_name: string | null;
+  status: "Active" | "Closed" | "Draft";
+  case_number?: string | null; archived_at?: string | null;
+};
 type ConvRow = { id: string; case_id: string | null; title: string; updated_at: string };
-type MsgRow = { id?: string; role: "user" | "assistant"; content: string; citations?: string[] };
+type MsgRow  = { id?: string; role: "user" | "assistant"; content: string; citations?: string[] };
 type TabType = "chat" | "cases" | "network" | "darbar" | "notes" | "profile";
 
-// ============================================================================
-// Icon Rail Component (56px) — Desktop only
-// ============================================================================
-
-type IconRailProps = {
+// ─────────────────────────────────────────────────────────────────────────────
+// PANEL 1 — Icon Rail
+// ─────────────────────────────────────────────────────────────────────────────
+function IconRail({
+  activeTab, setActiveTab, tier, expanded, onToggle,
+}: {
   activeTab: TabType;
-  setActiveTab: (tab: TabType) => void;
+  setActiveTab: (t: TabType) => void;
   tier: Tier;
-};
-
-function IconRail({ activeTab, setActiveTab, tier }: IconRailProps) {
-  const tabs: { id: TabType; icon: any; label: string; available: boolean }[] = [
-    { id: "chat", icon: MessageSquare, label: "Chat", available: true },
-    { id: "cases", icon: FolderClosed, label: "Cases", available: tier === "Pro" || tier === "Firm" },
-    { id: "network", icon: Users, label: "Network", available: tier === "Firm" },
-    { id: "darbar", icon: Gavel, label: "Darbar", available: true },
-    { id: "notes", icon: StickyNote, label: "Notes", available: true },
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const TABS: { id: TabType; Icon: any; label: string }[] = [
+    { id: "chat",    Icon: MessageSquare, label: "Chat"    },
+    { id: "cases",   Icon: FolderClosed,  label: "Cases"   },
+    { id: "network", Icon: Users,         label: "Network" },
+    { id: "darbar",  Icon: Gavel,         label: "Darbar"  },
+    { id: "notes",   Icon: StickyNote,    label: "Notes"   },
+    { id: "profile", Icon: User,          label: "Profile" },
   ];
 
   return (
-    <div className="w-16 border-r border-border/60 bg-background/40 backdrop-blur-sm flex flex-col items-center py-4 gap-2 shrink-0">
+    <div
+      className="hidden md:flex flex-col border-r border-border/60 bg-background/30 backdrop-blur-md shrink-0 transition-all duration-200 overflow-hidden"
+      style={{ width: expanded ? 148 : 52 }}
+    >
       {/* Logo mark */}
-      <img src={logoIcon} alt="Bhramar" className="h-8 w-8 object-contain mb-2" />
+      <div className="flex items-center justify-center py-3 border-b border-border/60 px-2 shrink-0" style={{ minHeight: 52 }}>
+        <img src={logoIcon} alt="Bhramar" className="h-7 w-7 object-contain shrink-0" />
+        {expanded && (
+          <span className="ml-2 text-sm font-bold text-foreground whitespace-nowrap overflow-hidden">
+            Bhramar
+          </span>
+        )}
+      </div>
 
-      {/* Tab buttons */}
-      {tabs.map((tab) => {
-        if (!tab.available) return null;
-        const Icon = tab.icon;
-        return (
-          <div key={tab.id} className="group relative">
-            <button
-              onClick={() => setActiveTab(tab.id)}
-              className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
-                activeTab === tab.id
-                  ? "bg-gradient-aurora shadow-gold text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              }`}
-              title={tab.label}
-            >
-              <Icon className="h-5 w-5" />
-            </button>
-            {/* Tooltip */}
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-foreground text-background px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              {tab.label}
+      {/* Nav items */}
+      <nav className="flex-1 flex flex-col gap-0.5 py-2 px-1">
+        {TABS.map(({ id, Icon, label }) => {
+          const isActive = activeTab === id;
+          return (
+            <div key={id} className="group relative">
+              <button
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-2 w-full px-2 h-9 rounded-lg transition-all text-left ${
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {expanded && (
+                  <span className="text-xs font-medium whitespace-nowrap">{label}</span>
+                )}
+              </button>
+              {/* Tooltip — only when collapsed */}
+              {!expanded && (
+                <div className="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  {label}
+                </div>
+              )}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </nav>
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Profile at bottom */}
+      {/* Collapse toggle */}
       <button
-        onClick={() => setActiveTab("profile")}
-        className={`h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold transition-all ${
-          activeTab === "profile"
-            ? "bg-gradient-aurora shadow-gold text-primary-foreground"
-            : "bg-gradient-aurora text-primary-foreground hover:shadow-gold"
-        }`}
-        title="Profile"
+        onClick={onToggle}
+        title={expanded ? "Collapse rail" : "Expand rail"}
+        className="flex items-center justify-center h-10 border-t border-border/60 text-muted-foreground hover:text-foreground transition-colors shrink-0"
       >
-        P
+        {expanded ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
       </button>
     </div>
   );
 }
 
-// ============================================================================
-// Side Panel Component (260px, content changes based on activeTab)
-// ============================================================================
-
-type SidePanelProps = {
-  activeTab: TabType;
-  setActiveTab: (tab: TabType) => void;
+// ─────────────────────────────────────────────────────────────────────────────
+// PANEL 2 — Chat History Sidebar
+// ─────────────────────────────────────────────────────────────────────────────
+function ChatSidebar({
+  expanded, onToggle,
+  conversations, freeChatHistory, activeConvId,
+  setActiveConvId, setActiveFreeConv,
+  newChat, tier,
+  cases, activeCaseId, setActiveCaseId,
+  newCase, showArchived, setShowArchived,
+  onArchiveCase, onUnarchiveCase, onAskDeleteCase,
+  daysLeft, isDevAccount, openPicker,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  conversations: ConvRow[];
+  freeChatHistory: ConvRow[];
+  activeConvId: string | null;
+  setActiveConvId: (id: string) => void;
+  setActiveFreeConv: (c: ConvRow) => void;
+  newChat: () => void;
+  tier: Tier;
   cases: CaseRow[];
   activeCaseId: string | null;
   setActiveCaseId: (id: string) => void;
-  conversations: ConvRow[];
-  activeConvId: string | null;
-  setActiveConvId: (id: string) => void;
   newCase: () => void;
-  newChat: () => void;
-  profile: any;
-  userEmail?: string | null;
-  tier: Tier;
-  freeChatHistory: ConvRow[];
-  setActiveFreeConv: (c: ConvRow) => void;
-  isDevAccount?: boolean;
-  openPicker?: () => void;
   showArchived: boolean;
   setShowArchived: (v: boolean) => void;
   onArchiveCase: (id: string) => void;
   onUnarchiveCase: (id: string) => void;
   onAskDeleteCase: (c: CaseRow) => void;
   daysLeft: number | null;
-};
-
-function SidePanel(props: SidePanelProps) {
-  const {
-    activeTab, setActiveTab, cases, activeCaseId, setActiveCaseId,
-    conversations, activeConvId, setActiveConvId, newCase, newChat, profile, userEmail,
-    tier, freeChatHistory, setActiveFreeConv, isDevAccount, openPicker,
-    showArchived, setShowArchived, onArchiveCase, onUnarchiveCase, onAskDeleteCase, daysLeft
-  } = props;
-
+  isDevAccount: boolean;
+  openPicker: () => void;
+}) {
   const isPremium = tier === "Pro" || tier === "Firm";
-  const visibleCases = cases.filter((c) => showArchived ? !!c.archived_at : !c.archived_at);
+  const visibleCases = cases.filter((c) =>
+    showArchived ? !!c.archived_at : !c.archived_at
+  );
   const archivedCount = cases.filter((c) => !!c.archived_at).length;
 
   return (
-    <aside className="w-60 border-r border-border/60 bg-sidebar/50 backdrop-blur-md flex flex-col h-full shrink-0 overflow-hidden">
-      {/* Header: Logo + Label */}
-      <div className="p-3 border-b border-border/60 flex items-center gap-2 shrink-0">
-        <BhramarLogo />
+    <div
+      className="hidden md:flex flex-col border-r border-border/60 bg-sidebar/40 backdrop-blur-md shrink-0 transition-all duration-200 overflow-hidden"
+      style={{ width: expanded ? 240 : 0, opacity: expanded ? 1 : 0 }}
+    >
+      {/* Full logo header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 shrink-0" style={{ minHeight: 52 }}>
+        <BhramarLogo size="sm" />
+        <button
+          onClick={onToggle}
+          title="Collapse sidebar"
+          className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
       </div>
 
-      {/* Content based on activeTab */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {/* CHAT TAB */}
-        {activeTab === "chat" && (
-          <>
-            <Button onClick={newChat} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-9 justify-start hover:opacity-95 text-sm">
-              <Plus className="h-4 w-4" /> New chat
-            </Button>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mt-4 mb-2">
-              <History className="h-3 w-3 inline mr-1" /> {isPremium ? "Conversations" : "Chat History"}
-            </div>
-            {(isPremium ? conversations : freeChatHistory).length === 0 && (
-              <div className="text-xs text-muted-foreground px-2 py-3">
-                {isPremium ? "Start a conversation to get going." : "Your past chats will appear here."}
-              </div>
-            )}
-            {(isPremium ? conversations : freeChatHistory).map((cv) => (
-              <button
-                key={cv.id}
-                onClick={() => isPremium ? setActiveConvId(cv.id) : setActiveFreeConv(cv)}
-                className={`w-full text-left text-xs p-2 rounded-md truncate transition-colors ${activeConvId === cv.id ? "bg-sidebar-accent text-gold" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"}`}
-                title={cv.title}
-              >
-                {cv.title}
-              </button>
-            ))}
-          </>
+      {/* Chat history */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <Button
+          onClick={newChat}
+          className="w-full bg-primary text-primary-foreground h-8 justify-start text-xs mb-2"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" /> New chat
+        </Button>
+
+        <p className="conv-section-label">
+          <History className="h-3 w-3 inline mr-1" />
+          {isPremium ? "Conversations" : "History"}
+        </p>
+
+        {(isPremium ? conversations : freeChatHistory).length === 0 && (
+          <p className="text-xs text-muted-foreground px-2 py-3">No chats yet.</p>
         )}
 
-        {/* CASES TAB */}
-        {activeTab === "cases" && isPremium && (
-          <>
-            <Button onClick={newCase} className="w-full bg-gradient-aurora text-primary-foreground shadow-gold h-9 justify-start hover:opacity-95 text-sm">
-              <Plus className="h-4 w-4" /> Create case
-            </Button>
-            <div className="flex items-center justify-between px-2 mt-4 mb-2">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                {showArchived ? "Archived" : "Cases"}
-              </div>
-              {showArchived ? (
-                <button onClick={() => setShowArchived(false)} className="text-[10px] text-gold/80 hover:text-gold flex items-center gap-1">
-                  <ArrowLeft className="h-3 w-3" /> Back
-                </button>
-              ) : archivedCount > 0 ? (
-                <button onClick={() => setShowArchived(true)} className="text-[10px] text-muted-foreground hover:text-gold flex items-center gap-1">
-                  <Archive className="h-3 w-3" /> {archivedCount}
-                </button>
-              ) : null}
+        {(isPremium ? conversations : freeChatHistory).map((cv) => (
+          <button
+            key={cv.id}
+            onClick={() =>
+              isPremium ? setActiveConvId(cv.id) : setActiveFreeConv(cv)
+            }
+            title={cv.title}
+            className={`conv-item w-full text-left ${
+              activeConvId === cv.id ? "active" : ""
+            }`}
+          >
+            <div className="conv-item-title">{cv.title}</div>
+            <div className="conv-item-preview conv-item-time">
+              {new Date(cv.updated_at).toLocaleDateString()}
             </div>
-            {visibleCases.length === 0 && (
-              <div className="text-xs text-muted-foreground px-2 py-3">
-                {showArchived ? "No archived cases." : <>No cases yet. Click <span className="text-gold">Create case</span> to start.</>}
+          </button>
+        ))}
+
+        {/* Cases section inside sidebar */}
+        {isPremium && (
+          <>
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-1">
+                <p className="conv-section-label">Cases</p>
+                <button
+                  onClick={newCase}
+                  className="text-[10px] text-primary hover:underline pr-2"
+                >
+                  + New
+                </button>
               </div>
-            )}
-            {visibleCases.map((c) => (
-              <div
-                key={c.id}
-                className={`relative p-2.5 rounded-lg mb-1 group transition-all ${activeCaseId === c.id ? "glass border border-gold/40" : "hover:bg-accent/40"}`}
-              >
-                <button onClick={() => setActiveCaseId(c.id)} className="w-full text-left">
-                  <div className="flex items-start justify-between gap-2 pr-10">
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-xs font-semibold truncate ${activeCaseId === c.id ? "text-gold" : "text-foreground"}`}>{c.name}</div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {c.case_number && <span className="text-[10px] font-mono text-gold/80">#{c.case_number}</span>}
-                        {c.client_name && <span className="text-[10px] text-muted-foreground truncate">· {c.client_name}</span>}
-                      </div>
+              {archivedCount > 0 && (
+                <button
+                  onClick={() => setShowArchived(!showArchived)}
+                  className="text-[10px] text-muted-foreground px-2 mb-1 hover:text-foreground flex items-center gap-1"
+                >
+                  <Archive className="h-3 w-3" />
+                  {showArchived ? "Show active" : `Archived (${archivedCount})`}
+                </button>
+              )}
+              {visibleCases.length === 0 && (
+                <p className="text-xs text-muted-foreground px-2 py-2">No cases yet.</p>
+              )}
+              {visibleCases.map((c) => (
+                <div key={c.id} className="group relative">
+                  <button
+                    onClick={() => setActiveCaseId(c.id)}
+                    className={`conv-item w-full text-left ${
+                      activeCaseId === c.id ? "active" : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="conv-item-title flex-1 min-w-0">{c.name}</div>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
+                        c.status === "Active"
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : c.status === "Draft"
+                          ? "bg-primary/15 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}>
+                        {c.status}
+                      </span>
                     </div>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                      c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
-                      c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
-                    }`}>{c.status}</span>
+                    {c.client_name && (
+                      <div className="conv-item-preview">{c.client_name}</div>
+                    )}
+                  </button>
+                  <div className="absolute right-1 top-1 hidden group-hover:flex gap-0.5">
+                    {showArchived ? (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onUnarchiveCase(c.id); }}
+                          className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-primary"
+                          title="Restore"
+                        >
+                          <ArchiveRestore className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onAskDeleteCase(c); }}
+                          className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onArchiveCase(c.id); }}
+                        className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-primary"
+                        title="Archive"
+                      >
+                        <Archive className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
-                </button>
-                <div className="absolute right-1 top-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {showArchived ? (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onUnarchiveCase(c.id); }}
-                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
-                        title="Restore"
-                      ><ArchiveRestore className="h-3 w-3" /></button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onAskDeleteCase(c); }}
-                        className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-background/60"
-                        title="Delete forever"
-                      ><Trash2 className="h-3 w-3" /></button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onArchiveCase(c.id); }}
-                      className="h-5 w-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-gold hover:bg-background/60"
-                      title="Archive case"
-                    ><Archive className="h-3 w-3" /></button>
-                  )}
                 </div>
-              </div>
-            ))}
-          </>
-        )}
-
-        {/* NETWORK TAB */}
-        {activeTab === "network" && tier === "Firm" && (
-          <>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mb-3">Connected Users</div>
-            <div className="text-xs text-muted-foreground px-2 py-3">Coming soon: Collaborate with other advocates.</div>
-          </>
-        )}
-
-        {/* DARBAR TAB */}
-        {activeTab === "darbar" && (
-          <>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mb-3">Darbar</div>
-            <div className="text-xs text-muted-foreground px-2 py-3">Coming soon: Public legal marketplace.</div>
-          </>
-        )}
-
-        {/* NOTES TAB */}
-        {activeTab === "notes" && (
-          <>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-2 mb-3">Personal Notes</div>
-            <div className="text-xs text-muted-foreground px-2 py-3">Notes related to active case will be displayed in the main area.</div>
+              ))}
+            </div>
           </>
         )}
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border/60 p-2 space-y-2 shrink-0">
+      <div className="border-t border-border/60 p-2 space-y-1.5 shrink-0">
         {isPremium && daysLeft !== null && (
-          <div className="w-full h-8 px-2 rounded-md border border-gold/40 text-gold flex items-center justify-center gap-1.5 text-[11px] font-medium">
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-primary border border-primary/30 rounded-md h-7">
             <Clock className="h-3 w-3" />
             {daysLeft > 0 ? `${daysLeft}d left` : "Expired"}
           </div>
         )}
         {!isPremium && (
           <Link to="/pricing">
-            <Button variant="outline" className="w-full h-8 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold text-xs">
-              <Crown className="h-3 w-3" /> Upgrade
+            <Button variant="outline" className="w-full h-7 text-xs border-primary/40 text-primary hover:bg-primary/10">
+              <Crown className="h-3 w-3 mr-1" /> Upgrade
             </Button>
           </Link>
         )}
@@ -293,99 +308,105 @@ function SidePanel(props: SidePanelProps) {
           <Button
             variant="outline"
             onClick={openPicker}
-            className="w-full h-8 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold text-xs"
+            className="w-full h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
           >
-            <Crown className="h-3 w-3" /> Switch
+            <Crown className="h-3 w-3 mr-1" /> Switch tier
           </Button>
-        )}
-      </div>
-    </aside>
-  );
-}
-
-// ============================================================================
-// Chat Body
-// ============================================================================
-
-type ChatBodyProps = {
-  messages: MsgRow[];
-  saveNotes: (s: string) => void;
-  notes: string;
-  bottomRef: React.RefObject<HTMLDivElement>;
-};
-
-function ChatBody({ messages, saveNotes, notes, bottomRef }: ChatBodyProps) {
-  return (
-    <div className="relative flex-1 min-h-0 overflow-y-auto">
-      <div className="relative z-10">
-        {messages.length === 0 ? (
-          <div className="h-full min-h-[60vh] flex flex-col items-center justify-center px-6 text-center max-w-2xl mx-auto py-10">
-            <div className="rounded-3xl glass p-5 mb-6 shadow-glass">
-              <img src={logoIcon} alt="Bhramar.ai" className="h-12 w-12 object-contain" />
-            </div>
-            <h2 className="font-display text-4xl md:text-5xl font-bold mb-3 text-gradient-aurora">Bhramar.ai</h2>
-            <p className="text-muted-foreground text-balance">Your AI-powered legal companion. Ask anything about Indian law.</p>
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
-            {messages.map((m, i) => (
-              <div key={i} className="animate-fade-in">
-                {m.role === "user" ? (
-                  <div className="flex justify-end">
-                    <div className="max-w-[80%] glass-strong rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed">{m.content}</div>
-                  </div>
-                ) : (
-                  <div className="flex gap-3">
-                    <div className="h-8 w-8 rounded-xl bg-gradient-aurora flex items-center justify-center shrink-0 shadow-gold p-1">
-                      <img src={logoIcon} alt="" className="h-full w-full object-contain" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="rounded-2xl rounded-tl-sm glass px-5 py-4 border-l-2 border-l-gold">
-                        {m.content ? <MiniMarkdown text={m.content} /> : <span className="text-muted-foreground text-sm animate-pulse-soft">…thinking</span>}
-                      </div>
-                      {!!m.citations?.length && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {m.citations.map((c) => (
-                            <button key={c} className="px-2.5 py-1 rounded-full text-xs font-medium glass border border-gold/40 text-gold hover:bg-gold/10 transition-colors">
-                              {c}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {m.content && (
-                        <div className="flex items-center gap-1 mt-2">
-                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-gold" onClick={() => { navigator.clipboard.writeText(m.content); toast.success("Copied"); }}>
-                            <Copy className="h-3 w-3" /> Copy
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-gold" onClick={() => { saveNotes((notes ? notes + "\n\n" : "") + m.content); toast.success("Saved to notes"); }}>
-                            <Save className="h-3 w-3" /> Save
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-gold">
-                            <Bookmark className="h-3 w-3" /> Bookmark
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-gold">
-                            <Share2 className="h-3 w-3" /> Share
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
         )}
       </div>
     </div>
   );
 }
 
-// ============================================================================
-// Input Bar
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// CHAT BODY
+// ─────────────────────────────────────────────────────────────────────────────
+function ChatBody({
+  messages, saveNotes, notes, bottomRef,
+}: {
+  messages: MsgRow[];
+  saveNotes: (s: string) => void;
+  notes: string;
+  bottomRef: React.RefObject<HTMLDivElement>;
+}) {
+  return (
+    <div className="relative flex-1 min-h-0 overflow-y-auto">
+      {messages.length === 0 ? (
+        <div className="h-full min-h-[60vh] flex flex-col items-center justify-center px-6 text-center max-w-2xl mx-auto py-10">
+          <div className="rounded-3xl glass p-5 mb-6 shadow-glass">
+            <img src={logoIcon} alt="Bhramar.ai" className="h-12 w-12 object-contain" />
+          </div>
+          <h2 className="font-display text-4xl md:text-5xl font-bold mb-3 text-gradient-aurora">
+            Bhramar.ai
+          </h2>
+          <p className="text-muted-foreground text-balance">
+            Your AI-powered legal companion. Ask anything about Indian law.
+          </p>
+        </div>
+      ) : (
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
+          {messages.map((m, i) => (
+            <div key={i} className="animate-fade-in">
+              {m.role === "user" ? (
+                <div className="flex justify-end">
+                  <div className="bubble-user">{m.content}</div>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-gold p-1">
+                    <img src={logoIcon} alt="" className="h-full w-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="bubble-ai">
+                      {m.content
+                        ? <MiniMarkdown text={m.content} />
+                        : <span className="text-muted-foreground text-sm animate-pulse-soft">…thinking</span>
+                      }
+                    </div>
+                    {!!m.citations?.length && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {m.citations.map((c) => (
+                          <span key={c} className="badge-indigo">{c}</span>
+                        ))}
+                      </div>
+                    )}
+                    {m.content && (
+                      <div className="flex items-center gap-1 mt-2">
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-primary"
+                          onClick={() => { navigator.clipboard.writeText(m.content); toast.success("Copied"); }}>
+                          <Copy className="h-3 w-3" /> Copy
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-primary"
+                          onClick={() => { saveNotes((notes ? notes + "\n\n" : "") + m.content); toast.success("Saved to notes"); }}>
+                          <Save className="h-3 w-3" /> Save
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-primary">
+                          <Bookmark className="h-3 w-3" /> Bookmark
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-primary">
+                          <Share2 className="h-3 w-3" /> Share
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+      )}
+    </div>
+  );
+}
 
-type InputBarProps = {
+// ─────────────────────────────────────────────────────────────────────────────
+// INPUT BAR
+// ─────────────────────────────────────────────────────────────────────────────
+function InputBar({
+  input, setInput, send, streaming, handleFileUpload,
+  profileName, profileState, activeCaseName, onPickCase,
+}: {
   input: string;
   setInput: (s: string) => void;
   send: () => void;
@@ -395,13 +416,10 @@ type InputBarProps = {
   profileState?: string | null;
   activeCaseName?: string | null;
   onPickCase?: () => void;
-};
-
-function InputBar({ input, setInput, send, streaming, handleFileUpload, profileName, profileState, activeCaseName, onPickCase }: InputBarProps) {
+}) {
   return (
     <div className="border-t border-border/60 p-3 md:p-4 glass-subtle">
       <div className="max-w-3xl mx-auto">
-        {/* AI Context strip */}
         <div className="flex flex-wrap items-center gap-2 mb-2 text-[11px]">
           <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2 py-0.5 text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -410,18 +428,28 @@ function InputBar({ input, setInput, send, streaming, handleFileUpload, profileN
           <button
             type="button"
             onClick={onPickCase}
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors ${activeCaseName ? "border-gold/60 text-gold hover:bg-gold/10" : "border-border/60 text-muted-foreground"}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors ${
+              activeCaseName
+                ? "border-primary/60 text-primary hover:bg-primary/10"
+                : "border-border/60 text-muted-foreground"
+            }`}
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${activeCaseName ? "bg-gold" : "bg-muted-foreground/50"}`} />
-            {activeCaseName ? `Case: ${activeCaseName}` : "No case loaded · pick one"}
+            <span className={`h-1.5 w-1.5 rounded-full ${activeCaseName ? "bg-primary" : "bg-muted-foreground/50"}`} />
+            {activeCaseName ? `Case: ${activeCaseName}` : "No case · pick one"}
           </button>
-          <span className="text-muted-foreground/70 ml-auto hidden sm:inline">Bhramar uses your profile + this case as context</span>
+          <span className="text-muted-foreground/70 ml-auto hidden sm:inline">
+            Bhramar uses your profile + case as context
+          </span>
         </div>
-        <div className="flex items-end gap-2 rounded-2xl glass focus-within:border-gold/60 transition-colors p-2">
-          <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-gold shrink-0" asChild>
+        <div className="chat-input-wrap flex items-end gap-2">
+          <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary shrink-0" asChild>
             <label className="cursor-pointer flex items-center justify-center">
               <Paperclip className="h-4 w-4" />
-              <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+              />
             </label>
           </Button>
           <Textarea
@@ -432,26 +460,31 @@ function InputBar({ input, setInput, send, streaming, handleFileUpload, profileN
             rows={1}
             className="flex-1 min-h-[40px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-1 py-2 text-sm"
           />
-          <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-gold shrink-0">
+          <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary shrink-0">
             <Mic className="h-4 w-4" />
           </Button>
-          <Button onClick={send} disabled={!input.trim() || streaming} size="icon" className="h-9 w-9 bg-gradient-aurora text-primary-foreground shadow-gold shrink-0 hover:opacity-95">
+          <button
+            onClick={send}
+            disabled={!input.trim() || streaming}
+            className="btn-send"
+          >
             <Send className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
         <p className="text-[11px] text-muted-foreground text-center mt-2">
-          Press Enter to send · Shift + Enter for newline
+          Enter to send · Shift+Enter for newline
         </p>
       </div>
     </div>
   );
 }
 
-// ============================================================================
-// Profile Panel
-// ============================================================================
-
-type ProfilePanelProps = {
+// ─────────────────────────────────────────────────────────────────────────────
+// PROFILE PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function ProfilePanel({
+  profile, userEmail, tier, daysLeft, isDevAccount, openPicker, onLogout,
+}: {
   profile: any;
   userEmail?: string | null;
   tier: Tier;
@@ -459,24 +492,20 @@ type ProfilePanelProps = {
   isDevAccount: boolean;
   openPicker: () => void;
   onLogout: () => void;
-};
-
-function ProfilePanel({ profile, userEmail, tier, daysLeft, isDevAccount, openPicker, onLogout }: ProfilePanelProps) {
+}) {
   const isPremium = tier === "Pro" || tier === "Firm";
-
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Avatar & Name */}
         <div className="text-center">
-          <div className="h-20 w-20 rounded-full bg-gradient-aurora flex items-center justify-center text-primary-foreground font-bold text-2xl mx-auto mb-4">
+          <div className="h-20 w-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-2xl mx-auto mb-4">
             {(profile?.full_name || userEmail || "U")[0].toUpperCase()}
           </div>
           <h2 className="text-2xl font-semibold">{profile?.full_name || "Advocate"}</h2>
           <p className="text-muted-foreground">{userEmail}</p>
           <div className="flex items-center justify-center gap-2 mt-3">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              tier === "Pro" ? "bg-gold/15 text-gold" :
+              tier === "Pro" ? "bg-primary/15 text-primary" :
               tier === "Firm" ? "bg-emerald-500/15 text-emerald-400" :
               "bg-muted text-muted-foreground"
             }`}>
@@ -484,56 +513,42 @@ function ProfilePanel({ profile, userEmail, tier, daysLeft, isDevAccount, openPi
             </span>
           </div>
         </div>
-
-        {/* Subscription */}
         {isPremium && daysLeft !== null && (
-          <div className="glass border border-gold/40 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2 text-gold">
+          <div className="glass border border-primary/40 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2 text-primary">
               <Clock className="h-5 w-5" />
-              <span className="font-medium">Subscription Status</span>
+              <span className="font-medium">Subscription</span>
             </div>
             <p className="text-sm">
-              {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining` : "Your subscription has expired"}
+              {daysLeft > 0
+                ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining`
+                : "Subscription expired"}
             </p>
           </div>
         )}
-
-        {/* Profile Info */}
         {profile?.state && (
           <div className="glass border border-border/60 rounded-xl p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">State</p>
             <p className="text-sm">{profile.state}</p>
           </div>
         )}
-
-        {/* Dev Controls */}
         {isDevAccount && (
-          <Button
-            onClick={openPicker}
-            variant="outline"
-            className="w-full border-gold/40 text-gold hover:bg-gold/10 hover:text-gold"
-          >
+          <Button onClick={openPicker} variant="outline" className="w-full border-primary/40 text-primary hover:bg-primary/10">
             <Crown className="h-4 w-4" /> Switch Tier (Dev)
           </Button>
         )}
-
-        {/* Upgrade CTA */}
         {!isPremium && (
           <Link to="/pricing">
-            <Button className="w-full bg-gradient-aurora text-primary-foreground shadow-gold">
+            <Button className="w-full bg-primary text-primary-foreground">
               <Crown className="h-4 w-4" /> Upgrade to Pro
             </Button>
           </Link>
         )}
-
-        {/* Settings Link */}
         <Link to="/dashboard">
           <Button variant="outline" className="w-full">
-            <Settings className="h-4 w-4" /> Go to Settings
+            <Settings className="h-4 w-4" /> Settings
           </Button>
         </Link>
-
-        {/* Logout */}
         <Button onClick={onLogout} variant="ghost" className="w-full text-destructive hover:bg-destructive/10">
           <LogOut className="h-4 w-4" /> Logout
         </Button>
@@ -542,40 +557,46 @@ function ProfilePanel({ profile, userEmail, tier, daysLeft, isDevAccount, openPi
   );
 }
 
-// ============================================================================
-// Main Dashboard Page
-// ============================================================================
-
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN DASHBOARD
+// ─────────────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
-  const [cases, setCases] = useState<CaseRow[]>([]);
-  const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
+
+  const [profile,       setProfile]       = useState<any>(null);
+  const [cases,         setCases]         = useState<CaseRow[]>([]);
+  const [activeCaseId,  setActiveCaseId]  = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConvRow[]>([]);
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<MsgRow[]>([]);
-  const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [activeConvId,  setActiveConvId]  = useState<string | null>(null);
+  const [messages,      setMessages]      = useState<MsgRow[]>([]);
+  const [input,         setInput]         = useState("");
+  const [streaming,     setStreaming]     = useState(false);
+  const [notes,         setNotes]         = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
   const [createCaseOpen, setCreateCaseOpen] = useState(false);
   const [freeChatHistory, setFreeChatHistory] = useState<ConvRow[]>([]);
-  const [showArchived, setShowArchived] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<CaseRow | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("chat");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showArchived,  setShowArchived]  = useState(false);
+  const [deleteTarget,  setDeleteTarget]  = useState<CaseRow | null>(null);
+  const [activeTab,     setActiveTab]     = useState<TabType>("chat");
 
-  // Dev role override for bhramar123@gmail.com
+  // Panel collapsed state
+  const [railExpanded,  setRailExpanded]  = useState(false);
+  const [sideExpanded,  setSideExpanded]  = useState(true);
+
+  // Dev tier
   const isDevAccount = (user?.email || "").toLowerCase() === "bhramar123@gmail.com";
-  const [devTier, setDevTier] = useState<Tier | null>(null);
+  const [devTier,    setDevTier]    = useState<Tier | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+
   useEffect(() => {
     if (!isDevAccount) { setDevTier(null); return; }
     const saved = localStorage.getItem("bhramar.devTier") as Tier | null;
     if (saved && ["Free", "Pro", "Firm"].includes(saved)) setDevTier(saved);
     else setPickerOpen(true);
   }, [isDevAccount, user?.id]);
+
   const chooseTier = (t: Tier) => {
     localStorage.setItem("bhramar.devTier", t);
     setDevTier(t);
@@ -587,15 +608,14 @@ export default function Dashboard() {
   const tier: Tier = isDevAccount && devTier ? devTier : realTier;
   const isPremium = tier === "Pro" || tier === "Firm";
 
-  // Days left on Pro/Firm subscription
   const daysLeft: number | null = useMemo(() => {
     if (!isPremium) return null;
     const exp = profile?.subscription_expires_at as string | undefined;
     if (!exp) return null;
-    const ms = new Date(exp).getTime() - Date.now();
-    return Math.max(0, Math.ceil(ms / 86_400_000));
+    return Math.max(0, Math.ceil((new Date(exp).getTime() - Date.now()) / 86_400_000));
   }, [isPremium, profile?.subscription_expires_at]);
 
+  // Archive / unarchive / delete
   const onArchiveCase = useCallback(async (id: string) => {
     const { error } = await supabase.rpc("archive_case", { _case_id: id });
     if (error) return toast.error(error.message);
@@ -621,7 +641,7 @@ export default function Dashboard() {
     toast.success("Case deleted");
   }, [deleteTarget, activeCaseId]);
 
-  // Initial load
+  // Load profile + cases
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -631,11 +651,11 @@ export default function Dashboard() {
       ]);
       setProfile(p);
       setCases((cs as any) || []);
-      if (cs && cs.length) setActiveCaseId(cs[0].id);
+      if (cs?.length) setActiveCaseId(cs[0].id);
     })();
   }, [user]);
 
-  // Free user: load all conversations as flat chat history
+  // Free chat history
   useEffect(() => {
     if (!user || isPremium) { setFreeChatHistory([]); return; }
     (async () => {
@@ -664,7 +684,7 @@ export default function Dashboard() {
     })();
   }, [activeCaseId, user]);
 
-  // Load messages when conv changes
+  // Load messages
   useEffect(() => {
     if (!activeConvId || !user) { setMessages([]); return; }
     (async () => {
@@ -677,9 +697,8 @@ export default function Dashboard() {
 
   const activeCase = useMemo(() => cases.find((c) => c.id === activeCaseId), [cases, activeCaseId]);
 
-  const newCase = useCallback(() => {
-    setCreateCaseOpen(true);
-  }, []);
+  const newChat = useCallback(() => { setActiveConvId(null); setMessages([]); setInput(""); }, []);
+  const newCase = useCallback(() => setCreateCaseOpen(true), []);
 
   const onCaseCreated = useCallback(async (caseId: string) => {
     if (!user) return;
@@ -691,12 +710,6 @@ export default function Dashboard() {
   const setActiveFreeConv = useCallback(async (cv: ConvRow) => {
     setActiveCaseId(cv.case_id);
     setActiveConvId(cv.id);
-  }, []);
-
-  const newChat = useCallback(() => {
-    setActiveConvId(null);
-    setMessages([]);
-    setInput("");
   }, []);
 
   const saveNotes = useCallback(async (val: string) => {
@@ -719,7 +732,6 @@ export default function Dashboard() {
     if (!text || streaming || !user) return;
     setInput("");
 
-    // Ensure a case + conversation
     let caseId = activeCaseId;
     if (!caseId) {
       const { data } = await supabase.from("cases").insert({ user_id: user.id, name: "Untitled case", status: "Active" }).select().single();
@@ -734,7 +746,6 @@ export default function Dashboard() {
       setConversations((prev) => [data as any, ...prev]);
     }
 
-    // Optimistic user message
     const priorMessages = messages;
     const userMsg: MsgRow = { role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
@@ -763,14 +774,9 @@ export default function Dashboard() {
         }),
       });
 
-      if (resp.status === 429) { toast.error("Too many requests. Please wait a moment."); throw new Error("rate"); }
+      if (resp.status === 429) { toast.error("Too many requests."); throw new Error("rate"); }
       if (resp.status === 402) { toast.error("AI credits exhausted."); throw new Error("credits"); }
-      if (!resp.ok || !resp.body) {
-        const errText = await resp.text().catch(() => "");
-        console.error("chat fn error", resp.status, errText);
-        toast.error("Could not reach AI. Please try again.");
-        throw new Error("Stream failed");
-      }
+      if (!resp.ok || !resp.body) { toast.error("Could not reach AI."); throw new Error("stream"); }
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -789,8 +795,7 @@ export default function Dashboard() {
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (!line.startsWith("data: ")) continue;
           const data = line.slice(6).trim();
-          if (!data) continue;
-          if (data === "[DONE]") { done = true; break; }
+          if (!data || data === "[DONE]") { done = true; break; }
           try {
             const json = JSON.parse(data);
             if (Array.isArray(json?.sources)) { finalSources = json.sources; continue; }
@@ -803,16 +808,11 @@ export default function Dashboard() {
                 return next;
               });
             }
-          } catch {
-            buffer = `data: ${data}\n` + buffer;
-            break;
-          }
+          } catch { buffer = `data: ${data}\n` + buffer; break; }
         }
       }
 
-      if (!assistantText) {
-        assistantText = "_I could not generate a response. Please try again._";
-      }
+      if (!assistantText) assistantText = "_Could not generate a response. Please try again._";
 
       const inlineCitations = extractCitations(assistantText);
       const sourceLabels = finalSources.map((s: any) => s.label).filter(Boolean);
@@ -832,48 +832,81 @@ export default function Dashboard() {
     }
   }, [input, streaming, user, activeCaseId, activeConvId, messages]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
+  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/"); };
+
+  // Mobile tabs
+  const MOBILE_TABS = [
+    { id: "chat" as TabType,    Icon: MessageSquare, label: "Chat"    },
+    { id: "cases" as TabType,   Icon: FolderClosed,  label: "Cases",  hidden: !isPremium },
+    { id: "notes" as TabType,   Icon: StickyNote,    label: "Notes"   },
+    { id: "profile" as TabType, Icon: User,          label: "Me"      },
+  ];
 
   return (
     <div className="h-[100dvh] w-full flex bg-background text-foreground overflow-hidden">
-      {/* Desktop: Icon Rail + Side Panel */}
-      <div className="hidden md:flex">
-        <IconRail activeTab={activeTab} setActiveTab={setActiveTab} tier={tier} />
-        <SidePanel
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          cases={cases} activeCaseId={activeCaseId} setActiveCaseId={setActiveCaseId}
-          conversations={conversations} activeConvId={activeConvId} setActiveConvId={setActiveConvId}
-          newCase={newCase} newChat={newChat} profile={profile} userEmail={user?.email}
-          tier={tier} freeChatHistory={freeChatHistory} setActiveFreeConv={setActiveFreeConv}
-          isDevAccount={isDevAccount} openPicker={() => setPickerOpen(true)}
-          showArchived={showArchived} setShowArchived={setShowArchived}
-          onArchiveCase={onArchiveCase} onUnarchiveCase={onUnarchiveCase}
-          onAskDeleteCase={setDeleteTarget} daysLeft={daysLeft}
-        />
-      </div>
 
-      {/* Mobile: Tab Navigation (bottom or top) */}
+      {/* ── Panel 1: Icon Rail (desktop) ── */}
+      <IconRail
+        activeTab={activeTab}
+        setActiveTab={(t) => {
+          setActiveTab(t);
+          // Auto-open sidebar when switching tabs
+          if (!sideExpanded) setSideExpanded(true);
+        }}
+        tier={tier}
+        expanded={railExpanded}
+        onToggle={() => setRailExpanded((v) => !v)}
+      />
+
+      {/* ── Panel 2: Chat Sidebar (desktop) ── */}
+      <ChatSidebar
+        expanded={sideExpanded}
+        onToggle={() => setSideExpanded((v) => !v)}
+        conversations={conversations}
+        freeChatHistory={freeChatHistory}
+        activeConvId={activeConvId}
+        setActiveConvId={setActiveConvId}
+        setActiveFreeConv={setActiveFreeConv}
+        newChat={newChat}
+        tier={tier}
+        cases={cases}
+        activeCaseId={activeCaseId}
+        setActiveCaseId={setActiveCaseId}
+        newCase={newCase}
+        showArchived={showArchived}
+        setShowArchived={setShowArchived}
+        onArchiveCase={onArchiveCase}
+        onUnarchiveCase={onUnarchiveCase}
+        onAskDeleteCase={setDeleteTarget}
+        daysLeft={daysLeft}
+        isDevAccount={isDevAccount}
+        openPicker={() => setPickerOpen(true)}
+      />
+
+      {/* ── Sidebar collapsed toggle (desktop, when side panel is closed) ── */}
+      {!sideExpanded && (
+        <button
+          onClick={() => setSideExpanded(true)}
+          title="Open sidebar"
+          className="hidden md:flex items-center justify-center w-6 border-r border-border/60 bg-background/20 hover:bg-background/40 transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
+
+      {/* ── Mobile bottom nav ── */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border/60 bg-background/95 backdrop-blur-sm z-40">
         <div className="flex justify-around px-2 py-2">
-          {[
-            { id: "chat" as TabType, icon: MessageSquare, label: "Chat" },
-            { id: "cases" as TabType, icon: FolderClosed, label: "Cases", hidden: !(tier === "Pro" || tier === "Firm") },
-            { id: "notes" as TabType, icon: StickyNote, label: "Notes" },
-            { id: "profile" as TabType, icon: User, label: "Me" },
-          ].map((tab) => {
+          {MOBILE_TABS.map((tab) => {
             if (tab.hidden) return null;
-            const Icon = tab.icon;
+            const Icon = tab.Icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all ${
                   activeTab === tab.id
-                    ? "bg-gradient-aurora shadow-gold text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-md"
                     : "text-muted-foreground"
                 }`}
               >
@@ -885,26 +918,26 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 min-h-0 md:pb-0 pb-20">
+      {/* ── Main content ── */}
+      <main className="flex-1 flex flex-col min-w-0 min-h-0 pb-16 md:pb-0">
         {/* Header */}
-        <header className="h-14 border-b border-border/60 flex items-center justify-between px-4 md:px-6 glass-subtle">
-          <div className="flex items-center gap-3 min-w-0">
-            <Menu className="h-5 w-5 md:hidden text-muted-foreground" />
-            {activeTab === "chat" ? (
-              <>
-                <FolderClosed className="h-4 w-4 text-gold shrink-0" />
-                <span className="font-medium text-sm truncate">{activeCase?.name || "Select a case"}</span>
-              </>
-            ) : (
-              <span className="font-medium text-sm truncate capitalize">{activeTab === "profile" ? "Profile" : activeTab}</span>
-            )}
+        <header className="h-13 border-b border-border/60 flex items-center justify-between px-4 glass-subtle shrink-0" style={{ minHeight: 52 }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-medium text-sm truncate capitalize">
+              {activeTab === "chat"
+                ? (activeCase?.name || "Bhramar Chat")
+                : activeTab === "profile"
+                ? "Profile"
+                : activeTab}
+            </span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+          </div>
         </header>
 
-        {/* Main Content - Different views based on activeTab */}
-        {activeTab === "chat" ? (
+        {/* Tab content */}
+        {activeTab === "chat" && (
           <>
             <ChatBody
               messages={messages}
@@ -920,36 +953,43 @@ export default function Dashboard() {
               handleFileUpload={handleFileUpload}
               profileName={profile?.full_name || user?.email?.split("@")[0]}
               profileState={profile?.state}
-              activeCaseName={cases.find((c) => c.id === activeCaseId)?.name || null}
+              activeCaseName={activeCase?.name || null}
               onPickCase={() => setActiveTab("cases")}
             />
           </>
-        ) : activeTab === "cases" ? (
+        )}
+
+        {activeTab === "cases" && (
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold">My Cases</h2>
-                <Button onClick={newCase} className="bg-gradient-aurora text-primary-foreground shadow-gold text-sm">
-                  <Plus className="h-4 w-4" /> New
+                <h2 className="text-xl font-semibold">My Cases</h2>
+                <Button onClick={newCase} className="bg-primary text-primary-foreground text-sm h-9">
+                  <Plus className="h-4 w-4" /> New case
                 </Button>
               </div>
-              {cases.filter(c => !c.archived_at).length === 0 ? (
+              {cases.filter((c) => !c.archived_at).length === 0 ? (
                 <div className="text-center py-12">
                   <FolderClosed className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-muted-foreground">No cases yet. Create one to start.</p>
+                  <p className="text-muted-foreground">No cases yet.</p>
                 </div>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {cases.filter(c => !c.archived_at).map((c) => (
-                    <div key={c.id} className="glass border border-gold/20 rounded-xl p-4 hover:border-gold/40 transition-colors cursor-pointer" onClick={() => { setActiveCaseId(c.id); setActiveTab("chat"); }}>
+                  {cases.filter((c) => !c.archived_at).map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => { setActiveCaseId(c.id); setActiveTab("chat"); }}
+                      className="glass border border-primary/20 rounded-xl p-4 hover:border-primary/40 transition-colors cursor-pointer"
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate text-gold">{c.name}</h3>
+                          <h3 className="font-semibold truncate text-primary">{c.name}</h3>
                           {c.case_number && <p className="text-xs text-muted-foreground">#{c.case_number}</p>}
                         </div>
-                        <span className={`text-[9px] px-2 py-1 rounded-full font-semibold shrink-0 ${
+                        <span className={`text-[9px] px-2 py-1 rounded-full font-semibold shrink-0 ml-2 ${
                           c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
-                          c.status === "Draft" ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
+                          c.status === "Draft"  ? "bg-primary/15 text-primary" :
+                          "bg-muted text-muted-foreground"
                         }`}>{c.status}</span>
                       </div>
                       {c.client_name && <p className="text-xs text-muted-foreground">Client: {c.client_name}</p>}
@@ -959,10 +999,42 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        ) : activeTab === "notes" ? (
+        )}
+
+        {activeTab === "network" && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-2xl mx-auto text-center py-20">
+              <Users className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Network</h2>
+              <p className="text-muted-foreground mb-4">Connect and collaborate with other advocates.</p>
+              <Link to="/network">
+                <Button className="bg-primary text-primary-foreground">Open Network</Button>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "darbar" && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-2xl mx-auto text-center py-20">
+              <Gavel className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Darbar</h2>
+              <p className="text-muted-foreground mb-4">Virtual moot court — argue your case with AI judges.</p>
+              {activeCaseId ? (
+                <Link to={`/cases/${activeCaseId}/darbar`}>
+                  <Button className="bg-primary text-primary-foreground">Enter Darbar</Button>
+                </Link>
+              ) : (
+                <p className="text-sm text-muted-foreground">Select a case first to enter Darbar.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "notes" && (
           <div className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-2xl font-semibold mb-4">Notes</h2>
+              <h2 className="text-xl font-semibold mb-4">Notes</h2>
               {!activeCaseId ? (
                 <div className="text-center py-12">
                   <StickyNote className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
@@ -974,14 +1046,16 @@ export default function Dashboard() {
                     value={notes}
                     onChange={(e) => saveNotes(e.target.value)}
                     placeholder="Personal notes for this case..."
-                    className="min-h-[300px] md:min-h-[400px] resize-none glass border-border"
+                    className="min-h-[400px] resize-none glass border-border"
                   />
                   <p className="text-xs text-muted-foreground mt-2">Auto-saved</p>
                 </>
               )}
             </div>
           </div>
-        ) : activeTab === "profile" ? (
+        )}
+
+        {activeTab === "profile" && (
           <ProfilePanel
             profile={profile}
             userEmail={user?.email}
@@ -991,44 +1065,43 @@ export default function Dashboard() {
             openPicker={() => setPickerOpen(true)}
             onLogout={handleLogout}
           />
-        ) : null}
+        )}
       </main>
 
-      {/* Create case dialog */}
+      {/* Dialogs */}
       <CreateCaseDialog open={createCaseOpen} onOpenChange={setCreateCaseOpen} onCreated={onCaseCreated} />
 
-      {/* Dev role picker */}
       {isDevAccount && (
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-          <DialogContent className="glass-strong border-gold/30 max-w-lg">
+          <DialogContent className="glass-strong border-primary/30 max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-display text-2xl text-gradient-aurora">Choose dashboard view</DialogTitle>
               <DialogDescription>
-                Dev override for <span className="text-gold">{user?.email}</span>. Switch any time from your profile.
+                Dev override for <span className="text-primary">{user?.email}</span>.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3 mt-2">
               {([
-                { tier: "Free" as Tier, title: "Free Chat", desc: "5 messages/day, chat history only", Icon: User },
-                { tier: "Pro" as Tier, title: "Advocate", desc: "Cases, payments, evidence analysis", Icon: Crown },
-                { tier: "Firm" as Tier, title: "Firm", desc: "Shared workspace, cross-case AI", Icon: Building2 },
+                { tier: "Free"  as Tier, title: "Free Chat",  desc: "5 messages/day", Icon: User      },
+                { tier: "Pro"   as Tier, title: "Advocate",   desc: "Cases + AI",     Icon: Crown     },
+                { tier: "Firm"  as Tier, title: "Firm",       desc: "Team workspace", Icon: Building2 },
               ]).map(({ tier: t, title, desc, Icon }) => (
                 <button
                   key={t}
                   onClick={() => chooseTier(t)}
                   className={`text-left p-4 rounded-2xl glass border transition-all hover:scale-[1.01] ${
-                    tier === t ? "border-gold/60 shadow-gold" : "border-border/60 hover:border-gold/40"
+                    tier === t ? "border-primary/60 shadow-gold" : "border-border/60 hover:border-primary/40"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-aurora flex items-center justify-center shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
                       <Icon className="h-5 w-5 text-primary-foreground" />
                     </div>
                     <div className="flex-1">
                       <div className="font-semibold">{title}</div>
                       <div className="text-xs text-muted-foreground">{desc}</div>
                     </div>
-                    {tier === t && <span className="text-xs text-gold font-bold">CURRENT</span>}
+                    {tier === t && <span className="text-xs text-primary font-bold">CURRENT</span>}
                   </div>
                 </button>
               ))}
@@ -1037,14 +1110,12 @@ export default function Dashboard() {
         </Dialog>
       )}
 
-      {/* Delete-case confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent className="glass-strong border-destructive/30 max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">Delete case forever?</DialogTitle>
+            <DialogTitle>Delete case forever?</DialogTitle>
             <DialogDescription>
-              <span className="text-foreground font-medium">{deleteTarget?.name}</span> and all its conversations,
-              documents, payments and notes will be permanently removed from your account. This cannot be undone.
+              <span className="text-foreground font-medium">{deleteTarget?.name}</span> and all its data will be permanently removed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -1056,7 +1127,6 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Emergency FAB — Free tier only */}
       {tier === "Free" && <EmergencyButton variant="floating" />}
     </div>
   );
