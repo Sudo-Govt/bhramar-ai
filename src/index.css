@@ -53,8 +53,8 @@
     --navy-deep: 222 10% 8%;
     --navy-soft: 0 0% 96%;
     --gold: 239 84% 60%;
-   --gold-soft: 239 84% 60% / 0.18;
-     --gold-bright: 239 84% 70%;
+    --gold-soft: hsl(239 84% 60% / 0.18);
+    --gold-bright: 239 84% 70%;
     --ink: 0 0% 90%;
 
     --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(239 40% 98%) 100%);
@@ -110,7 +110,7 @@
     --navy-deep: 222 10% 9%;
     --navy-soft: 225 8% 16%;
     --gold: 239 84% 67%;
-    --gold-soft: 239 84% 67%;
+    --gold-soft: hsl(239 84% 67% / 0.18);
     --gold-bright: 239 84% 75%;
     --ink: 225 6% 24%;
 
