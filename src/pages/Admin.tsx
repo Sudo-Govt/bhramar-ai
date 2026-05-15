@@ -244,6 +244,7 @@ function RagZone({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<{ filename: string; content: string } | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -298,18 +299,52 @@ function RagZone({
   return (
     <>
       {/* Toolbar row */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline">{items.length} files</Badge>
-          <Button
-            size="sm" variant="outline"
-            onClick={async () => { await adminCall("rag_run_now"); toast.success("Worker triggered"); setTimeout(load, 2000); }}
-          >
-            <RefreshCw className="h-3 w-3 mr-1" /> Run worker
+
+          {/* Selection buttons */}
+          <Button size="sm" variant="outline" onClick={() => setSelected(new Set(items.map((i) => i.id)))}>
+            Select All
           </Button>
-          <Button size="sm" variant="outline" onClick={load}>
-            <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+          <Button size="sm" variant="outline" onClick={() => setSelected(new Set(items.filter((i) => i.status === "pending").map((i) => i.id)))}>
+            Select Pending
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected(new Set(items.filter((i) => i.status === "failed").map((i) => i.id)))}>
+            Select Failed
+          </Button>
+          {selected.size > 0 && (
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+              Clear ({selected.size})
+            </Button>
+          )}
+
+          {/* Bulk actions — only visible when something is selected */}
+          {selected.size > 0 && (
+            <>
+              <Button size="sm" variant="outline" onClick={async () => {
+                for (const id of selected) await adminCall("rag_reprocess", { id }).catch(() => {});
+                toast.success(`Re-queued ${selected.size} files`); setSelected(new Set()); await load();
+              }}>
+                <RefreshCw className="h-3 w-3 mr-1" /> Run Worker ({selected.size})
+              </Button>
+              <Button size="sm" variant="outline" onClick={async () => {
+                await adminCall("rag_run_now"); toast.success("Worker triggered"); setTimeout(load, 2000);
+              }}>
+                <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+              </Button>
+              <Button size="sm" variant="destructive" onClick={async () => {
+                if (!confirm(`Delete ${selected.size} files?`)) return;
+                for (const id of selected) {
+                  const item = items.find((i) => i.id === id);
+                  await adminCall("rag_delete", { id, name: item?.original_filename }).catch(() => {});
+                }
+                toast.success(`Deleted ${selected.size} files`); setSelected(new Set()); await load();
+              }}>
+                <Trash2 className="h-3 w-3 mr-1" /> Delete ({selected.size})
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Upload button */}
