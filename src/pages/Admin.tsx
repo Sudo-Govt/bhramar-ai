@@ -42,6 +42,7 @@ async function adminCall<T = any>(action: string, payload: any = {}): Promise<T>
 // ---------------- Layout ----------------
 const NAV = [
   { to: "/admin/prompt", label: "Prompt Control", icon: Wand2 },
+  { to: "/admin/pipeline", label: "AI Pipeline", icon: SettingsIcon },
   { to: "/admin/rag", label: "RAG Corpus", icon: Database },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/cases", label: "Cases & Chats", icon: Briefcase },
