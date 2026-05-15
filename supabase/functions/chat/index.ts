@@ -67,7 +67,7 @@ serve(async (req) => {
     // ── RAG: embed + match_chunks (fail-soft) ───────────────
     if (lastUser.trim()) {
       try {
-        const vec = await embed(LOVABLE_API_KEY, lastUser);
+        const vec = await embed(lastUser);
         const { data: chunks } = await supa.rpc('match_chunks', {
           query_embedding: vec as unknown as string,
           match_user_id: user.id,
