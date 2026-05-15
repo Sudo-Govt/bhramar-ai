@@ -290,6 +290,9 @@ function RagZone({ source, title, accept, enablePreview }: { source: string; tit
                 <TableCell className="text-xs">{new Date(i.uploaded_at).toLocaleDateString()}</TableCell>
                 <TableCell><Badge variant={i.status === "done" ? "default" : "secondary"}>{i.status}</Badge></TableCell>
                 <TableCell className="flex gap-1">
+                  {(i.status === "failed" || i.status === "pending") && (
+                    <Button size="sm" variant="ghost" onClick={() => reprocess(i.id)} title="Re-queue"><RefreshCw className="h-3 w-3" /></Button>
+                  )}
                   {enablePreview && <Button size="sm" variant="ghost" onClick={() => showPreview(i.id)}><Eye className="h-3 w-3" /></Button>}
                   <Button size="sm" variant="ghost" onClick={() => remove(i.id, i.original_filename)}><Trash2 className="h-3 w-3" /></Button>
                 </TableCell>
