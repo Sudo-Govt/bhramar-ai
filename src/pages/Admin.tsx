@@ -88,6 +88,7 @@ export default function Admin() {
         <Routes>
           <Route index element={<Navigate to="prompt" replace />} />
           <Route path="prompt" element={<PromptControl />} />
+          <Route path="pipeline" element={<AiPipelineSection />} />
           <Route path="rag" element={<RagCorpus />} />
           <Route path="users" element={<UsersSection />} />
           <Route path="cases" element={<CasesSection />} />
