@@ -4,15 +4,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Bhramar.ai — Monochrome system.
-   Palette (per spec):
-   #9b9d9d Codex Grey · #6b6d6f Platinum · #4b4d50 Cover of Night
-   #313338 Ebony · #24252b Black Russian · #1e1f23 Inkwell Inception
+/* Bhramar.ai — Dark SaaS system.
+   Base palette:
+   #1e1f23 Inkwell Inception (background)
+   #24252b Black Russian (card)
+   #313338 Ebony (secondary)
+   #4b4d50 Cover of Night (border)
+   #6b6d6f Platinum (muted text)
+   #9b9d9d Codex Grey (subtle text)
+   Accent: #6366f1 Indigo
    All colors expressed as HSL. */
 
 @layer base {
   :root {
-    /* Light mode — paper + ink */
+    /* Light mode — clean white with indigo accent */
     --background: 0 0% 99%;
     --foreground: 220 8% 12%;
 
@@ -22,67 +27,67 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 8% 12%;
 
-    --primary: 220 8% 18%;            /* near-black */
+    --primary: 239 84% 60%;            /* Indigo #6366f1 */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;
     --secondary-foreground: 220 8% 18%;
 
     --muted: 0 0% 95%;
-    --muted-foreground: 220 4% 42%;   /* Platinum-ish */
+    --muted-foreground: 220 4% 42%;
 
-    --accent: 0 0% 92%;
-    --accent-foreground: 220 8% 18%;
+    --accent: 239 84% 97%;             /* Indigo tint */
+    --accent-foreground: 239 84% 40%;
 
-    --destructive: 0 0% 20%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 220 8% 30%;
+    --ring: 239 84% 60%;
 
     --radius: 0.75rem;
 
-    /* Brand back-compat — all map to greys now */
+    /* Brand tokens */
     --navy: 220 8% 12%;
     --navy-deep: 222 10% 8%;
     --navy-soft: 0 0% 96%;
-    --gold: 220 4% 38%;
-    --gold-soft: 220 4% 38% / 0.18;
-    --gold-bright: 220 4% 50%;
+    --gold: 239 84% 60%;
+    --gold-soft: 239 84% 60% / 0.18;
+    --gold-bright: 239 84% 70%;
     --ink: 0 0% 90%;
 
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 97%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(220 8% 18%) 0%, hsl(220 6% 30%) 100%);
-    --gradient-aurora: linear-gradient(135deg, hsl(220 8% 18%) 0%, hsl(220 4% 38%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(239 40% 98%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(239 84% 60%) 0%, hsl(262 80% 65%) 100%);
+    --gradient-aurora: linear-gradient(135deg, hsl(239 84% 60%) 0%, hsl(262 80% 65%) 50%, hsl(210 80% 60%) 100%);
 
-    --shadow-gold: 0 8px 24px -10px hsl(220 8% 12% / 0.25);
+    --shadow-gold: 0 8px 24px -10px hsl(239 84% 60% / 0.35);
     --shadow-card: 0 4px 16px -8px hsl(220 8% 12% / 0.08);
-    --shadow-glass: 0 8px 32px hsl(220 8% 12% / 0.06), inset 0 1px 0 hsl(0 0% 100% / 0.6);
+    --shadow-glass: 0 8px 32px hsl(239 84% 60% / 0.06), inset 0 1px 0 hsl(0 0% 100% / 0.6);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 220 8% 18%;
-    --sidebar-primary: 220 8% 18%;
+    --sidebar-primary: 239 84% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 94%;
-    --sidebar-accent-foreground: 220 8% 18%;
+    --sidebar-accent: 239 84% 97%;
+    --sidebar-accent-foreground: 239 84% 40%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 220 8% 30%;
+    --sidebar-ring: 239 84% 60%;
   }
 
   .dark {
-    /* Dark mode — Inkwell Inception base, Ebony surfaces, Codex Grey text */
-    --background: 225 9% 13%;          /* #1e1f23 Inkwell Inception */
+    /* Dark mode — Inkwell Inception base */
+    --background: 225 9% 13%;          /* #1e1f23 */
     --foreground: 0 0% 96%;
 
-    --card: 225 8% 16%;                /* #24252b Black Russian */
+    --card: 225 8% 16%;                /* #24252b */
     --card-foreground: 0 0% 96%;
 
     --popover: 225 8% 16%;
     --popover-foreground: 0 0% 96%;
 
-    --primary: 0 0% 96%;
-    --primary-foreground: 225 9% 13%;
+    --primary: 239 84% 67%;            /* Indigo #6366f1 */
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 225 7% 19%;           /* #313338 Ebony */
     --secondary-foreground: 0 0% 96%;
@@ -90,39 +95,41 @@
     --muted: 225 7% 19%;
     --muted-foreground: 210 1% 61%;    /* #9b9d9d Codex Grey */
 
-    --accent: 225 7% 22%;
-    --accent-foreground: 0 0% 96%;
+    --accent: 239 30% 25%;             /* Indigo tinted surface */
+    --accent-foreground: 239 84% 80%;
 
-    --destructive: 0 0% 92%;
-    --destructive-foreground: 225 9% 13%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 225 6% 24%;              /* #4b4d50 Cover of Night */
+    --border: 225 6% 24%;              /* #4b4d50 */
     --input: 225 6% 24%;
-    --ring: 210 1% 61%;
+    --ring: 239 84% 67%;
 
+    /* Brand tokens */
     --navy: 225 9% 13%;
     --navy-deep: 222 10% 9%;
     --navy-soft: 225 8% 16%;
-    --gold: 210 1% 61%;
-    --gold-bright: 0 0% 96%;
+    --gold: 239 84% 67%;
+    --gold-soft: 239 84% 67% / 0.18;
+    --gold-bright: 239 84% 75%;
     --ink: 225 6% 24%;
 
     --gradient-hero: linear-gradient(180deg, hsl(225 10% 11%) 0%, hsl(225 9% 13%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(0 0% 96%) 0%, hsl(210 1% 61%) 100%);
-    --gradient-aurora: linear-gradient(135deg, hsl(0 0% 98%) 0%, hsl(210 1% 61%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(239 84% 67%) 0%, hsl(262 80% 65%) 100%);
+    --gradient-aurora: linear-gradient(135deg, hsl(239 84% 67%) 0%, hsl(262 80% 65%) 50%, hsl(210 80% 60%) 100%);
 
-    --shadow-gold: 0 8px 24px -10px hsl(0 0% 0% / 0.6);
+    --shadow-gold: 0 8px 24px -10px hsl(239 84% 67% / 0.4);
     --shadow-card: 0 8px 28px -12px hsl(0 0% 0% / 0.5);
     --shadow-glass: 0 10px 32px hsl(0 0% 0% / 0.45), inset 0 1px 0 hsl(0 0% 100% / 0.04);
 
     --sidebar-background: 225 10% 11%;
     --sidebar-foreground: 0 0% 92%;
-    --sidebar-primary: 0 0% 96%;
-    --sidebar-primary-foreground: 225 9% 13%;
-    --sidebar-accent: 225 8% 17%;
-    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-primary: 239 84% 67%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 239 30% 22%;
+    --sidebar-accent-foreground: 239 84% 80%;
     --sidebar-border: 225 6% 22%;
-    --sidebar-ring: 210 1% 61%;
+    --sidebar-ring: 239 84% 67%;
   }
 }
 
@@ -131,6 +138,7 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-size: 14px;
     font-feature-settings: "ss01", "cv11";
     background-image: var(--gradient-hero);
     background-attachment: fixed;
@@ -141,20 +149,32 @@
     letter-spacing: -0.02em;
     font-weight: 700;
   }
+
+  /* Consistent font sizes */
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.375rem; }
+  h3 { font-size: 1.125rem; }
+  h4 { font-size: 0.9375rem; }
 }
 
 @layer utilities {
-  .bg-gradient-hero { background: var(--gradient-hero); }
-  .bg-gradient-gold { background: var(--gradient-gold); }
-  .bg-gradient-aurora { background: var(--gradient-aurora); }
-  .text-gradient-aurora { color: hsl(var(--foreground)); }
-  .text-gold { color: hsl(var(--foreground)); font-weight: 600; }
+  .bg-gradient-hero    { background: var(--gradient-hero); }
+  .bg-gradient-gold    { background: var(--gradient-gold); }
+  .bg-gradient-aurora  { background: var(--gradient-aurora); }
+  .text-gradient-aurora {
+    background: var(--gradient-aurora);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-gold   { color: hsl(var(--gold)); font-weight: 600; }
   .shadow-gold { box-shadow: var(--shadow-gold); }
   .shadow-card { box-shadow: var(--shadow-card); }
   .shadow-glass { box-shadow: var(--shadow-glass); }
   .text-balance { text-wrap: balance; }
-  .border-gold { border-color: hsl(var(--border)); }
+  .border-gold { border-color: hsl(var(--gold)); }
 
+  /* ── Glass surfaces ── */
   .glass {
     background: hsl(var(--card) / 0.85);
     backdrop-filter: blur(18px) saturate(140%);
@@ -176,22 +196,186 @@
     border: 1px solid hsl(var(--border));
   }
 
-  /* Aurora blobs neutralised */
-  .aurora-bg { position: relative; overflow: hidden; }
-
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 8px; }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(239 84% 67% / 0.5);
+  }
 
+  /* ── Chat bubbles ── */
+  .bubble-user {
+    background: hsl(239 84% 67%);
+    color: hsl(0 0% 100%);
+    border-radius: 18px 18px 4px 18px;
+    padding: 10px 14px;
+    max-width: 75%;
+    margin-left: auto;
+    font-size: 15px;
+    line-height: 1.6;
+    box-shadow: 0 2px 12px hsl(239 84% 67% / 0.3);
+  }
+
+  .bubble-ai {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border-radius: 18px 18px 18px 4px;
+    padding: 10px 14px;
+    max-width: 75%;
+    margin-right: auto;
+    font-size: 15px;
+    line-height: 1.6;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 2px 8px hsl(0 0% 0% / 0.08);
+  }
+
+  /* ── Sidebar conversation list items ── */
+  .conv-item {
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .conv-item:hover {
+    background: hsl(var(--muted));
+  }
+  .conv-item.active {
+    background: hsl(239 30% 22%);
+    border-left: 2px solid hsl(239 84% 67%);
+  }
+  .conv-item-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .conv-item-preview {
+    font-size: 12px;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .conv-item-time {
+    font-size: 11px;
+    color: hsl(var(--muted-foreground));
+    flex-shrink: 0;
+  }
+
+  /* ── Chat input area ── */
+  .chat-input-wrap {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 14px;
+    padding: 10px 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .chat-input-wrap:focus-within {
+    border-color: hsl(239 84% 67%);
+    box-shadow: 0 0 0 3px hsl(239 84% 67% / 0.12);
+  }
+
+  /* ── Send button ── */
+  .btn-send {
+    background: hsl(239 84% 67%);
+    color: white;
+    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .btn-send:hover {
+    background: hsl(239 84% 60%);
+    transform: scale(1.05);
+  }
+  .btn-send:active {
+    transform: scale(0.97);
+  }
+
+  /* ── Indigo badge / pill ── */
+  .badge-indigo {
+    background: hsl(239 30% 22%);
+    color: hsl(239 84% 75%);
+    border: 1px solid hsl(239 60% 35%);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+  }
+
+  /* ── Uploaded file card in chat ── */
+  .file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: hsl(var(--secondary));
+    border: 1px solid hsl(var(--border));
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: hsl(var(--foreground));
+    max-width: 200px;
+  }
+  .file-chip-icon {
+    color: hsl(239 84% 67%);
+    flex-shrink: 0;
+  }
+  .file-chip-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Section label (Today, Previous 7 Days etc) ── */
+  .conv-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
+    padding: 8px 12px 4px;
+  }
+
+  /* ── Legal prose ── */
   .prose-legal { @apply text-foreground/90 leading-relaxed text-[15px]; }
   .prose-legal h3 { @apply font-display text-base font-semibold text-foreground mt-4 mb-2; }
   .prose-legal strong { color: hsl(var(--foreground)); @apply font-semibold; }
   .prose-legal ul { @apply pl-5 my-2 space-y-1; }
   .prose-legal ol { @apply pl-5 my-2 space-y-1 list-decimal; }
-  .prose-legal li::marker { color: hsl(var(--muted-foreground)); }
+  .prose-legal li::marker { color: hsl(239 84% 67%); }
   .prose-legal em { @apply text-muted-foreground not-italic; }
+  .prose-legal a { color: hsl(239 84% 67%); text-decoration: underline; }
 
-  @keyframes pulse-soft { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  /* ── Aurora bg (neutralised but kept for compat) ── */
+  .aurora-bg { position: relative; overflow: hidden; }
+
+  /* ── Animations ── */
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
   .animate-pulse-soft { animation: pulse-soft 1.4s ease-in-out infinite; }
+
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in-up { animation: fade-in-up 0.2s ease-out both; }
+
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .animate-slide-in-right { animation: slide-in-right 0.2s ease-out both; }
 }
