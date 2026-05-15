@@ -28,7 +28,7 @@ import logoIcon from "@/assets/bhramar-logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmergencyButton } from "@/components/EmergencyButton";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────
 type CaseRow = {
   id: string; name: string; client_name: string | null;
   status: "Active" | "Closed" | "Draft";
@@ -42,9 +42,9 @@ type TabType  =
   | "notes" | "files" | "assistant" | "calls"
   | "darbar" | "profile";
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 // PANEL 1 — Icon Rail
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 const ALL_TABS: { id: TabType; Icon: any; label: string }[] = [
   { id: "chat",      Icon: MessageSquare,  label: "Chat"           },
   { id: "overview",  Icon: LayoutDashboard,label: "Overview"       },
@@ -128,9 +128,9 @@ function IconRail({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 // PANEL 2 — Chat History Sidebar
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 function ChatSidebar({
   expanded, onToggle,
   conversations, freeChatHistory, activeConvId,
@@ -282,9 +282,9 @@ function ChatSidebar({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 // CHAT BODY
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 function ChatBody({ messages, saveNotes, notes, bottomRef }: {
   messages: MsgRow[]; saveNotes: (s: string) => void;
   notes: string; bottomRef: React.RefObject<HTMLDivElement>;
@@ -354,9 +354,9 @@ function ChatBody({ messages, saveNotes, notes, bottomRef }: {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 // INPUT BAR
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 function InputBar({ input, setInput, send, streaming, handleFileUpload, profileName, profileState, activeCaseName, onPickCase }: {
   input: string; setInput: (s: string) => void; send: () => void;
   streaming: boolean; handleFileUpload: (f: File) => void;
@@ -405,12 +405,14 @@ function InputBar({ input, setInput, send, streaming, handleFileUpload, profileN
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 // SECTION PANELS (inline, no external imports needed)
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 
-function OverviewPanel({ cases, tier, daysLeft, profile }: {
-  cases: CaseRow[]; tier: Tier; daysLeft: number | null; profile: any;
+function OverviewPanel({ 
+  cases, tier, daysLeft, profile, setActiveTab 
+}: {
+  cases: CaseRow[]; tier: Tier; daysLeft: number | null; profile: any; setActiveTab: (t: TabType) => void;
 }) {
   const activeCases  = cases.filter((c) => c.status === "Active"  && !c.archived_at).length;
   const draftCases   = cases.filter((c) => c.status === "Draft"   && !c.archived_at).length;
@@ -473,13 +475,15 @@ function OverviewPanel({ cases, tier, daysLeft, profile }: {
               { label: "Calendar",     Icon: CalendarDays,  tab: "calendar"  as TabType },
               { label: "AI Assistant", Icon: Bot,           tab: "assistant" as TabType },
             ].map(({ label, Icon, tab }) => (
-              <div key={label}
+              <button
+                key={label}
+                onClick={() => setActiveTab(tab)}
                 className="glass border border-border/60 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-colors">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <Icon className="h-4 w-4 text-primary" />
                 </div>
                 <span className="text-sm font-medium">{label}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -888,9 +892,9 @@ function ProfilePanel({ profile, userEmail, tier, daysLeft, isDevAccount, openPi
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 // MAIN DASHBOARD
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -910,7 +914,7 @@ export default function Dashboard() {
   const [freeChatHistory, setFreeChatHistory] = useState<ConvRow[]>([]);
   const [showArchived,    setShowArchived]    = useState(false);
   const [deleteTarget,    setDeleteTarget]    = useState<CaseRow | null>(null);
-  const [activeTab,       setActiveTab]       = useState<TabType>("chat");
+  const [activeTab,       setActiveTab]       = useState<TabType>("overview");
   const [railExpanded,    setRailExpanded]    = useState(false);
   const [sideExpanded,    setSideExpanded]    = useState(true);
 
@@ -1235,7 +1239,7 @@ export default function Dashboard() {
         )}
 
         {activeTab === "overview" && (
-          <OverviewPanel cases={cases} tier={tier} daysLeft={daysLeft} profile={profile} />
+          <OverviewPanel cases={cases} tier={tier} daysLeft={daysLeft} profile={profile} setActiveTab={setActiveTab} />
         )}
 
         {activeTab === "cases" && (
