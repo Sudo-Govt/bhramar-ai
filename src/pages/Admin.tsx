@@ -245,6 +245,8 @@ function RagZone({
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<{ filename: string; content: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ragPage, setRagPage] = useState(0);
+  const [ragPageSize, setRagPageSize] = useState(50);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -254,6 +256,8 @@ function RagZone({
     setLoading(false);
   };
   useEffect(() => { load(); }, [source]);
+  const totalPages = ragPageSize === -1 ? 1 : Math.ceil(items.length / ragPageSize);
+  const visibleItems = ragPageSize === -1 ? items : items.slice(ragPage * ragPageSize, (ragPage + 1) * ragPageSize);
 
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const uploadMany = async (files: FileList) => {
@@ -302,6 +306,18 @@ function RagZone({
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline">{items.length} files</Badge>
+          <Select
+            value={String(ragPageSize)}
+            onValueChange={(v) => { setRagPageSize(Number(v)); setRagPage(0); }}
+          >
+            <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">Show 10</SelectItem>
+              <SelectItem value="50">Show 50</SelectItem>
+              <SelectItem value="100">Show 100</SelectItem>
+              <SelectItem value="-1">Show All</SelectItem>
+            </SelectContent>
+          </Select>
 
           {/* Selection buttons */}
           <Button size="sm" variant="outline" onClick={() => setSelected(new Set(items.map((i) => i.id)))}>
@@ -386,7 +402,7 @@ function RagZone({
                   </TableCell>
                 </TableRow>
               )}
-              {items.map((i) => (
+              {visibleItems.map((i) => (
                 <TableRow key={i.id} className={`hover:bg-muted/30 ${selected.has(i.id) ? "bg-muted/50" : ""}`}>
                   <TableCell>
                     <input type="checkbox" checked={selected.has(i.id)}
@@ -431,7 +447,31 @@ function RagZone({
           </Table>
         </div>
       )}
-
+{/* Pagination footer */}
+      {ragPageSize !== -1 && totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3 text-sm">
+          <span className="text-muted-foreground text-xs">
+            Showing {ragPage * ragPageSize + 1}–{Math.min((ragPage + 1) * ragPageSize, items.length)} of {items.length}
+          </span>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" disabled={ragPage === 0} onClick={() => setRagPage(0)}>
+              «
+            </Button>
+            <Button size="sm" variant="outline" disabled={ragPage === 0} onClick={() => setRagPage((p) => p - 1)}>
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <span className="px-3 py-1 text-xs border border-border rounded-md bg-muted">
+              {ragPage + 1} / {totalPages}
+            </span>
+            <Button size="sm" variant="outline" disabled={ragPage + 1 >= totalPages} onClick={() => setRagPage((p) => p + 1)}>
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+            <Button size="sm" variant="outline" disabled={ragPage + 1 >= totalPages} onClick={() => setRagPage(totalPages - 1)}>
+              »
+            </Button>
+          </div>
+        </div>
+      )}
       <Sheet open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <SheetContent className="w-[600px] sm:max-w-[600px]">
           <SheetHeader><SheetTitle>{preview?.filename}</SheetTitle></SheetHeader>
