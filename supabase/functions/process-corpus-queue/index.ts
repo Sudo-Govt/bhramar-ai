@@ -1,5 +1,5 @@
 // supabase/functions/process-corpus-queue/index.ts
-// Worker: drains rag_upload_queue → chunks file → embeds via Lovable AI Gateway → inserts into document_chunks.
+// Worker: drains rag_upload_queue → chunks file → embeds via Google AI → inserts into document_chunks.
 // Triggered by pg_cron every 5 minutes (also callable manually).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.104.1";
 
@@ -10,12 +10,12 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
-const EMBED_MODEL = "google/text-embedding-004";
-const EMBED_URL = "https://ai.gateway.lovable.dev/v1/embeddings";
+const GOOGLE_AI_KEY = Deno.env.get("GOOGLE_AI_API_KEY") || Deno.env.get("GEMINI_API_KEY") || "";
+const EMBED_MODEL = "models/text-embedding-004";
+const EMBED_URL = `https://generativelanguage.googleapis.com/v1beta/${EMBED_MODEL}:batchEmbedContents`;
 const BUCKET = "rag-corpus";
-const MAX_BATCH = 5;        // queue rows per invocation
-const CHUNK_SIZE = 1200;    // chars
+const MAX_BATCH = 8;        // queue rows per invocation
+const CHUNK_SIZE = 1200;
 const CHUNK_OVERLAP = 150;
 const EMBED_BATCH = 16;
 
@@ -34,32 +34,34 @@ function chunkText(text: string): string[] {
 }
 
 async function embedBatch(texts: string[]): Promise<number[][]> {
-  const r = await fetch(EMBED_URL, {
+  if (!GOOGLE_AI_KEY) throw new Error("GOOGLE_AI_API_KEY (or GEMINI_API_KEY) not configured");
+  const r = await fetch(`${EMBED_URL}?key=${GOOGLE_AI_KEY}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requests: texts.map((t) => ({
+        model: EMBED_MODEL,
+        content: { parts: [{ text: t }] },
+      })),
+    }),
   });
   if (!r.ok) {
     const t = await r.text().catch(() => "");
-    throw new Error(`embed ${r.status}: ${t.slice(0, 200)}`);
+    throw new Error(`embed ${r.status}: ${t.slice(0, 300)}`);
   }
   const j = await r.json();
-  return (j?.data || []).map((d: any) => d.embedding as number[]);
+  return (j?.embeddings || []).map((e: any) => e.values as number[]);
 }
 
 async function processRow(supa: ReturnType<typeof createClient>, row: any) {
-  // mark processing
   await supa.from("rag_upload_queue").update({ status: "processing" }).eq("id", row.id);
 
-  // download from storage
   const { data: blob, error: dlErr } = await supa.storage.from(BUCKET).download(row.file_path);
   if (dlErr || !blob) throw new Error(`download failed: ${dlErr?.message || "no blob"}`);
   const text = await blob.text();
   const chunks = chunkText(text);
   if (chunks.length === 0) throw new Error("file produced 0 chunks");
 
-  // map queue source → document_chunks.source enum
-  // queue: 'corpus' | 'kb' | 'pipeline'   →   chunks: 'corpus' | 'kb'
   const chunkSource = row.source === "kb" ? "kb" : "corpus";
   const actName = row.original_filename || row.file_path;
 
@@ -67,6 +69,7 @@ async function processRow(supa: ReturnType<typeof createClient>, row: any) {
   for (let i = 0; i < chunks.length; i += EMBED_BATCH) {
     const batch = chunks.slice(i, i + EMBED_BATCH);
     const vectors = await embedBatch(batch.map((c) => `${actName}\n${c}`));
+    if (vectors.length !== batch.length) throw new Error(`embed mismatch ${vectors.length}/${batch.length}`);
     const rows = batch.map((content, idx) => ({
       source: chunkSource,
       user_id: chunkSource === "kb" ? row.uploaded_by : null,
@@ -92,12 +95,41 @@ async function processRow(supa: ReturnType<typeof createClient>, row: any) {
   return inserted;
 }
 
+// Scan storage and create queue rows for any orphans (files in storage but not in queue).
+async function reconcileStorage(supa: ReturnType<typeof createClient>) {
+  let added = 0;
+  for (const folder of ["corpus", "kb", "pipeline"]) {
+    const { data: objs } = await supa.storage.from(BUCKET).list(folder, { limit: 1000 });
+    if (!objs) continue;
+    for (const o of objs) {
+      if (!o.name) continue;
+      const path = `${folder}/${o.name}`;
+      const { data: existing } = await supa.from("rag_upload_queue").select("id").eq("file_path", path).maybeSingle();
+      if (existing) continue;
+      await supa.from("rag_upload_queue").insert({
+        source: folder,
+        file_path: path,
+        original_filename: o.name,
+        file_size_bytes: (o.metadata as any)?.size || null,
+        status: "pending",
+      });
+      added++;
+    }
+  }
+  return added;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
     const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // Reconcile orphan storage objects on every run
+    const reconciled = await reconcileStorage(supa).catch((e) => {
+      console.warn("reconcile failed", e?.message);
+      return 0;
+    });
 
     const { data: pending, error: qErr } = await supa
       .from("rag_upload_queue")
@@ -123,7 +155,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, processed: results.length, results }), {
+    return new Response(JSON.stringify({ ok: true, reconciled, processed: results.length, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
