@@ -334,6 +334,20 @@ function RagZone({
               Clear ({selected.size})
             </Button>
           )}
+          {items.length > 0 && (
+            <Button size="sm" variant="destructive" onClick={async () => {
+              if (!confirm(`FLUSH ALL ${items.length} files from ${title}? This cannot be undone.`)) return;
+              for (const item of items) {
+                await adminCall("rag_delete", { id: item.id }).catch(() => {});
+              }
+              toast.success(`Flushed ${items.length} files`);
+              setSelected(new Set());
+              setRagPage(0);
+              await load();
+            }}>
+              <Trash2 className="h-3 w-3 mr-1" /> Flush All
+            </Button>
+          )}
 
           {/* Bulk actions — only visible when something is selected */}
           {selected.size > 0 && (
