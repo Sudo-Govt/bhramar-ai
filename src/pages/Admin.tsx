@@ -184,24 +184,62 @@ function PromptControl() {
   );
 }
 
-// ---------------- Section: RAG ----------------
+// ---------------- Section: RAG (Tabbed) ----------------
+const RAG_TABS = [
+  { key: "corpus", label: "Bare Acts / Statutes",       accept: ".md,.txt",        enablePreview: false },
+  { key: "kb",     label: "Judgments / Knowledge Base", accept: ".md,.txt,.pdf",   enablePreview: false },
+  { key: "pipeline", label: "AI Pipeline Rules",        accept: ".md,.txt",        enablePreview: true  },
+] as const;
+
 function RagCorpus() {
+  const [activeTab, setActiveTab] = useState<"corpus" | "kb" | "pipeline">("corpus");
+  const tab = RAG_TABS.find((t) => t.key === activeTab)!;
+
   return (
-    <div className="p-8 max-w-7xl space-y-6">
-      <div>
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="px-8 pt-8 pb-0">
         <h1 className="font-display text-2xl font-bold">RAG Corpus Upload</h1>
-        <p className="text-sm text-muted-foreground">Manage Bare Acts, Judgments, and Pipeline configs.</p>
+        <p className="text-sm text-muted-foreground mb-5">Manage Bare Acts, Judgments, and Pipeline configs.</p>
+
+        {/* Tab bar */}
+        <div className="flex border-b border-border">
+          {RAG_TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === t.key
+                  ? "border-foreground text-foreground font-bold"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RagZone source="corpus" title="Bare Acts / Statutes" accept=".md,.txt" />
-        <RagZone source="kb" title="Judgments / Knowledge Base" accept=".md,.txt,.pdf" />
-        <RagZone source="pipeline" title="AI Pipeline Rules" accept=".md,.txt" enablePreview />
+
+      {/* Full-page tab content */}
+      <div className="flex-1 overflow-auto px-8 py-6">
+        <RagZone
+          key={activeTab}
+          source={tab.key}
+          title={tab.label}
+          accept={tab.accept}
+          enablePreview={tab.enablePreview}
+          fullPage
+        />
       </div>
     </div>
   );
 }
 
-function RagZone({ source, title, accept, enablePreview }: { source: string; title: string; accept: string; enablePreview?: boolean }) {
+function RagZone({
+  source, title, accept, enablePreview, fullPage,
+}: {
+  source: string; title: string; accept: string; enablePreview?: boolean; fullPage?: boolean;
+}) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -258,56 +296,104 @@ function RagZone({ source, title, accept, enablePreview }: { source: string; tit
   };
 
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold">{title}</h3>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">{items.length}</Badge>
-          <Button size="sm" variant="outline" onClick={async () => { await adminCall("rag_run_now"); toast.success("Worker triggered"); setTimeout(load, 2000); }}>
-            <RefreshCw className="h-3 w-3 mr-1" />Run worker
+    <>
+      {/* Toolbar row */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Badge variant="outline">{items.length} files</Badge>
+          <Button
+            size="sm" variant="outline"
+            onClick={async () => { await adminCall("rag_run_now"); toast.success("Worker triggered"); setTimeout(load, 2000); }}
+          >
+            <RefreshCw className="h-3 w-3 mr-1" /> Run worker
+          </Button>
+          <Button size="sm" variant="outline" onClick={load}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+          </Button>
+        </div>
+
+        {/* Upload button */}
+        <div>
+          <input
+            ref={fileRef} type="file" accept={accept} multiple className="hidden"
+            onChange={(e) => { const fs = e.target.files; if (fs && fs.length) uploadMany(fs); }}
+          />
+          <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            <Upload className="h-3 w-3 mr-1" />
+            {uploading ? `Uploading ${progress.done}/${progress.total}…` : `Upload ${accept}`}
           </Button>
         </div>
       </div>
-      <div className="border-2 border-dashed border-border rounded-md p-6 text-center mb-4">
-        <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-        <input ref={fileRef} type="file" accept={accept} multiple className="hidden"
-          onChange={(e) => { const fs = e.target.files; if (fs && fs.length) uploadMany(fs); }} />
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          {uploading ? `Uploading ${progress.done}/${progress.total}…` : `Upload ${accept} (multi-select)`}
-        </Button>
-      </div>
-      {loading ? <Skeleton className="h-24 w-full" /> : (
-        <Table>
-          <TableHeader>
-            <TableRow><TableHead>Filename</TableHead><TableHead>Size</TableHead><TableHead>Uploaded</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length === 0 && <TableRow><TableCell colSpan={5} className="text-muted-foreground text-sm">No files yet.</TableCell></TableRow>}
-            {items.map((i) => (
-              <TableRow key={i.id}>
-                <TableCell className="text-xs">{i.original_filename}</TableCell>
-                <TableCell className="text-xs">{i.file_size_bytes ? `${(i.file_size_bytes/1024).toFixed(1)}KB` : "—"}</TableCell>
-                <TableCell className="text-xs">{new Date(i.uploaded_at).toLocaleDateString()}</TableCell>
-                <TableCell><Badge variant={i.status === "done" ? "default" : "secondary"}>{i.status}</Badge></TableCell>
-                <TableCell className="flex gap-1">
-                  {(i.status === "failed" || i.status === "pending") && (
-                    <Button size="sm" variant="ghost" onClick={() => reprocess(i.id)} title="Re-queue"><RefreshCw className="h-3 w-3" /></Button>
-                  )}
-                  {enablePreview && <Button size="sm" variant="ghost" onClick={() => showPreview(i.id)}><Eye className="h-3 w-3" /></Button>}
-                  <Button size="sm" variant="ghost" onClick={() => remove(i.id, i.original_filename)}><Trash2 className="h-3 w-3" /></Button>
-                </TableCell>
+
+      {/* File table — full width, no card wrapper so it fills the page */}
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      ) : (
+        <div className="border border-border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[40%]">Filename</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead>Uploaded</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-muted-foreground text-sm text-center py-12">
+                    No files yet. Upload your first file above.
+                  </TableCell>
+                </TableRow>
+              )}
+              {items.map((i) => (
+                <TableRow key={i.id} className="hover:bg-muted/30">
+                  <TableCell className="text-xs font-mono">{i.original_filename}</TableCell>
+                  <TableCell className="text-xs">{i.file_size_bytes ? `${(i.file_size_bytes / 1024).toFixed(1)} KB` : "—"}</TableCell>
+                  <TableCell className="text-xs">{new Date(i.uploaded_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={i.status === "done" ? "default" : i.status === "failed" ? "destructive" : "secondary"}
+                      className="text-xs"
+                    >
+                      {i.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {(i.status === "failed" || i.status === "pending") && (
+                        <Button size="sm" variant="ghost" onClick={() => reprocess(i.id)} title="Re-queue">
+                          <RefreshCw className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {enablePreview && (
+                        <Button size="sm" variant="ghost" onClick={() => showPreview(i.id)} title="Preview">
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => remove(i.id, i.original_filename)} title="Delete">
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
+
       <Sheet open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <SheetContent className="w-[600px] sm:max-w-[600px]">
           <SheetHeader><SheetTitle>{preview?.filename}</SheetTitle></SheetHeader>
           <pre className="mt-4 text-xs whitespace-pre-wrap font-mono overflow-auto max-h-[80vh]">{preview?.content}</pre>
         </SheetContent>
       </Sheet>
-    </Card>
+    </>
   );
 }
 
