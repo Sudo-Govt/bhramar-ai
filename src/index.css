@@ -140,7 +140,7 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 14px;
     font-feature-settings: "ss01", "cv11";
-    background-image: var(--gradient-hero);
+    background-color: hsl(225 9% 13%);
     background-attachment: fixed;
   }
 
