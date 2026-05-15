@@ -109,12 +109,15 @@ function PromptControl() {
   const [loaded, setLoaded] = useState(false);
 
   const load = async () => {
-    const cfg = await adminCall<{ items: any[] }>("config_list");
-    const map = new Map(cfg.items.map((i) => [i.key, i.value]));
-    setPrompt(map.get("master_prompt") || "");
-    setVersion(map.get("prompt_version") || "v1.0");
-    const v = await adminCall<{ items: any[] }>("prompt_versions_list");
-    setVersions(v.items || []);
+    try {
+      const a = await adminCall<{ prompt_text: string; version_label: string }>("prompt_active");
+      setPrompt(a.prompt_text || "");
+      setVersion(a.version_label || "v1.0");
+    } catch (e: any) { toast.error(e.message); }
+    try {
+      const v = await adminCall<{ items: any[] }>("prompt_versions_list");
+      setVersions(v.items || []);
+    } catch { /* ignore */ }
     setLoaded(true);
   };
   useEffect(() => { load().catch((e) => toast.error(e.message)); }, []);
