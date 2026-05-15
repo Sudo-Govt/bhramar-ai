@@ -216,25 +216,39 @@ function RagZone({ source, title, accept, enablePreview }: { source: string; tit
   };
   useEffect(() => { load(); }, [source]);
 
-  const upload = async (file: File) => {
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const uploadMany = async (files: FileList) => {
     setUploading(true);
-    try {
-      const buf = new Uint8Array(await file.arrayBuffer());
-      let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const file_b64 = btoa(bin);
-      await adminCall("rag_upload", {
-        source, original_filename: file.name, mime_type: file.type, file_size_bytes: file.size, file_b64,
-      });
-      toast.success(`Uploaded ${file.name}`);
-      await load();
-    } catch (e: any) { toast.error(e.message); }
+    setProgress({ done: 0, total: files.length });
+    let ok = 0, fail = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let bin = ""; for (let k = 0; k < buf.length; k++) bin += String.fromCharCode(buf[k]);
+        await adminCall("rag_upload", {
+          source, original_filename: file.name, mime_type: file.type,
+          file_size_bytes: file.size, file_b64: btoa(bin),
+        });
+        ok++;
+      } catch (e: any) { fail++; console.error(file.name, e.message); }
+      setProgress({ done: i + 1, total: files.length });
+    }
+    toast.success(`Uploaded ${ok}/${files.length}${fail ? ` (${fail} failed)` : ""}`);
     setUploading(false);
+    setProgress({ done: 0, total: 0 });
     if (fileRef.current) fileRef.current.value = "";
+    await load();
   };
 
   const remove = async (id: string, name: string) => {
     if (!confirm(`Delete ${name}?`)) return;
     try { await adminCall("rag_delete", { id }); toast.success("Deleted"); await load(); }
+    catch (e: any) { toast.error(e.message); }
+  };
+
+  const reprocess = async (id: string) => {
+    try { await adminCall("rag_reprocess", { id }); toast.success("Re-queued"); await load(); }
     catch (e: any) { toast.error(e.message); }
   };
 
@@ -247,14 +261,19 @@ function RagZone({ source, title, accept, enablePreview }: { source: string; tit
     <Card className="p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold">{title}</h3>
-        <Badge variant="outline">{items.length}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{items.length}</Badge>
+          <Button size="sm" variant="outline" onClick={async () => { await adminCall("rag_run_now"); toast.success("Worker triggered"); setTimeout(load, 2000); }}>
+            <RefreshCw className="h-3 w-3 mr-1" />Run worker
+          </Button>
+        </div>
       </div>
       <div className="border-2 border-dashed border-border rounded-md p-6 text-center mb-4">
         <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-        <input ref={fileRef} type="file" accept={accept} className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
+        <input ref={fileRef} type="file" accept={accept} multiple className="hidden"
+          onChange={(e) => { const fs = e.target.files; if (fs && fs.length) uploadMany(fs); }} />
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          {uploading ? "Uploading…" : `Upload ${accept}`}
+          {uploading ? `Uploading ${progress.done}/${progress.total}…` : `Upload ${accept} (multi-select)`}
         </Button>
       </div>
       {loading ? <Skeleton className="h-24 w-full" /> : (
