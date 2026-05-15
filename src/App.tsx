@@ -31,6 +31,7 @@ import Darbar from "./pages/Darbar.tsx";
 import LegalClock from "./pages/tools/LegalClock.tsx";
 import Admin from "./pages/Admin.tsx";
 import { DocsHome, DocsArticle } from "./pages/Docs.tsx";
+import { useRef, useEffect } from "react";
 
 const queryClient = new QueryClient();
 
