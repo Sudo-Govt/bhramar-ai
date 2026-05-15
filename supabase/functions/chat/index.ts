@@ -18,7 +18,8 @@ const corsHeaders = {
 };
 
 const AI_GATEWAY = 'https://ai.gateway.lovable.dev/v1';
-const EMBED_MODEL = 'google/text-embedding-004';
+const GOOGLE_AI_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || Deno.env.get('GEMINI_API_KEY') || '';
+const GOOGLE_EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent';
 const DEFAULT_CHAT_MODEL = 'google/gemini-2.5-flash';
 
 serve(async (req) => {
