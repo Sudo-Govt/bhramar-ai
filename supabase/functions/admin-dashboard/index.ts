@@ -71,25 +71,32 @@ Deno.serve(async (req) => {
         await audit("system_config", null, { key, op: "delete" });
         return json({ ok: true });
       }
+      case "prompt_active": {
+        // Latest from prompt_versions, fall back to system_config.master_prompt
+        const { data: latest } = await admin
+          .from("prompt_versions").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (latest && latest.prompt_text) {
+          return json({ prompt_text: latest.prompt_text, version_label: latest.version_label, source: "prompt_versions" });
+        }
+        const { data: cfg } = await admin.from("system_config").select("value").eq("key", "master_prompt").maybeSingle();
+        const { data: ver } = await admin.from("system_config").select("value").eq("key", "prompt_version").maybeSingle();
+        return json({ prompt_text: cfg?.value || "", version_label: ver?.value || "v1.0", source: "system_config" });
+      }
       case "prompt_publish": {
         const { prompt_text, version_label } = body;
-        // archive previous
-        const { data: prev } = await admin.from("system_config").select("value").eq("key", "master_prompt").maybeSingle();
-        const { data: prevVer } = await admin.from("system_config").select("value").eq("key", "prompt_version").maybeSingle();
-        if (prev?.value) {
-          await admin.from("prompt_versions").insert({
-            version_label: prevVer?.value || "v?", prompt_text: prev.value, created_by: adminUserId,
-          });
-        }
-        await admin.from("system_config").upsert({
-          key: "master_prompt", value: String(prompt_text ?? ""), updated_at: new Date().toISOString(), updated_by: adminUserId,
+        const text = String(prompt_text ?? "");
+        const label = String(version_label || `v${Date.now()}`);
+        // Snapshot the new version
+        await admin.from("prompt_versions").insert({
+          version_label: label, prompt_text: text, created_by: adminUserId,
         });
-        if (version_label) {
-          await admin.from("system_config").upsert({
-            key: "prompt_version", value: String(version_label), updated_at: new Date().toISOString(), updated_by: adminUserId,
-          });
-        }
-        await audit("prompt", null, { version_label });
+        await admin.from("system_config").upsert({
+          key: "master_prompt", value: text, updated_at: new Date().toISOString(), updated_by: adminUserId,
+        });
+        await admin.from("system_config").upsert({
+          key: "prompt_version", value: label, updated_at: new Date().toISOString(), updated_by: adminUserId,
+        });
+        await audit("prompt", null, { version_label: label, length: text.length });
         return json({ ok: true });
       }
       case "prompt_versions_list": {
