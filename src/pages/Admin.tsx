@@ -811,3 +811,114 @@ function Pager({ page, setPage, count, limit }: { page: number; setPage: (n: num
     </div>
   );
 }
+
+// ---------------- Section: AI Pipeline ----------------
+const PROVIDERS = [
+  { value: "lovable", label: "Lovable AI Gateway" },
+  { value: "google", label: "Google AI (Gemini)" },
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "cohere", label: "Cohere" },
+  { value: "custom", label: "Other (custom URL)" },
+];
+const SLOTS: { key: "primary" | "secondary" | "failsafe"; label: string }[] = [
+  { key: "primary", label: "Primary" },
+  { key: "secondary", label: "Secondary (fallback)" },
+  { key: "failsafe", label: "Failsafe" },
+];
+
+function AiPipelineSection() {
+  const [cfg, setCfg] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminCall<{ items: any[] }>("config_list");
+      const map: Record<string, any> = {};
+      for (const it of r.items) {
+        if (it.key.startsWith("ai_pipeline_")) {
+          try { map[it.key] = JSON.parse(it.value); } catch { map[it.key] = { provider: it.value }; }
+        }
+      }
+      setCfg(map);
+    } catch (e: any) { toast.error(e.message); }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const setSlot = (kind: "chat" | "embed", slot: string, patch: any) => {
+    const key = `ai_pipeline_${kind}_${slot}`;
+    setCfg((c) => ({ ...c, [key]: { ...(c[key] || {}), ...patch } }));
+  };
+  const saveSlot = async (kind: "chat" | "embed", slot: string) => {
+    const key = `ai_pipeline_${kind}_${slot}`;
+    try {
+      await adminCall("config_set", { key, value: JSON.stringify(cfg[key] || {}) });
+      toast.success("Saved");
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const renderSlot = (kind: "chat" | "embed", slot: string, label: string) => {
+    const key = `ai_pipeline_${kind}_${slot}`;
+    const v = cfg[key] || {};
+    return (
+      <Card key={key} className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="font-semibold text-sm">{label}</div>
+          <Button size="sm" variant="outline" onClick={() => saveSlot(kind, slot)}>Save</Button>
+        </div>
+        <div>
+          <Label className="text-xs">Provider</Label>
+          <Select value={v.provider || "lovable"} onValueChange={(p) => setSlot(kind, slot, { provider: p })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{PROVIDERS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Model / Endpoint</Label>
+          <Input value={v.model || ""} onChange={(e) => setSlot(kind, slot, { model: e.target.value })}
+            placeholder={kind === "embed" ? "models/text-embedding-004" : "google/gemini-2.5-flash"} />
+        </div>
+        {v.provider === "custom" && (
+          <div>
+            <Label className="text-xs">Custom base URL</Label>
+            <Input value={v.url || ""} onChange={(e) => setSlot(kind, slot, { url: e.target.value })} placeholder="https://api.example.com/v1" />
+          </div>
+        )}
+        <div>
+          <Label className="text-xs">API key secret name</Label>
+          <Input value={v.secret_name || ""} onChange={(e) => setSlot(kind, slot, { secret_name: e.target.value })}
+            placeholder="GOOGLE_AI_API_KEY" />
+          <p className="text-[10px] text-muted-foreground mt-1">Add the actual secret value via Lovable Cloud secrets. Never paste keys into this field.</p>
+        </div>
+      </Card>
+    );
+  };
+
+  if (loading) return <div className="p-8"><Skeleton className="h-96 w-full" /></div>;
+
+  return (
+    <div className="p-8 space-y-6 max-w-6xl">
+      <div>
+        <h1 className="font-display text-2xl font-bold">AI Pipeline Configuration</h1>
+        <p className="text-sm text-muted-foreground">Primary, fallback, and failsafe providers for chat completion and RAG embeddings.</p>
+      </div>
+      <section>
+        <h2 className="font-semibold mb-3">Chat completion</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {SLOTS.map((s) => renderSlot("chat", s.key, s.label))}
+        </div>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-3">RAG embeddings</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {SLOTS.map((s) => renderSlot("embed", s.key, s.label))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Active embedding (hard-wired): Google AI <code>text-embedding-004</code> via <code>GOOGLE_AI_API_KEY</code> (or <code>GEMINI_API_KEY</code> fallback).
+        </p>
+      </section>
+    </div>
+  );
+}
