@@ -34,48 +34,62 @@ import { DocsHome, DocsArticle } from "./pages/Docs.tsx";
 
 const queryClient = new QueryClient();
 
+// ── Video background — fixed behind everything ──
+function VideoBg() {
+  return (
+    <div className="video-bg-wrap">
+      <video autoPlay muted loop playsInline preload="none">
+        <source src="/video-background/blue.mp4" type="video/mp4" />
+      </video>
+      <div className="video-bg-overlay" />
+    </div>
+  );
+}
+
 const App = () => (
   <ErrorBoundary>
     <ThemeProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/payment-success" element={<PaymentSuccess />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/refund" element={<Refund />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
-              <Route path="/dashboard/advocate/*" element={<ProtectedRoute><AdvocateDashboard /></ProtectedRoute>} />
-              <Route path="/dashboard/enterprise/*" element={<ProtectedRoute><EnterpriseDashboard /></ProtectedRoute>} />
-              <Route path="/admin/ai" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
-              <Route path="/system" element={<ProtectedRoute><SystemConsole /></ProtectedRoute>} />
-              <Route path="/teams" element={<ProtectedRoute><TeamsList /></ProtectedRoute>} />
-              <Route path="/teams/:id" element={<ProtectedRoute><TeamWorkspace /></ProtectedRoute>} />
-              <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
-              <Route path="/network/browse" element={<ProtectedRoute><Network /></ProtectedRoute>} />
-              <Route path="/network/cell/:id" element={<ProtectedRoute><Network /></ProtectedRoute>} />
-              <Route path="/cases/:id/darbar" element={<ProtectedRoute><Darbar /></ProtectedRoute>} />
-              <Route path="/tools/legal-clock" element={<LegalClock />} />
-              <Route path="/admin/*" element={<Admin />} />
-              <Route path="/docs" element={<DocsHome />} />
-              <Route path="/docs/:slug" element={<DocsArticle />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              {/* Video background — sits behind all pages */}
+              <VideoBg />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/refund" element={<Refund />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
+                <Route path="/dashboard/advocate/*" element={<ProtectedRoute><AdvocateDashboard /></ProtectedRoute>} />
+                <Route path="/dashboard/enterprise/*" element={<ProtectedRoute><EnterpriseDashboard /></ProtectedRoute>} />
+                <Route path="/admin/ai" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+                <Route path="/system" element={<ProtectedRoute><SystemConsole /></ProtectedRoute>} />
+                <Route path="/teams" element={<ProtectedRoute><TeamsList /></ProtectedRoute>} />
+                <Route path="/teams/:id" element={<ProtectedRoute><TeamWorkspace /></ProtectedRoute>} />
+                <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
+                <Route path="/network/browse" element={<ProtectedRoute><Network /></ProtectedRoute>} />
+                <Route path="/network/cell/:id" element={<ProtectedRoute><Network /></ProtectedRoute>} />
+                <Route path="/cases/:id/darbar" element={<ProtectedRoute><Darbar /></ProtectedRoute>} />
+                <Route path="/tools/legal-clock" element={<LegalClock />} />
+                <Route path="/admin/*" element={<Admin />} />
+                <Route path="/docs" element={<DocsHome />} />
+                <Route path="/docs/:slug" element={<DocsArticle />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   </ErrorBoundary>
 );
