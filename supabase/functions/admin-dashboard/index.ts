@@ -71,25 +71,32 @@ Deno.serve(async (req) => {
         await audit("system_config", null, { key, op: "delete" });
         return json({ ok: true });
       }
+      case "prompt_active": {
+        // Latest from prompt_versions, fall back to system_config.master_prompt
+        const { data: latest } = await admin
+          .from("prompt_versions").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (latest && latest.prompt_text) {
+          return json({ prompt_text: latest.prompt_text, version_label: latest.version_label, source: "prompt_versions" });
+        }
+        const { data: cfg } = await admin.from("system_config").select("value").eq("key", "master_prompt").maybeSingle();
+        const { data: ver } = await admin.from("system_config").select("value").eq("key", "prompt_version").maybeSingle();
+        return json({ prompt_text: cfg?.value || "", version_label: ver?.value || "v1.0", source: "system_config" });
+      }
       case "prompt_publish": {
         const { prompt_text, version_label } = body;
-        // archive previous
-        const { data: prev } = await admin.from("system_config").select("value").eq("key", "master_prompt").maybeSingle();
-        const { data: prevVer } = await admin.from("system_config").select("value").eq("key", "prompt_version").maybeSingle();
-        if (prev?.value) {
-          await admin.from("prompt_versions").insert({
-            version_label: prevVer?.value || "v?", prompt_text: prev.value, created_by: adminUserId,
-          });
-        }
-        await admin.from("system_config").upsert({
-          key: "master_prompt", value: String(prompt_text ?? ""), updated_at: new Date().toISOString(), updated_by: adminUserId,
+        const text = String(prompt_text ?? "");
+        const label = String(version_label || `v${Date.now()}`);
+        // Snapshot the new version
+        await admin.from("prompt_versions").insert({
+          version_label: label, prompt_text: text, created_by: adminUserId,
         });
-        if (version_label) {
-          await admin.from("system_config").upsert({
-            key: "prompt_version", value: String(version_label), updated_at: new Date().toISOString(), updated_by: adminUserId,
-          });
-        }
-        await audit("prompt", null, { version_label });
+        await admin.from("system_config").upsert({
+          key: "master_prompt", value: text, updated_at: new Date().toISOString(), updated_by: adminUserId,
+        });
+        await admin.from("system_config").upsert({
+          key: "prompt_version", value: label, updated_at: new Date().toISOString(), updated_by: adminUserId,
+        });
+        await audit("prompt", null, { version_label: label, length: text.length });
         return json({ ok: true });
       }
       case "prompt_versions_list": {
@@ -123,11 +130,53 @@ Deno.serve(async (req) => {
       // -------- RAG UPLOAD QUEUE --------
       case "rag_list": {
         const { source } = body;
+        // Reconcile: any storage object not yet in queue gets a pending row (covers files uploaded
+        // directly to storage outside the admin UI).
+        const folders = source ? [source] : ["corpus", "kb", "pipeline"];
+        for (const folder of folders) {
+          const { data: objs } = await admin.storage.from("rag-corpus").list(folder, { limit: 1000 });
+          if (!objs?.length) continue;
+          const paths = objs.filter((o) => o.name).map((o) => `${folder}/${o.name}`);
+          const { data: existing } = await admin.from("rag_upload_queue").select("file_path").in("file_path", paths);
+          const have = new Set((existing || []).map((r: any) => r.file_path));
+          const toInsert = objs
+            .filter((o) => o.name && !have.has(`${folder}/${o.name}`))
+            .map((o) => ({
+              source: folder,
+              file_path: `${folder}/${o.name}`,
+              original_filename: o.name,
+              file_size_bytes: (o.metadata as any)?.size || null,
+              status: "pending",
+            }));
+          if (toInsert.length) await admin.from("rag_upload_queue").insert(toInsert);
+        }
         let q = admin.from("rag_upload_queue").select("*").neq("status", "deleted").order("uploaded_at", { ascending: false });
         if (source) q = q.eq("source", source);
         const { data, error } = await q;
         if (error) throw error;
         return json({ items: data });
+      }
+      case "rag_reprocess": {
+        const { id } = body;
+        const { error } = await admin.from("rag_upload_queue").update({
+          status: "pending", error_message: null, processed_at: null,
+        }).eq("id", id);
+        if (error) throw error;
+        await audit("rag_file", id, { op: "reprocess" });
+        return json({ ok: true });
+      }
+      case "rag_retry_all": {
+        const { error } = await admin.from("rag_upload_queue").update({
+          status: "pending", error_message: null, processed_at: null,
+        }).in("status", ["failed"]);
+        if (error) throw error;
+        // also kick the worker
+        try { await fetch(`${SUPABASE_URL}/functions/v1/process-corpus-queue`, { method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE}` } }); } catch {}
+        return json({ ok: true });
+      }
+      case "rag_run_now": {
+        try { await fetch(`${SUPABASE_URL}/functions/v1/process-corpus-queue`, { method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE}` } }); } catch (e) { /* ignore */ }
+        return json({ ok: true });
       }
       case "rag_upload": {
         const { source, original_filename, file_b64, mime_type, file_size_bytes } = body;

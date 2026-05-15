@@ -42,6 +42,7 @@ async function adminCall<T = any>(action: string, payload: any = {}): Promise<T>
 // ---------------- Layout ----------------
 const NAV = [
   { to: "/admin/prompt", label: "Prompt Control", icon: Wand2 },
+  { to: "/admin/pipeline", label: "AI Pipeline", icon: SettingsIcon },
   { to: "/admin/rag", label: "RAG Corpus", icon: Database },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/cases", label: "Cases & Chats", icon: Briefcase },
@@ -87,6 +88,7 @@ export default function Admin() {
         <Routes>
           <Route index element={<Navigate to="prompt" replace />} />
           <Route path="prompt" element={<PromptControl />} />
+          <Route path="pipeline" element={<AiPipelineSection />} />
           <Route path="rag" element={<RagCorpus />} />
           <Route path="users" element={<UsersSection />} />
           <Route path="cases" element={<CasesSection />} />
@@ -107,12 +109,15 @@ function PromptControl() {
   const [loaded, setLoaded] = useState(false);
 
   const load = async () => {
-    const cfg = await adminCall<{ items: any[] }>("config_list");
-    const map = new Map(cfg.items.map((i) => [i.key, i.value]));
-    setPrompt(map.get("master_prompt") || "");
-    setVersion(map.get("prompt_version") || "v1.0");
-    const v = await adminCall<{ items: any[] }>("prompt_versions_list");
-    setVersions(v.items || []);
+    try {
+      const a = await adminCall<{ prompt_text: string; version_label: string }>("prompt_active");
+      setPrompt(a.prompt_text || "");
+      setVersion(a.version_label || "v1.0");
+    } catch (e: any) { toast.error(e.message); }
+    try {
+      const v = await adminCall<{ items: any[] }>("prompt_versions_list");
+      setVersions(v.items || []);
+    } catch { /* ignore */ }
     setLoaded(true);
   };
   useEffect(() => { load().catch((e) => toast.error(e.message)); }, []);
@@ -211,25 +216,39 @@ function RagZone({ source, title, accept, enablePreview }: { source: string; tit
   };
   useEffect(() => { load(); }, [source]);
 
-  const upload = async (file: File) => {
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const uploadMany = async (files: FileList) => {
     setUploading(true);
-    try {
-      const buf = new Uint8Array(await file.arrayBuffer());
-      let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const file_b64 = btoa(bin);
-      await adminCall("rag_upload", {
-        source, original_filename: file.name, mime_type: file.type, file_size_bytes: file.size, file_b64,
-      });
-      toast.success(`Uploaded ${file.name}`);
-      await load();
-    } catch (e: any) { toast.error(e.message); }
+    setProgress({ done: 0, total: files.length });
+    let ok = 0, fail = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let bin = ""; for (let k = 0; k < buf.length; k++) bin += String.fromCharCode(buf[k]);
+        await adminCall("rag_upload", {
+          source, original_filename: file.name, mime_type: file.type,
+          file_size_bytes: file.size, file_b64: btoa(bin),
+        });
+        ok++;
+      } catch (e: any) { fail++; console.error(file.name, e.message); }
+      setProgress({ done: i + 1, total: files.length });
+    }
+    toast.success(`Uploaded ${ok}/${files.length}${fail ? ` (${fail} failed)` : ""}`);
     setUploading(false);
+    setProgress({ done: 0, total: 0 });
     if (fileRef.current) fileRef.current.value = "";
+    await load();
   };
 
   const remove = async (id: string, name: string) => {
     if (!confirm(`Delete ${name}?`)) return;
     try { await adminCall("rag_delete", { id }); toast.success("Deleted"); await load(); }
+    catch (e: any) { toast.error(e.message); }
+  };
+
+  const reprocess = async (id: string) => {
+    try { await adminCall("rag_reprocess", { id }); toast.success("Re-queued"); await load(); }
     catch (e: any) { toast.error(e.message); }
   };
 
@@ -242,14 +261,19 @@ function RagZone({ source, title, accept, enablePreview }: { source: string; tit
     <Card className="p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold">{title}</h3>
-        <Badge variant="outline">{items.length}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{items.length}</Badge>
+          <Button size="sm" variant="outline" onClick={async () => { await adminCall("rag_run_now"); toast.success("Worker triggered"); setTimeout(load, 2000); }}>
+            <RefreshCw className="h-3 w-3 mr-1" />Run worker
+          </Button>
+        </div>
       </div>
       <div className="border-2 border-dashed border-border rounded-md p-6 text-center mb-4">
         <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-        <input ref={fileRef} type="file" accept={accept} className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
+        <input ref={fileRef} type="file" accept={accept} multiple className="hidden"
+          onChange={(e) => { const fs = e.target.files; if (fs && fs.length) uploadMany(fs); }} />
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          {uploading ? "Uploading…" : `Upload ${accept}`}
+          {uploading ? `Uploading ${progress.done}/${progress.total}…` : `Upload ${accept} (multi-select)`}
         </Button>
       </div>
       {loading ? <Skeleton className="h-24 w-full" /> : (
@@ -266,6 +290,9 @@ function RagZone({ source, title, accept, enablePreview }: { source: string; tit
                 <TableCell className="text-xs">{new Date(i.uploaded_at).toLocaleDateString()}</TableCell>
                 <TableCell><Badge variant={i.status === "done" ? "default" : "secondary"}>{i.status}</Badge></TableCell>
                 <TableCell className="flex gap-1">
+                  {(i.status === "failed" || i.status === "pending") && (
+                    <Button size="sm" variant="ghost" onClick={() => reprocess(i.id)} title="Re-queue"><RefreshCw className="h-3 w-3" /></Button>
+                  )}
                   {enablePreview && <Button size="sm" variant="ghost" onClick={() => showPreview(i.id)}><Eye className="h-3 w-3" /></Button>}
                   <Button size="sm" variant="ghost" onClick={() => remove(i.id, i.original_filename)}><Trash2 className="h-3 w-3" /></Button>
                 </TableCell>
@@ -781,6 +808,117 @@ function Pager({ page, setPage, count, limit }: { page: number; setPage: (n: num
         <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft className="h-3 w-3" /></Button>
         <Button size="sm" variant="outline" disabled={page + 1 >= max} onClick={() => setPage(page + 1)}><ChevronRight className="h-3 w-3" /></Button>
       </div>
+    </div>
+  );
+}
+
+// ---------------- Section: AI Pipeline ----------------
+const PROVIDERS = [
+  { value: "lovable", label: "Lovable AI Gateway" },
+  { value: "google", label: "Google AI (Gemini)" },
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "cohere", label: "Cohere" },
+  { value: "custom", label: "Other (custom URL)" },
+];
+const SLOTS: { key: "primary" | "secondary" | "failsafe"; label: string }[] = [
+  { key: "primary", label: "Primary" },
+  { key: "secondary", label: "Secondary (fallback)" },
+  { key: "failsafe", label: "Failsafe" },
+];
+
+function AiPipelineSection() {
+  const [cfg, setCfg] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await adminCall<{ items: any[] }>("config_list");
+      const map: Record<string, any> = {};
+      for (const it of r.items) {
+        if (it.key.startsWith("ai_pipeline_")) {
+          try { map[it.key] = JSON.parse(it.value); } catch { map[it.key] = { provider: it.value }; }
+        }
+      }
+      setCfg(map);
+    } catch (e: any) { toast.error(e.message); }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const setSlot = (kind: "chat" | "embed", slot: string, patch: any) => {
+    const key = `ai_pipeline_${kind}_${slot}`;
+    setCfg((c) => ({ ...c, [key]: { ...(c[key] || {}), ...patch } }));
+  };
+  const saveSlot = async (kind: "chat" | "embed", slot: string) => {
+    const key = `ai_pipeline_${kind}_${slot}`;
+    try {
+      await adminCall("config_set", { key, value: JSON.stringify(cfg[key] || {}) });
+      toast.success("Saved");
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const renderSlot = (kind: "chat" | "embed", slot: string, label: string) => {
+    const key = `ai_pipeline_${kind}_${slot}`;
+    const v = cfg[key] || {};
+    return (
+      <Card key={key} className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="font-semibold text-sm">{label}</div>
+          <Button size="sm" variant="outline" onClick={() => saveSlot(kind, slot)}>Save</Button>
+        </div>
+        <div>
+          <Label className="text-xs">Provider</Label>
+          <Select value={v.provider || "lovable"} onValueChange={(p) => setSlot(kind, slot, { provider: p })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{PROVIDERS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Model / Endpoint</Label>
+          <Input value={v.model || ""} onChange={(e) => setSlot(kind, slot, { model: e.target.value })}
+            placeholder={kind === "embed" ? "models/text-embedding-004" : "google/gemini-2.5-flash"} />
+        </div>
+        {v.provider === "custom" && (
+          <div>
+            <Label className="text-xs">Custom base URL</Label>
+            <Input value={v.url || ""} onChange={(e) => setSlot(kind, slot, { url: e.target.value })} placeholder="https://api.example.com/v1" />
+          </div>
+        )}
+        <div>
+          <Label className="text-xs">API key secret name</Label>
+          <Input value={v.secret_name || ""} onChange={(e) => setSlot(kind, slot, { secret_name: e.target.value })}
+            placeholder="GOOGLE_AI_API_KEY" />
+          <p className="text-[10px] text-muted-foreground mt-1">Add the actual secret value via Lovable Cloud secrets. Never paste keys into this field.</p>
+        </div>
+      </Card>
+    );
+  };
+
+  if (loading) return <div className="p-8"><Skeleton className="h-96 w-full" /></div>;
+
+  return (
+    <div className="p-8 space-y-6 max-w-6xl">
+      <div>
+        <h1 className="font-display text-2xl font-bold">AI Pipeline Configuration</h1>
+        <p className="text-sm text-muted-foreground">Primary, fallback, and failsafe providers for chat completion and RAG embeddings.</p>
+      </div>
+      <section>
+        <h2 className="font-semibold mb-3">Chat completion</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {SLOTS.map((s) => renderSlot("chat", s.key, s.label))}
+        </div>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-3">RAG embeddings</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {SLOTS.map((s) => renderSlot("embed", s.key, s.label))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Active embedding (hard-wired): Google AI <code>text-embedding-004</code> via <code>GOOGLE_AI_API_KEY</code> (or <code>GEMINI_API_KEY</code> fallback).
+        </p>
+      </section>
     </div>
   );
 }

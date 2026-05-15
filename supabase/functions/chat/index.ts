@@ -18,7 +18,8 @@ const corsHeaders = {
 };
 
 const AI_GATEWAY = 'https://ai.gateway.lovable.dev/v1';
-const EMBED_MODEL = 'google/text-embedding-004';
+const GOOGLE_AI_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || Deno.env.get('GEMINI_API_KEY') || '';
+const GOOGLE_EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent';
 const DEFAULT_CHAT_MODEL = 'google/gemini-2.5-flash';
 
 serve(async (req) => {
@@ -66,7 +67,7 @@ serve(async (req) => {
     // ── RAG: embed + match_chunks (fail-soft) ───────────────
     if (lastUser.trim()) {
       try {
-        const vec = await embed(LOVABLE_API_KEY, lastUser);
+        const vec = await embed(lastUser);
         const { data: chunks } = await supa.rpc('match_chunks', {
           query_embedding: vec as unknown as string,
           match_user_id: user.id,
@@ -169,15 +170,19 @@ function jsonError(message: string, status: number) {
   });
 }
 
-async function embed(apiKey: string, text: string): Promise<number[]> {
-  const r = await fetch(`${AI_GATEWAY}/embeddings`, {
+async function embed(text: string): Promise<number[]> {
+  if (!GOOGLE_AI_KEY) throw new Error('GOOGLE_AI_API_KEY (or GEMINI_API_KEY) not set');
+  const r = await fetch(`${GOOGLE_EMBED_URL}?key=${GOOGLE_AI_KEY}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: EMBED_MODEL, input: [text.slice(0, 6000)] }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'models/text-embedding-004',
+      content: { parts: [{ text: text.slice(0, 6000) }] },
+    }),
   });
-  if (!r.ok) throw new Error(`embed ${r.status}`);
+  if (!r.ok) throw new Error(`embed ${r.status}: ${(await r.text()).slice(0, 200)}`);
   const j = await r.json();
-  return j.data[0].embedding as number[];
+  return (j?.embedding?.values || []) as number[];
 }
 
 async function callChatJSON(apiKey: string, model: string, messages: any[]): Promise<string> {
