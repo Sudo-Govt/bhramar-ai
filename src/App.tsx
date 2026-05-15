@@ -39,7 +39,7 @@ function VideoBg() {
   return (
     <div className="video-bg-wrap">
       <video autoPlay muted loop playsInline preload="none">
-        <source src="/video-background/blue.mp4" type="video/mp4" />
+        <source src="https://vesmkedtzycixmzylphj.supabase.co/storage/v1/object/public/video-background/blue.mp4" type="video/mp4" />
       </video>
       <div className="video-bg-overlay" />
     </div>
