@@ -370,6 +370,7 @@ function RagZone({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead className="w-8"></TableHead>
                 <TableHead className="w-[40%]">Filename</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Uploaded</TableHead>
@@ -386,7 +387,16 @@ function RagZone({
                 </TableRow>
               )}
               {items.map((i) => (
-                <TableRow key={i.id} className="hover:bg-muted/30">
+                <TableRow key={i.id} className={`hover:bg-muted/30 ${selected.has(i.id) ? "bg-muted/50" : ""}`}>
+                  <TableCell>
+                    <input type="checkbox" checked={selected.has(i.id)}
+                      onChange={(e) => setSelected((prev) => {
+                        const next = new Set(prev);
+                        e.target.checked ? next.add(i.id) : next.delete(i.id);
+                        return next;
+                      })}
+                    />
+                  </TableCell>
                   <TableCell className="text-xs font-mono">{i.original_filename}</TableCell>
                   <TableCell className="text-xs">{i.file_size_bytes ? `${(i.file_size_bytes / 1024).toFixed(1)} KB` : "—"}</TableCell>
                   <TableCell className="text-xs">{new Date(i.uploaded_at).toLocaleDateString()}</TableCell>
