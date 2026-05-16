@@ -32,6 +32,7 @@ import Darbar from "./pages/Darbar.tsx";
 import LegalClock from "./pages/tools/LegalClock.tsx";
 import Admin from "./pages/Admin.tsx";
 import { DocsHome, DocsArticle } from "./pages/Docs.tsx";
+import SuperAdminButton from "@/components/SuperAdminButton";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,7 @@ const App = () => (
           <BrowserRouter>
             <AuthProvider>
               <ParticleBg />
+              <SuperAdminButton />
               <div style={{ position: "relative", zIndex: 1 }}>
                 <Routes>
                   <Route path="/" element={<Index />} />
