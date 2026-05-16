@@ -1923,6 +1923,102 @@ export type Database = {
         }
         Relationships: []
       }
+      token_addon_purchases: {
+        Row: {
+          amount_paise: number
+          created_at: string
+          id: string
+          pack_size: number
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_paise: number
+          created_at?: string
+          id?: string
+          pack_size: number
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_paise?: number
+          created_at?: string
+          id?: string
+          pack_size?: number
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      token_balances: {
+        Row: {
+          addon_tokens: number
+          daily_quota: number
+          daily_remaining: number
+          last_daily_reset: string
+          last_monthly_reset: string
+          monthly_quota: number
+          monthly_remaining: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          addon_tokens?: number
+          daily_quota?: number
+          daily_remaining?: number
+          last_daily_reset?: string
+          last_monthly_reset?: string
+          monthly_quota?: number
+          monthly_remaining?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          addon_tokens?: number
+          daily_quota?: number
+          daily_remaining?: number
+          last_daily_reset?: string
+          last_monthly_reset?: string
+          monthly_quota?: number
+          monthly_remaining?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      token_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          kind: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          kind: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       usage_logs: {
         Row: {
           created_at: string
@@ -2086,6 +2182,10 @@ export type Database = {
         }[]
       }
       archive_case: { Args: { _case_id: string }; Returns: undefined }
+      consume_token: {
+        Args: { p_amount?: number; p_reason?: string }
+        Returns: Json
+      }
       delete_case_with_log: { Args: { _case_id: string }; Returns: undefined }
       find_advocate_by_id: {
         Args: { _advocate_id: string }
@@ -2122,6 +2222,10 @@ export type Database = {
           years_experience: number
         }[]
       }
+      grant_addon_tokens: {
+        Args: { p_amount: number; p_order: string; p_user: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2133,6 +2237,7 @@ export type Database = {
         Args: { _cell_id: string; _user_id: string }
         Returns: boolean
       }
+      is_enterprise_admin: { Args: { p_firm: string }; Returns: boolean }
       is_firm_member: { Args: { _firm_id: string }; Returns: boolean }
       is_firm_owner: { Args: { _firm_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
@@ -2197,7 +2302,15 @@ export type Database = {
         Args: { _advocate: string }
         Returns: undefined
       }
+      refresh_token_balance: { Args: { p_user: string }; Returns: undefined }
       state_code: { Args: { _state: string }; Returns: string }
+      tier_quotas: {
+        Args: { _tier: string }
+        Returns: {
+          daily: number
+          monthly: number
+        }[]
+      }
       unarchive_case: { Args: { _case_id: string }; Returns: undefined }
     }
     Enums: {
