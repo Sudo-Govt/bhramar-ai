@@ -13,12 +13,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, Link } from "react-router-dom";
 import {
   LayoutDashboard, Briefcase, Users, IndianRupee, Calendar as CalendarIcon,
   FolderOpen, Sparkles, Settings, Plus, Trash2, CheckCircle2, Circle,
   Mail, Video, FileText, Clock, AlertCircle, StickyNote, Mic, Phone, UsersRound,
-  Network as NetworkIcon, Newspaper,
+  Network as NetworkIcon, Newspaper, Bot, Scale, CalendarDays, FolderClosed,
+  TrendingUp, UserPlus, Coins, BookOpen,
 } from "lucide-react";
 
 const nav: NavItem[] = [
