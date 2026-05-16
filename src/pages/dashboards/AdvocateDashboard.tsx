@@ -63,431 +63,315 @@ export default function AdvocateDashboard() {
 function Overview() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const setTab = (path: string) => navigate(`/dashboard/advocate/${path}`);
+  const go = (path: string) => navigate(`/dashboard/advocate/${path}`);
+
   const [profile, setProfile] = useState<any>(null);
   const [cases, setCases] = useState<any[]>([]);
-  const [tokens, setTokens] = useState<{ daily_remaining: number; monthly_remaining: number; addon_tokens: number; daily_quota: number; monthly_quota: number } | null>(null);
+  const [hearings, setHearings] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [billingHistory, setBillingHistory] = useState<{ month: string; amount: number }[]>([]);
+  const [tokens, setTokens] = useState<any>(null);
   const [kbCount, setKbCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     hearingsToday: 0, tasksDue: 0, tasksOverdue: 0,
-    billed: 0, pending: 0, retainers: 0,
+    billed: 0, pending: 0, retainers: 0, activeCases: 0, totalClients: 0,
   });
-  const [hearings,       setHearings]       = useState<any[]>([]);
-  const [tasks,          setTasks]          = useState<any[]>([]);
-  const [billingHistory, setBillingHistory] = useState<{ month: string; amount: number }[]>([]);
-  const [notices,        setNotices]        = useState<{ kind: "danger" | "warn" | "info"; text: string }[]>([]);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     if (!user) return;
-    setLoading(true);
+    (async () => {
+      setLoading(true);
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay   = new Date(); endOfDay.setHours(23, 59, 59, 999);
+      const sixAgo     = new Date(); sixAgo.setMonth(sixAgo.getMonth() - 5); sixAgo.setDate(1);
+      const nowIso     = new Date().toISOString();
 
-    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay   = new Date(); endOfDay.setHours(23, 59, 59, 999);
-    const sixAgo     = new Date(); sixAgo.setMonth(sixAgo.getMonth() - 5); sixAgo.setDate(1);
-    const nowIso     = new Date().toISOString();
+      const [prof, casesRes, hearingsRes, tasksRes, overdueRes, paymentsRes, invoicesRes, clientsRes, tokensRes, kbRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+        supabase.from("cases").select("*").eq("user_id", user.id).is("archived_at", null).order("created_at", { ascending: false }),
+        supabase.from("events").select("*").eq("user_id", user.id).gte("starts_at", startOfDay.toISOString()).lte("starts_at", endOfDay.toISOString()).order("starts_at"),
+        supabase.from("tasks").select("*").eq("user_id", user.id).neq("status", "done").order("due_date", { ascending: true, nullsFirst: false }).limit(5),
+        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("user_id", user.id).neq("status", "done").lt("due_date", nowIso),
+        supabase.from("case_payments").select("fee_received, occurred_on").eq("user_id", user.id).gte("occurred_on", sixAgo.toISOString().slice(0, 10)),
+        supabase.from("invoices").select("amount, status").eq("user_id", user.id),
+        supabase.from("clients").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("token_balances").select("*").eq("user_id", user.id).maybeSingle(),
+        supabase.from("kb_files").select("id", { count: "exact", head: true }),
+      ]);
 
-    const [hearingsRes, tasksRes, tasksOverdueRes, paymentsRes, invoicesRes] = await Promise.all([
-      supabase.from("events").select("*")
-        .eq("user_id", user.id)
-        .gte("starts_at", startOfDay.toISOString())
-        .lte("starts_at", endOfDay.toISOString())
-        .order("starts_at"),
-      supabase.from("tasks").select("*")
-        .eq("user_id", user.id)
-        .neq("status", "done")
-        .order("due_date", { ascending: true, nullsFirst: false })
-        .limit(5),
-      supabase.from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .neq("status", "done")
-        .lt("due_date", nowIso),
-      supabase.from("case_payments")
-        .select("fee_received, occurred_on")
-        .eq("user_id", user.id)
-        .gte("occurred_on", sixAgo.toISOString().slice(0, 10)),
-      supabase.from("invoices")
-        .select("amount, status")
-        .eq("user_id", user.id),
-    ]);
-
-    // Build 6-month billing buckets
-    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const now = new Date();
-    const bucket = new Map<string, number>();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i);
-      bucket.set(MONTHS[d.getMonth()], 0);
-    }
-    let billedThisMonth = 0;
-    const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
-    for (const p of (paymentsRes.data || []) as any[]) {
-      const d   = new Date(p.occurred_on);
-      const key = MONTHS[d.getMonth()];
-      bucket.set(key, (bucket.get(key) || 0) + Number(p.fee_received || 0));
-      if (d >= thisMonth) billedThisMonth += Number(p.fee_received || 0);
-    }
-    const pending   = (invoicesRes.data || []).filter((i: any) => i.status !== "paid").reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
-    const retainers = (invoicesRes.data || []).filter((i: any) => i.status === "paid").length;
-
-    // Bhramar Notices — scan case deadlines + overdue tasks
-    const newNotices: typeof notices = [];
-    const today = new Date();
-    for (const c of cases.filter((c) => !c.archived_at)) {
-      const deadline = (c as any).deadline;
-      if (deadline) {
-        const days = Math.ceil((+new Date(deadline) - +today) / 86_400_000);
-        if      (days < 0)       newNotices.push({ kind: "danger", text: `"${c.name}" deadline passed ${-days} day${-days === 1 ? "" : "s"} ago` });
-        else if (days <= 3)      newNotices.push({ kind: "danger", text: `Deadline for "${c.name}" is in ${days} day${days === 1 ? "" : "s"}` });
-        else if (days <= 14)     newNotices.push({ kind: "warn",   text: `Limitation period for "${c.name}" expires in ${days} days` });
+      const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const now = new Date();
+      const bucket = new Map<string, number>();
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i);
+        bucket.set(MONTHS[d.getMonth()], 0);
       }
-    }
-    if ((tasksOverdueRes.count || 0) > 0)
-      newNotices.push({ kind: "danger", text: `${tasksOverdueRes.count} task${tasksOverdueRes.count === 1 ? "" : "s"} overdue — review urgently` });
-    if ((hearingsRes.data || []).length > 0)
-      newNotices.push({ kind: "info", text: `${hearingsRes.data!.length} hearing${hearingsRes.data!.length === 1 ? "" : "s"} scheduled today` });
+      let billedThisMonth = 0;
+      const thisMonth = new Date(); thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0);
+      for (const p of (paymentsRes.data || []) as any[]) {
+        const d = new Date(p.occurred_on);
+        bucket.set(MONTHS[d.getMonth()], (bucket.get(MONTHS[d.getMonth()]) || 0) + Number(p.fee_received || 0));
+        if (d >= thisMonth) billedThisMonth += Number(p.fee_received || 0);
+      }
+      const pending   = (invoicesRes.data || []).filter((i: any) => i.status !== "paid").reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
+      const retainers = (invoicesRes.data || []).filter((i: any) => i.status === "paid").length;
+      const activeCases = (casesRes.data || []).filter((c: any) => c.status === "Active").length;
 
-    setStats({
-      hearingsToday: (hearingsRes.data || []).length,
-      tasksDue:       (tasksRes.data    || []).length,
-      tasksOverdue:   tasksOverdueRes.count || 0,
-      billed:         billedThisMonth,
-      pending,
-      retainers,
-    });
-    setHearings(hearingsRes.data || []);
-    setTasks(tasksRes.data       || []);
-    setBillingHistory(Array.from(bucket, ([month, amount]) => ({ month, amount })));
-    setNotices(newNotices);
-    setLoading(false);
-  }, [user, cases]);
-
-  useEffect(() => { load(); }, [load]);
+      setProfile(prof.data);
+      setCases(casesRes.data || []);
+      setHearings(hearingsRes.data || []);
+      setTasks(tasksRes.data || []);
+      setBillingHistory(Array.from(bucket, ([month, amount]) => ({ month, amount })));
+      setTokens(tokensRes.data);
+      setKbCount(kbRes.count || 0);
+      setStats({
+        hearingsToday: (hearingsRes.data || []).length,
+        tasksDue: (tasksRes.data || []).length,
+        tasksOverdue: overdueRes.count || 0,
+        billed: billedThisMonth, pending, retainers,
+        activeCases, totalClients: clientsRes.count || 0,
+      });
+      setLoading(false);
+    })();
+  }, [user]);
 
   const toggleTask = async (id: string) => {
     await supabase.from("tasks").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", id);
-    load();
+    setTasks((p) => p.filter((t) => t.id !== id));
   };
 
-  const activeCases  = cases.filter((c) => c.status === "Active" && !c.archived_at);
-  const recentCases  = [...cases].filter((c) => !c.archived_at).slice(0, 3);
-  const planLabel    = tier === "Pro" ? "Advocate Pro" : tier === "Firm" ? "Firm" : "Free";
-  const maxBilling   = Math.max(1, ...billingHistory.map((b) => b.amount));
-  const firstName    = profile?.full_name?.split(" ")[0] ?? "Advocate";
-  const hour         = new Date().getHours();
-  const greeting     = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const firstName = profile?.full_name?.split(" ")[0] ?? "Advocate";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const maxBilling = Math.max(1, ...billingHistory.map((b) => b.amount));
+  const recentCases = cases.slice(0, 4);
 
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto p-4 md:p-6">
-        <div className="max-w-4xl mx-auto space-y-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1,2,3,4].map((i) => <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />)}
-          </div>
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div className="h-64 rounded-xl bg-muted animate-pulse" />
-            <div className="h-64 rounded-xl bg-muted animate-pulse" />
-          </div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map((i) => <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />)}
+        </div>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="h-64 rounded-xl bg-muted animate-pulse" />
+          <div className="h-64 rounded-xl bg-muted animate-pulse" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6">
-      <div className="max-w-4xl mx-auto space-y-5">
-
-        {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">{greeting}, {firstName} 👋</h2>
-            <p className="text-sm text-muted-foreground">Advocate Command Center · Your private litigation desk</p>
-          </div>
-          <button
-            onClick={() => setActiveTab("chat")}
-            className="inline-flex items-center gap-2 self-start sm:self-auto rounded-xl border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors"
-          >
-            <Bot className="h-4 w-4" /> Open Bhramar AI
-          </button>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">{greeting}, {firstName} 👋</h2>
+          <p className="text-sm text-muted-foreground">Advocate Command Center · Your private litigation desk</p>
         </div>
+        <Link to="/app" className="inline-flex items-center gap-2 self-start sm:self-auto rounded-xl border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 transition-colors">
+          <Bot className="h-4 w-4" /> Open Bhramar AI
+        </Link>
+      </div>
 
-        {/* ── ROW 1 — Key numbers ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            onClick={() => setActiveTab("cases")}
-            className="glass border border-border/60 rounded-2xl p-5 text-left hover:border-primary/40 transition-all group"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Active cases</span>
-              <Scale className="h-4 w-4 text-primary" />
-            </div>
-            <div className="text-3xl font-bold text-foreground">{activeCases.length}</div>
-            <div className="text-xs text-muted-foreground mt-1">cases on your desk</div>
-          </button>
+      {/* Row 1 — Key numbers */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button onClick={() => go("cases")} className="glass border border-border/60 rounded-2xl p-5 text-left hover:border-primary/40 transition-all">
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Active cases</span>
+            <Scale className="h-4 w-4 text-primary" />
+          </div>
+          <div className="text-3xl font-bold">{stats.activeCases}</div>
+          <div className="text-xs text-muted-foreground mt-1">of {cases.length} total</div>
+        </button>
 
-          <button
-            onClick={() => setActiveTab("calendar")}
-            className="glass border border-border/60 rounded-2xl p-5 text-left hover:border-blue-500/40 transition-all"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Today's hearings</span>
-              <CalendarDays className="h-4 w-4 text-blue-400" />
-            </div>
-            <div className="text-3xl font-bold text-foreground">{stats.hearingsToday}</div>
-            <div className="text-xs text-muted-foreground mt-1 truncate">
-              {hearings.slice(0, 2).map((h) => h.location).filter(Boolean).join(" · ") || "no hearings"}
-            </div>
-          </button>
+        <button onClick={() => go("calendar")} className="glass border border-border/60 rounded-2xl p-5 text-left hover:border-blue-500/40 transition-all">
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Today's hearings</span>
+            <CalendarDays className="h-4 w-4 text-blue-400" />
+          </div>
+          <div className="text-3xl font-bold">{stats.hearingsToday}</div>
+          <div className="text-xs text-muted-foreground mt-1 truncate">
+            {hearings.slice(0, 2).map((h) => h.location).filter(Boolean).join(" · ") || "no hearings"}
+          </div>
+        </button>
 
-          <button
-            onClick={() => setActiveTab("notes")}
-            className={`glass border rounded-2xl p-5 text-left transition-all ${stats.tasksOverdue > 0 ? "border-destructive/40 hover:border-destructive/60" : "border-border/60 hover:border-primary/40"}`}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">Pending tasks</span>
-              <AlertCircle className={`h-4 w-4 ${stats.tasksOverdue > 0 ? "text-destructive" : "text-primary"}`} />
-            </div>
-            <div className="text-3xl font-bold text-foreground">{stats.tasksDue}</div>
-            <div className={`text-xs mt-1 ${stats.tasksOverdue > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
-              {stats.tasksOverdue > 0 ? `${stats.tasksOverdue} overdue` : "all on track"}
-            </div>
-          </button>
+        <button onClick={() => go("calendar")} className={`glass border rounded-2xl p-5 text-left transition-all ${stats.tasksOverdue > 0 ? "border-destructive/40" : "border-border/60 hover:border-primary/40"}`}>
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Pending tasks</span>
+            <AlertCircle className={`h-4 w-4 ${stats.tasksOverdue > 0 ? "text-destructive" : "text-primary"}`} />
+          </div>
+          <div className="text-3xl font-bold">{stats.tasksDue}</div>
+          <div className={`text-xs mt-1 ${stats.tasksOverdue > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+            {stats.tasksOverdue > 0 ? `${stats.tasksOverdue} overdue` : "all on track"}
+          </div>
+        </button>
 
-          <button
-            onClick={() => setActiveTab("chat")}
-            className="glass border border-border/60 rounded-2xl p-5 text-left hover:border-primary/40 transition-all"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">AI tokens today</span>
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-            <div className="text-3xl font-bold text-foreground">{tier === "Free" ? "5" : "∞"}</div>
-            <div className="text-xs text-muted-foreground mt-1">{planLabel} plan</div>
-          </button>
+        <Link to="/app" className="glass border border-border/60 rounded-2xl p-5 text-left hover:border-primary/40 transition-all block">
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">AI tokens left</span>
+            <Coins className="h-4 w-4 text-primary" />
+          </div>
+          <div className="text-3xl font-bold">
+            {tokens ? (tokens.daily_remaining + tokens.monthly_remaining + tokens.addon_tokens) : "—"}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {tokens ? `${tokens.daily_remaining} today · ${tokens.addon_tokens} addon` : "loading…"}
+          </div>
+        </Link>
+      </div>
+
+      {/* Row 2 — Financial summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="glass border border-border/60 rounded-2xl p-4">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">This month billed</div>
+          <div className="text-2xl font-bold mt-2">₹{stats.billed.toLocaleString("en-IN")}</div>
         </div>
-
-        {/* ── Subscription banner ── */}
-        {(tier === "Pro" || tier === "Firm") && daysLeft !== null && (
-          <div className={`glass border rounded-xl p-3 flex items-center gap-3 ${daysLeft <= 7 ? "border-amber-400/40" : "border-primary/30"}`}>
-            <Clock className={`h-4 w-4 shrink-0 ${daysLeft <= 7 ? "text-amber-400" : "text-primary"}`} />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Subscription active</p>
-              <p className="text-xs text-muted-foreground">
-                {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining` : "Expired — please renew"}
-              </p>
-            </div>
-            {daysLeft <= 7 && (
-              <Link to="/pricing">
-                <Button size="sm" className="bg-primary text-primary-foreground text-xs shrink-0">Renew</Button>
-              </Link>
-            )}
-          </div>
-        )}
-
-        {/* ── ROW 2 — Today's focus ── */}
-        <div className="grid lg:grid-cols-2 gap-4">
-          {/* Hearings */}
-          <div className="glass border border-border/60 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2 text-sm">
-                <CalendarDays className="h-4 w-4 text-blue-400" /> Today's hearings
-              </h3>
-              <span className="text-xs text-muted-foreground">{hearings.length} scheduled</span>
-            </div>
-            <div className="space-y-2 max-h-56 overflow-y-auto">
-              {hearings.length === 0 && (
-                <p className="text-sm text-muted-foreground py-8 text-center">No hearings today. Use this calm. 🧘</p>
-              )}
-              {hearings.map((h) => {
-                const t = new Date(h.starts_at);
-                const morning = t.getHours() < 12;
-                return (
-                  <div key={h.id} className={`p-3 rounded-lg border-l-4 ${morning ? "border-l-blue-400 bg-blue-400/5" : "border-l-orange-400 bg-orange-400/5"}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold truncate">{h.title}</div>
-                      <span className="text-xs font-mono ml-2 shrink-0">{t.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
-                    {h.location && <div className="text-xs text-muted-foreground mt-0.5">{h.location}</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Tasks */}
-          <div className="glass border border-border/60 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2 text-sm">
-                <AlertCircle className="h-4 w-4 text-primary" /> Urgent tasks
-              </h3>
-              {stats.tasksOverdue > 0 && (
-                <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
-                  {stats.tasksOverdue} overdue
-                </span>
-              )}
-            </div>
-            <div className="space-y-1">
-              {tasks.length === 0 && (
-                <p className="text-sm text-muted-foreground py-8 text-center">Inbox zero. 🎯</p>
-              )}
-              {tasks.map((t) => {
-                const overdue = t.due_date && new Date(t.due_date) < new Date();
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => toggleTask(t.id)}
-                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent/40 text-left transition-colors"
-                  >
-                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate">{t.title}</div>
-                      {t.due_date && (
-                        <div className={`text-xs ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
-                          {new Date(t.due_date).toLocaleDateString("en-IN")}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {tasks.length > 0 && (
-              <button className="mt-2 text-xs text-primary hover:underline" onClick={() => setActiveTab("calendar")}>
-                View all tasks →
-              </button>
-            )}
-          </div>
+        <div className="glass border border-border/60 rounded-2xl p-4">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">Outstanding</div>
+          <div className="text-2xl font-bold text-orange-400 mt-2">₹{stats.pending.toLocaleString("en-IN")}</div>
         </div>
+        <div className="glass border border-border/60 rounded-2xl p-4">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider">Clients</div>
+          <div className="text-2xl font-bold mt-2">{stats.totalClients}</div>
+        </div>
+        <Link to="/app" className="glass border border-border/60 rounded-2xl p-4 block hover:border-primary/40 transition-colors">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><BookOpen className="h-3 w-3" /> Knowledge base</div>
+          <div className="text-2xl font-bold mt-2">{kbCount}</div>
+          <div className="text-xs text-muted-foreground">files indexed</div>
+        </Link>
+      </div>
 
-        {/* ── ROW 3 — Recent cases + Quick actions ── */}
-        <div className="grid lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 glass border border-border/60 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2 text-sm">
-                <FolderClosed className="h-4 w-4 text-primary" /> Recent cases
-              </h3>
-              <button className="text-xs text-primary hover:underline" onClick={() => setActiveTab("cases")}>
-                View all ({cases.filter((c) => !c.archived_at).length})
-              </button>
-            </div>
-            <div className="space-y-1">
-              {recentCases.length === 0 && (
-                <p className="text-sm text-muted-foreground py-6 text-center">
-                  No cases yet.{" "}
-                  <button className="text-primary underline underline-offset-2" onClick={() => setActiveTab("chat")}>
-                    Create one from the AI chat.
-                  </button>
-                </p>
-              )}
-              {recentCases.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/40 cursor-pointer transition-colors"
-                  onClick={() => setActiveTab("cases")}
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{c.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{c.client_name || "—"}</div>
-                  </div>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ml-2 shrink-0 ${
-                    c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
-                    c.status === "Draft"  ? "bg-primary/15 text-primary" :
-                                           "bg-muted text-muted-foreground"
-                  }`}>{c.status}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="glass border border-border/60 rounded-2xl p-5">
-            <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" /> Quick actions
+      {/* Row 3 — Hearings + Tasks */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="glass border border-border/60 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2 text-sm">
+              <CalendarDays className="h-4 w-4 text-blue-400" /> Today's hearings
             </h3>
-            <div className="flex flex-col gap-2">
-              <button onClick={() => setActiveTab("cases")}
-                className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-left">
-                <Plus className="h-4 w-4 text-primary shrink-0" /> New case
-              </button>
-              <button onClick={() => setActiveTab("clients")}
-                className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-left">
-                <UserPlus className="h-4 w-4 text-primary shrink-0" /> New client
-              </button>
-              <button onClick={() => setActiveTab("files")}
-                className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-left">
-                <FileText className="h-4 w-4 text-primary shrink-0" /> Draft document
-              </button>
-              <button onClick={() => setActiveTab("chat")}
-                className="flex items-center gap-2 rounded-xl border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 text-sm font-medium text-yellow-600 dark:text-yellow-300 hover:bg-yellow-400/20 transition-all text-left">
-                <Bot className="h-4 w-4 shrink-0" /> Ask Bhramar
-              </button>
-            </div>
+            <span className="text-xs text-muted-foreground">{hearings.length} scheduled</span>
           </div>
-        </div>
-
-        {/* ── ROW 4 — Financial ── */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="glass border border-border/60 rounded-2xl p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">This month billed</div>
-            <div className="text-2xl font-bold text-foreground mt-2">₹{stats.billed.toLocaleString("en-IN")}</div>
-          </div>
-          <div className="glass border border-border/60 rounded-2xl p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">Pending collections</div>
-            <div className="text-2xl font-bold text-orange-400 mt-2">₹{stats.pending.toLocaleString("en-IN")}</div>
-          </div>
-          <div className="glass border border-border/60 rounded-2xl p-4">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider">Retainers active</div>
-            <div className="text-2xl font-bold text-foreground mt-2">{stats.retainers}</div>
+          <div className="space-y-2 max-h-56 overflow-y-auto">
+            {hearings.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No hearings today. 🧘</p>}
+            {hearings.map((h) => {
+              const t = new Date(h.starts_at);
+              const morning = t.getHours() < 12;
+              return (
+                <div key={h.id} className={`p-3 rounded-lg border-l-4 ${morning ? "border-l-blue-400 bg-blue-400/5" : "border-l-orange-400 bg-orange-400/5"}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold truncate">{h.title}</div>
+                    <span className="text-xs font-mono ml-2 shrink-0">{t.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                  {h.location && <div className="text-xs text-muted-foreground mt-0.5">{h.location}</div>}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         <div className="glass border border-border/60 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <IndianRupee className="h-4 w-4 text-primary" /> Billing — last 6 months
+            <h3 className="font-semibold flex items-center gap-2 text-sm">
+              <AlertCircle className="h-4 w-4 text-primary" /> Urgent tasks
             </h3>
-            <button className="text-xs text-primary hover:underline" onClick={() => setActiveTab("finance")}>Finance →</button>
+            {stats.tasksOverdue > 0 && (
+              <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">{stats.tasksOverdue} overdue</span>
+            )}
           </div>
-          <div className="flex items-end gap-3 h-24">
-            {billingHistory.map((b) => (
-              <div key={b.month} className="flex-1 flex flex-col items-center gap-1.5">
-                <div
-                  className="w-full bg-gradient-to-t from-primary/70 to-primary rounded-t transition-all"
-                  style={{ height: `${Math.max((b.amount / maxBilling) * 72, b.amount > 0 ? 4 : 1)}px` }}
-                  title={`₹${b.amount.toLocaleString("en-IN")}`}
-                />
-                <div className="text-[10px] text-muted-foreground">{b.month}</div>
-              </div>
-            ))}
+          <div className="space-y-1">
+            {tasks.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">Inbox zero. 🎯</p>}
+            {tasks.map((t) => {
+              const overdue = t.due_date && new Date(t.due_date) < new Date();
+              return (
+                <button key={t.id} onClick={() => toggleTask(t.id)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent/40 text-left transition-colors">
+                  <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm truncate">{t.title}</div>
+                    {t.due_date && (
+                      <div className={`text-xs ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                        {new Date(t.due_date).toLocaleDateString("en-IN")}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
+      </div>
 
-        {/* ── ROW 5 — Bhramar Notices ── */}
-        <div className="glass border border-border/60 rounded-2xl p-5">
-          <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" /> Bhramar Notices
-          </h3>
-          <div className="space-y-2">
-            {notices.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No urgent matters detected. Bhramar is monitoring. 🛡️
+      {/* Row 4 — Recent cases + quick actions */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 glass border border-border/60 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2 text-sm">
+              <FolderClosed className="h-4 w-4 text-primary" /> Recent cases
+            </h3>
+            <button className="text-xs text-primary hover:underline" onClick={() => go("cases")}>View all ({cases.length})</button>
+          </div>
+          <div className="space-y-1">
+            {recentCases.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No cases yet. <Link to="/app" className="text-primary underline">Create one from chat</Link>.
               </p>
             )}
-            {notices.map((n, i) => (
-              <div
-                key={i}
-                className={`p-3 rounded-lg border-l-4 text-sm ${
-                  n.kind === "danger" ? "border-l-destructive bg-destructive/5 text-destructive"
-                  : n.kind === "warn" ? "border-l-amber-400 bg-amber-400/5 text-foreground"
-                  : "border-l-blue-400 bg-blue-400/5 text-foreground"
-                }`}
-              >
-                {n.text}
+            {recentCases.map((c) => (
+              <div key={c.id} onClick={() => go("cases")} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-accent/40 cursor-pointer transition-colors">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{c.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{c.client_name || "—"}</div>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ml-2 shrink-0 ${
+                  c.status === "Active" ? "bg-emerald-500/15 text-emerald-400" :
+                  c.status === "Draft"  ? "bg-primary/15 text-primary" :
+                                         "bg-muted text-muted-foreground"
+                }`}>{c.status}</span>
               </div>
             ))}
           </div>
         </div>
 
+        <div className="glass border border-border/60 rounded-2xl p-5">
+          <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Quick actions
+          </h3>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => go("cases")} className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-left">
+              <Plus className="h-4 w-4 text-primary shrink-0" /> New case
+            </button>
+            <button onClick={() => go("clients")} className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-left">
+              <UserPlus className="h-4 w-4 text-primary shrink-0" /> New client
+            </button>
+            <button onClick={() => go("files")} className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm hover:border-primary/40 hover:bg-primary/5 transition-all text-left">
+              <FileText className="h-4 w-4 text-primary shrink-0" /> Draft document
+            </button>
+            <Link to="/app" className="flex items-center gap-2 rounded-xl border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 text-sm font-medium text-yellow-600 dark:text-yellow-300 hover:bg-yellow-400/20 transition-all text-left">
+              <Bot className="h-4 w-4 shrink-0" /> Ask Bhramar
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 5 — Billing chart */}
+      <div className="glass border border-border/60 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <IndianRupee className="h-4 w-4 text-primary" /> Billing — last 6 months
+          </h3>
+          <button className="text-xs text-primary hover:underline" onClick={() => go("finance")}>Finance →</button>
+        </div>
+        <div className="flex items-end gap-3 h-24">
+          {billingHistory.map((b) => (
+            <div key={b.month} className="flex-1 flex flex-col items-center gap-1.5">
+              <div
+                className="w-full bg-gradient-to-t from-primary/70 to-primary rounded-t transition-all"
+                style={{ height: `${Math.max((b.amount / maxBilling) * 72, b.amount > 0 ? 4 : 1)}px` }}
+                title={`₹${b.amount.toLocaleString("en-IN")}`}
+              />
+              <div className="text-[10px] text-muted-foreground">{b.month}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
