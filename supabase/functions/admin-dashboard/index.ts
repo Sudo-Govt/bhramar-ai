@@ -12,12 +12,50 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SUPER_ADMIN = "bhramar123@gmail.com";
+const PROVIDER_ENC_KEY_B64 = Deno.env.get("PROVIDER_ENC_KEY") || ""; // base64-encoded 32-byte key
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function importProviderKey() {
+  if (!PROVIDER_ENC_KEY_B64) return null;
+  const raw = atob(PROVIDER_ENC_KEY_B64);
+  const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  return await crypto.subtle.importKey("raw", bytes.buffer, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptText(plain: string) {
+  const key = await importProviderKey();
+  if (!key) return null;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder().encode(plain);
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc);
+  const combined = new Uint8Array(iv.length + ct.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ct), iv.length);
+  // base64
+  let s = "";
+  for (let i = 0; i < combined.length; i++) s += String.fromCharCode(combined[i]);
+  return btoa(s);
+}
+
+async function decryptText(b64: string) {
+  const key = await importProviderKey();
+  if (!key) return null;
+  try {
+    const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const iv = data.slice(0, 12);
+    const ct = data.slice(12);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct.buffer);
+    return new TextDecoder().decode(pt);
+  } catch (e) {
+    console.error("decryptText failed", e);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -216,6 +254,51 @@ Deno.serve(async (req) => {
         return json({ filename: row.original_filename, content: text.slice(0, 200000) });
       }
 
+      // -------- AI PROVIDERS (encrypted keys) --------
+      case "provider_list": {
+        // returns list of providers stored under system_config key prefix ai_provider:
+        const { data, error } = await admin.from("system_config").select("*").like("key", "ai_provider:%").order("key");
+        if (error) throw error;
+        const items = [];
+        for (const row of data || []) {
+          try {
+            const obj = JSON.parse(row.value || "{}");
+            let masked = null;
+            if (obj.api_key_enc) {
+              const dec = await decryptText(obj.api_key_enc);
+              if (dec) masked = `****${dec.slice(-4)}`; else masked = null;
+            }
+            items.push({ key: row.key, name: (obj.name || row.key.replace(/^ai_provider:/, "")), provider: obj.provider, purpose: obj.purpose, api_key_masked: masked, meta: obj.meta || {} });
+          } catch (e) {
+            items.push({ key: row.key, raw: row.value });
+          }
+        }
+        return json({ items });
+      }
+      case "provider_set": {
+        const { name, provider: prov, purpose, api_key, meta } = body;
+        if (!name || !prov || !purpose) return json({ error: "name/provider/purpose required" }, 400);
+        let api_key_enc = null;
+        if (api_key) {
+          api_key_enc = await encryptText(String(api_key));
+        }
+        const key = `ai_provider:${name}`;
+        const value = JSON.stringify({ name, provider: prov, purpose, api_key_enc, meta: meta || {} });
+        const { error } = await admin.from("system_config").upsert({ key, value, updated_at: new Date().toISOString(), updated_by: adminUserId });
+        if (error) throw error;
+        await audit("ai_provider", key, { op: "set", name, provider: prov, purpose });
+        return json({ ok: true });
+      }
+      case "provider_delete": {
+        const { name } = body;
+        if (!name) return json({ error: "name required" }, 400);
+        const key = `ai_provider:${name}`;
+        const { error } = await admin.from("system_config").delete().eq("key", key);
+        if (error) throw error;
+        await audit("ai_provider", key, { op: "delete", name });
+        return json({ ok: true });
+      }
+
       // -------- USERS --------
       case "users_list": {
         const { search = "", user_type, tier, limit = 20, offset = 0 } = body;
@@ -367,6 +450,101 @@ Deno.serve(async (req) => {
         const enriched = (data || []).map((r: any) => ({ ...r, user_email: map.get(r.user_id) || "—" }));
         return json({ items: enriched, count });
       }
+
+      // -------- IMPERSONATION / PROXY --------
+      case "impersonation_create": {
+        const { user_id, expires_minutes = 60 } = body;
+        if (!user_id) return json({ error: "user_id required" }, 400);
+        const expiresAt = new Date(Date.now() + Number(expires_minutes) * 60000).toISOString();
+        const { data: row, error } = await admin.from("impersonation_tokens").insert({ user_id, created_by: adminUserId, expires_at: expiresAt }).select("token, expires_at").single();
+        if (error) throw error;
+        await audit("impersonation", row.token, { op: "create", user_id, expires_at: row.expires_at });
+        return json({ token: row.token, expires_at: row.expires_at });
+      }
+      case "impersonation_list": {
+        const { data, error } = await admin.from("impersonation_tokens").select("token, user_id, created_by, created_at, expires_at, used, revoked").order("created_at", { ascending: false }).limit(200);
+        if (error) throw error;
+        return json({ items: data });
+      }
+      case "impersonation_revoke": {
+        const { token } = body;
+        if (!token) return json({ error: "token required" }, 400);
+        const { error } = await admin.from("impersonation_tokens").update({ revoked: true }).eq("token", token);
+        if (error) throw error;
+        await audit("impersonation", token, { op: "revoke" });
+        return json({ ok: true });
+      }
+      case "user_suspend": {
+        const { user_id } = body;
+        if (!user_id) return json({ error: "user_id required" }, 400);
+        const { error } = await admin.from("profiles").update({ suspended: true }).eq("id", user_id);
+        if (error) throw error;
+        await audit("profile", user_id, { op: "suspend" });
+        return json({ ok: true });
+      }
+      case "user_unsuspend": {
+        const { user_id } = body;
+        if (!user_id) return json({ error: "user_id required" }, 400);
+        const { error } = await admin.from("profiles").update({ suspended: false }).eq("id", user_id);
+        if (error) throw error;
+        await audit("profile", user_id, { op: "unsuspend" });
+        return json({ ok: true });
+      }
+      case "impersonation_proxy": {
+        const { token, proxy_action } = body;
+        if (!token) return json({ error: "token required" }, 400);
+        const { data: t } = await admin.from("impersonation_tokens").select("*").eq("token", token).maybeSingle();
+        if (!t) return json({ error: "invalid token" }, 404);
+        if (t.revoked) return json({ error: "token revoked" }, 403);
+        if (t.expires_at && new Date(t.expires_at) < new Date()) return json({ error: "token expired" }, 403);
+        const targetUserId = t.user_id;
+        // Do not mark token used — proxy tokens remain valid until expiry/revoke
+        switch (proxy_action) {
+          case "get_profile": {
+            const { data: profile } = await admin.from("profiles").select("*").eq("id", targetUserId).maybeSingle();
+            return json({ profile });
+          }
+          case "update_profile": {
+            const { patch } = body;
+            const allowed = ["full_name","state","district","specializations","is_available_for_emergency"];
+            const clean: any = {};
+            for (const k of allowed) if (k in (patch || {})) clean[k] = patch[k];
+            const { error } = await admin.from("profiles").update(clean).eq("id", targetUserId);
+            if (error) throw error;
+            await audit("impersonation_action", targetUserId, { op: "update_profile", admin: adminUserId, patch: clean });
+            return json({ ok: true });
+          }
+          case "list_cases": {
+            const { limit = 50 } = body;
+            const { data, error } = await admin.from("cases").select("*").eq("user_id", targetUserId).order("created_at", { ascending: false }).limit(limit);
+            if (error) throw error;
+            return json({ items: data });
+          }
+          case "case_detail": {
+            const { case_id } = body;
+            const { data: cs } = await admin.from("cases").select("*").eq("id", case_id).maybeSingle();
+            if (!cs) return json({ error: "case not found" }, 404);
+            if (cs.user_id !== targetUserId) return json({ error: "forbidden" }, 403);
+            const [msgs, notes, tasks, docs] = await Promise.all([
+              admin.from("conversations").select("id, title, created_at, messages(id, role, content, created_at)").eq("case_id", case_id).order("created_at", { ascending: false }),
+              admin.from("notes").select("*").eq("case_id", case_id),
+              admin.from("tasks").select("*").eq("case_id", case_id),
+              admin.from("documents").select("*").eq("case_id", case_id),
+            ]);
+            return json({ case: cs, conversations: msgs.data || [], notes: notes.data || [], tasks: tasks.data || [], documents: docs.data || [] });
+          }
+          case "user_chat_history": {
+            const { limit = 200 } = body;
+            const { data, error } = await admin.from("messages").select("id, conversation_id, role, content, created_at").eq("user_id", targetUserId).order("created_at", { ascending: false }).limit(limit);
+            if (error) throw error;
+            return json({ items: data });
+          }
+          default:
+            return json({ error: "unknown proxy action" }, 400);
+        }
+      }
+
+      // -------- CASES (end) --------
 
       default:
         return json({ error: "unknown action: " + action }, 400);
