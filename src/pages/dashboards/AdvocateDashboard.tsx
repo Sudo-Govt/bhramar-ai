@@ -60,13 +60,14 @@ export default function AdvocateDashboard() {
 }
 
 // ============ OVERVIEW ============
-function OverviewPanel({
-  cases, tier, daysLeft, profile, setActiveTab,
-}: {
-  cases: CaseRow[]; tier: Tier; daysLeft: number | null; profile: any;
-  setActiveTab: (t: TabType) => void;
-}) {
+function Overview() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const setTab = (path: string) => navigate(`/dashboard/advocate/${path}`);
+  const [profile, setProfile] = useState<any>(null);
+  const [cases, setCases] = useState<any[]>([]);
+  const [tokens, setTokens] = useState<{ daily_remaining: number; monthly_remaining: number; addon_tokens: number; daily_quota: number; monthly_quota: number } | null>(null);
+  const [kbCount, setKbCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     hearingsToday: 0, tasksDue: 0, tasksOverdue: 0,
