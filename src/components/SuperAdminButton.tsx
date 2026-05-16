@@ -11,7 +11,8 @@ export default function SuperAdminButton() {
 
   return (
     <div className="fixed top-4 right-4 z-50">
-      <Link to="/admin/ai">
+      {/* Link to the main Admin console (full master settings) */}
+      <Link to="/admin">
         <Button className="bg-gold hover:bg-gold-bright text-primary-foreground" size="sm">
           Master settings
         </Button>
