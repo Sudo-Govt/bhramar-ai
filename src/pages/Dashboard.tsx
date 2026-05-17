@@ -722,74 +722,7 @@ function InputBar({
 function OverviewPanel({ cases, tier, daysLeft, profile, setActiveTab }: {
   cases: CaseRow[]; tier: Tier; daysLeft: number | null; profile: any; setActiveTab: (t: TabType) => void;
 }) {
-  const activeCases = cases.filter((c) => c.status === "Active"  && !c.archived_at).length;
-  const draftCases  = cases.filter((c) => c.status === "Draft"   && !c.archived_at).length;
-  const closedCases = cases.filter((c) => c.status === "Closed"  && !c.archived_at).length;
-  return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold mb-1">
-            Welcome back{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
-          </h2>
-          <p className="text-sm text-muted-foreground">Here's a snapshot of your practice.</p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: "Active Cases",  value: activeCases,  color: "text-emerald-400", Icon: CheckCircle2 },
-            { label: "Draft Cases",   value: draftCases,   color: "text-primary",     Icon: Circle       },
-            { label: "Closed Cases",  value: closedCases,  color: "text-muted-foreground", Icon: FolderClosed },
-            { label: "Plan",          value: tier,         color: "text-primary",     Icon: Crown        },
-          ].map(({ label, value, color, Icon }) => (
-            <div key={label} className="glass border border-border/60 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <Icon className={`h-4 w-4 ${color}`} />
-              </div>
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            </div>
-          ))}
-        </div>
-        {(tier === "Pro" || tier === "Firm") && daysLeft !== null && (
-          <div className="glass border border-primary/30 rounded-xl p-4 flex items-center gap-3">
-            <Clock className="h-5 w-5 text-primary shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Subscription active</p>
-              <p className="text-xs text-muted-foreground">
-                {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining` : "Subscription expired — please renew"}
-              </p>
-            </div>
-            {daysLeft <= 7 && (
-              <Link to="/pricing" className="ml-auto">
-                <Button size="sm" className="bg-primary text-primary-foreground text-xs">Renew</Button>
-              </Link>
-            )}
-          </div>
-        )}
-        <div>
-          <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[
-              { label: "New Chat",     Icon: MessageSquare, tab: "chat"      as TabType },
-              { label: "New Case",     Icon: FolderClosed,  tab: "cases"     as TabType },
-              { label: "My Clients",   Icon: UsersRound,    tab: "clients"   as TabType },
-              { label: "Finance",      Icon: IndianRupee,   tab: "finance"   as TabType },
-              { label: "Calendar",     Icon: CalendarDays,  tab: "calendar"  as TabType },
-              { label: "AI Assistant", Icon: Bot,           tab: "assistant" as TabType },
-            ].map(({ label, Icon, tab }) => (
-              <button key={label} onClick={() => setActiveTab(tab)}
-                className="glass border border-border/60 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-colors">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Icon className="h-4 w-4 text-primary" />
-                </div>
-                <span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <DashboardOverview />;
 }
 
 function ClientsPanel() {
