@@ -1036,6 +1036,44 @@ export type Database = {
         }
         Relationships: []
       }
+      impersonation_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          revoked: boolean
+          token: string
+          used: boolean
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          revoked?: boolean
+          token?: string
+          used?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          revoked?: boolean
+          token?: string
+          used?: boolean
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impersonation_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
@@ -1340,6 +1378,7 @@ export type Database = {
           subscription_expires_at: string | null
           subscription_started_at: string | null
           subscription_tier: Database["public"]["Enums"]["subscription_tier"]
+          suspended: boolean
           updated_at: string
           user_type: string
           vakeel_reviews_count: number
@@ -1377,6 +1416,7 @@ export type Database = {
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          suspended?: boolean
           updated_at?: string
           user_type?: string
           vakeel_reviews_count?: number
@@ -1414,6 +1454,7 @@ export type Database = {
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_tier?: Database["public"]["Enums"]["subscription_tier"]
+          suspended?: boolean
           updated_at?: string
           user_type?: string
           vakeel_reviews_count?: number
