@@ -8,10 +8,11 @@ export const CONFIG = {
   
   // Super Admin — MUST be set in Supabase Dashboard → Edge Functions → Secrets
   // DO NOT hardcode emails here. Set SUPABASE_SUPER_ADMIN_EMAIL in env vars.
+  // Super Admin — Set in Lovable Secrets as BHARAMAR_SUPER_ADMIN
   get SUPER_ADMIN_EMAIL(): string {
-    const email = Deno.env.get("SUPABASE_SUPER_ADMIN_EMAIL");
+    const email = Deno.env.get("BHARAMAR_SUPER_ADMIN");
     if (!email) {
-      console.warn("SUPABASE_SUPER_ADMIN_EMAIL not set. Super admin features disabled.");
+      console.warn("BHARAMAR_SUPER_ADMIN not set. Super admin features disabled.");
       return "";
     }
     return email;
