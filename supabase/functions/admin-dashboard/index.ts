@@ -1,4 +1,4 @@
-// Super Admin Dashboard backend. Gated by email == SUPER_ADMIN.
+// Super Admin Dashboard backend. Gated by env-based super admin check.
 // All admin reads/writes go through this single endpoint.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.104.1";
 
@@ -11,8 +11,20 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const SUPER_ADMIN = "bhramar123@gmail.com";
 const PROVIDER_ENC_KEY_B64 = Deno.env.get("PROVIDER_ENC_KEY") || ""; // base64-encoded 32-byte key
+
+// REMOVED: const SUPER_ADMIN = "bhramar123@gmail.com";
+// Now reads from BHARAMAR_SUPER_ADMIN env var (set in Lovable Secrets)
+
+function getSuperAdminEmail(): string {
+  // Try Lovable-friendly env var name first
+  const email = Deno.env.get("BHARAMAR_SUPER_ADMIN") || Deno.env.get("SUPER_ADMIN_EMAIL");
+  if (!email) {
+    console.error("CRITICAL: BHARAMAR_SUPER_ADMIN not set. Admin access disabled.");
+    return "";
+  }
+  return email.toLowerCase().trim();
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -67,13 +79,25 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: auth } },
     });
     const { data: u } = await userClient.auth.getUser();
-    const email = (u?.user?.email || "").toLowerCase();
-    if (!u?.user || email !== SUPER_ADMIN) return json({ error: "Forbidden" }, 403);
+    const email = (u?.user?.email || "").toLowerCase().trim();
+    const superAdminEmail = getSuperAdminEmail();
+    
+    // NEW: check_admin action — returns admin status without requiring full auth
+    const body = await req.json().catch(() => ({}));
+    const action = String(body?.action || "");
+    
+    if (action === "check_admin") {
+      return json({ 
+        is_super_admin: !!u?.user && email === superAdminEmail,
+        email: u?.user?.email || null,
+        configured: !!superAdminEmail
+      });
+    }
+    
+    if (!u?.user || email !== superAdminEmail) return json({ error: "Forbidden" }, 403);
     const adminUserId = u.user.id;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const body = await req.json().catch(() => ({}));
-    const action = String(body?.action || "");
 
     const audit = (entity_type: string, entity_id: string | null, metadata: any) =>
       admin.from("audit_log").insert({
