@@ -26,8 +26,10 @@ import {
   Save, Upload, Trash2, MoreHorizontal, RefreshCw, ChevronLeft, ChevronRight, Eye, FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminUploader } from "@/components/AdminUploader";
 
-const SUPER_ADMIN = "bhramar123@gmail.com";
+// REMOVED: const SUPER_ADMIN = "bhramar123@gmail.com";
+// Now uses secure edge function check via /admin-dashboard?action=check_admin
 
 // ---------------- API helper ----------------
 async function adminCall<T = any>(action: string, payload: any = {}): Promise<T> {
@@ -52,9 +54,30 @@ const NAV = [
 
 export default function Admin() {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setCheckingAdmin(false);
+        return;
+      }
+      try {
+        const r = await adminCall<{ is_super_admin: boolean }>("check_admin");
+        setIsSuperAdmin(r.is_super_admin || false);
+      } catch (e) {
+        console.error("Admin check failed:", e);
+        setIsSuperAdmin(false);
+      }
+      setCheckingAdmin(false);
+    };
+    checkAdmin();
+  }, [user]);
+
+  if (loading || checkingAdmin) return null;
   if (!user) return <Navigate to="/auth" replace />;
-  if ((user.email || "").toLowerCase() !== SUPER_ADMIN) return <Navigate to="/" replace />;
+  if (!isSuperAdmin) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -461,7 +484,7 @@ function RagZone({
           </Table>
         </div>
       )}
-{/* Pagination footer */}
+      {/* Pagination footer */}
       {ragPageSize !== -1 && totalPages > 1 && (
         <div className="flex items-center justify-between mt-3 text-sm">
           <span className="text-muted-foreground text-xs">
