@@ -59,7 +59,7 @@ function useSpeechToText(onResult: (text: string) => void) {
     const r = new SpeechRecognition();
     r.continuous = false;
     r.interimResults = false;
-    r.lang = "hi-IN,en-IN";
+    r.lang = "en-IN";
     r.onstart = () => setListening(true);
     r.onend   = () => setListening(false);
     r.onerror = () => setListening(false);
@@ -109,7 +109,7 @@ async function extractTextFromFile(
         return j.text ? j.text.slice(0, 4000) : null;
       }
     } catch { /* fall through */ }
-    return `[PDF attached: ${file.name} — summarise based on filename and context]`;
+    return null;
   }
 
   if (type.startsWith("image/")) {
@@ -131,10 +131,10 @@ async function extractTextFromFile(
             const j = await r.json();
             resolve(j.text ? j.text.slice(0, 3000) : null);
           } else {
-            resolve(`[Image attached: ${file.name} — describe and analyse in context of this legal matter]`);
+            resolve(null);
           }
         } catch {
-          resolve(`[Image attached: ${file.name}]`);
+          resolve(null);
         }
       };
       reader.readAsDataURL(file);
@@ -142,10 +142,34 @@ async function extractTextFromFile(
   }
 
   if (type.includes("wordprocessingml") || type.includes("msword")) {
-    return `[Document attached: ${file.name} — Word doc text extraction not yet supported]`;
+    return null;
   }
 
   return null;
+}
+
+// Appends OCR/extracted text to the AI payload — never shown in the textarea
+function buildUserMessageContent(
+  text: string,
+  attachedText: string | null,
+  attachedFile: File | null,
+): string {
+  if (!attachedText && !attachedFile) return text;
+  if (attachedText) {
+    return (
+      text +
+      `
+
+--- ATTACHED: ${attachedFile?.name ?? "file"} ---
+` +
+      attachedText +
+      `
+--- END ATTACHMENT ---`
+    );
+  }
+  return text + `
+
+[User attached: ${attachedFile?.name ?? "file"} — no text could be extracted]`;
 }
 
 // ─── Rolling conversation summary helper ─────────────────────────────
@@ -572,12 +596,15 @@ function InputBar({
   input, setInput, send, streaming, handleFileUpload,
   profileName, profileState, activeCaseName, onPickCase,
   listening, onMicClick, micSupported,
+  attachedFile, onClearAttachment,
 }: {
   input: string; setInput: (s: string) => void; send: () => void;
   streaming: boolean; handleFileUpload: (f: File) => void;
   profileName?: string | null; profileState?: string | null;
   activeCaseName?: string | null; onPickCase?: () => void;
   listening: boolean; onMicClick: () => void; micSupported: boolean;
+  attachedFile: File | null;
+  onClearAttachment: () => void;
 }) {
   return (
     <div className="border-t border-border/60 p-3 md:p-4 glass-subtle">
@@ -596,6 +623,23 @@ function InputBar({
           </button>
           <span className="text-muted-foreground/70 ml-auto hidden sm:inline">Bhramar uses your profile + case as context</span>
         </div>
+
+        {/* Attachment pill — visible instead of raw OCR text in the textarea */}
+        {attachedFile && (
+          <div className="flex items-center gap-2 mb-2 px-0.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/30 text-primary px-3 py-1 text-[11px] font-medium max-w-[260px] truncate">
+              📎 {attachedFile.name}
+            </span>
+            <button
+              onClick={onClearAttachment}
+              className="text-muted-foreground hover:text-destructive transition-colors text-xs leading-none"
+              title="Remove attachment"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <div className="chat-input-wrap flex items-end gap-2">
           {/* File attachment */}
           <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary shrink-0" asChild>
@@ -625,7 +669,7 @@ function InputBar({
               size="icon"
               variant="ghost"
               onClick={onMicClick}
-              title={listening ? "Stop recording" : "Voice input (Hindi / English)"}
+              title={listening ? "Stop recording" : "Voice input (English / Hindi)"}
               className={`h-9 w-9 shrink-0 transition-all ${
                 listening
                   ? "text-red-500 hover:text-red-400 animate-pulse"
@@ -636,7 +680,7 @@ function InputBar({
             </Button>
           )}
 
-          <button onClick={send} disabled={!input.trim() || streaming} className="btn-send">
+          <button onClick={send} disabled={(!input.trim() && !attachedFile) || streaming} className="btn-send">
             <Send className="h-4 w-4" />
           </button>
         </div>
@@ -1071,6 +1115,8 @@ export default function Dashboard() {
   const [input,         setInput]         = useState("");
   const [streaming,     setStreaming]     = useState(false);
   const [notes,         setNotes]         = useState("");
+  const [attachedFile,  setAttachedFile]  = useState<File | null>(null);
+  const [attachedText,  setAttachedText]  = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // ── New refs / state ──
@@ -1238,22 +1284,21 @@ export default function Dashboard() {
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-    // Extract text and inject into input
+    // Extract text silently — do NOT paste into the textarea
     const extracted = await extractTextFromFile(file, supabaseUrl, token, anonKey);
+
+    // Store in state; send() will append it invisibly to the AI payload
+    setAttachedFile(file);
+    setAttachedText(extracted);
+
     if (extracted) {
-      setInput((prev) =>
-        prev
-          ? `${prev}\n\n[From ${file.name}]:\n${extracted}`
-          : `[From ${file.name}]:\n${extracted}`,
-      );
-      toast.success(`Text extracted from ${file.name}`);
+      toast.success(`📎 ${file.name} attached`);
+    } else {
+      toast.info(`📎 ${file.name} attached — will be sent with your next message`);
     }
 
-    // Save to storage if a case is active
-    if (!activeCaseId) {
-      if (!extracted) toast.info("Select a case to save this document.");
-      return;
-    }
+    // Save to Supabase storage if a case is active
+    if (!activeCaseId) return;
     const path = `${user.id}/${activeCaseId}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("case-documents").upload(path, file);
     if (error) return toast.error(error.message);
@@ -1265,14 +1310,17 @@ export default function Dashboard() {
       mime_type: file.type,
       size_bytes: file.size,
     });
-    if (!extracted) toast.success("Document saved to case");
   }, [user, activeCaseId]);
 
   // ── Send message ──
   const send = useCallback(async () => {
-    const text = input.trim();
-    if (!text || streaming || !user) return;
+    const rawText = input.trim();
+    const hasAttachment = !!attachedFile;
+    if ((!rawText && !hasAttachment) || streaming || !user) return;
+    const text = rawText || `[Attached: ${attachedFile?.name ?? "file"}]`;
     setInput("");
+    setAttachedFile(null);
+    setAttachedText(null);
 
     let caseId = activeCaseId;
     if (!caseId) {
@@ -1316,7 +1364,10 @@ export default function Dashboard() {
         body: JSON.stringify({
           case_id: activeCaseId,
           conversation_id: convId,
-          messages: [...aiMessages, { role: "user", content: text }],
+          messages: [
+            ...aiMessages,
+            { role: "user", content: buildUserMessageContent(text, attachedText, attachedFile) },
+          ],
         }),
       });
 
@@ -1483,6 +1534,8 @@ export default function Dashboard() {
               listening={listening}
               onMicClick={handleMicClick}
               micSupported={micSupported}
+              attachedFile={attachedFile}
+              onClearAttachment={() => { setAttachedFile(null); setAttachedText(null); }}
             />
           </>
         )}
