@@ -38,7 +38,7 @@ interface FinancialSnapshot {
   pending_invoices: number;
   total_revenue: number;
   this_month: number;
-  growth: number; // percentage
+  growth: number;
 }
 
 interface ActivityItem {
@@ -82,7 +82,6 @@ export function DashboardOverview() {
     try {
       const today = new Date().toISOString().split("T")[0];
 
-      // Parallel data fetching
       const [
         casesRes,
         clientsRes,
@@ -90,18 +89,13 @@ export function DashboardOverview() {
         activityRes,
         hearingsRes
       ] = await Promise.all([
-        // Case stats
         supabase.from("cases").select("status, priority").eq("user_id", user.id),
-        // Client list with case counts
         supabase.from("profiles").select(`
           id, full_name, created_at,
           cases!cases_user_id_fkey(count)
         `).eq("user_type", "citizen").limit(5),
-        // Financial (from tasks/invoices if you have them, else mock)
         supabase.from("tasks").select("*").eq("user_id", user.id).eq("status", "pending"),
-        // Recent activity
         supabase.from("audit_log").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
-        // Today's hearings
         supabase.from("cases").select("id, name, case_number, client_name, deadline, court_of_practice, priority")
           .eq("user_id", user.id)
           .gte("deadline", today)
@@ -109,7 +103,6 @@ export function DashboardOverview() {
           .order("deadline")
       ]);
 
-      // Process case stats
       const cases = casesRes.data || [];
       const urgent = cases.filter((c: any) => c.priority === "high" || c.priority === "critical").length;
       setStats({
@@ -120,7 +113,6 @@ export function DashboardOverview() {
         urgent,
       });
 
-      // Process clients
       const clientData = (clientsRes.data || []).map((c: any) => ({
         id: c.id,
         full_name: c.full_name || "Unknown",
@@ -130,7 +122,6 @@ export function DashboardOverview() {
       }));
       setClients(clientData);
 
-      // Financials (mock if no real data)
       setFinancials({
         pending_invoices: tasksRes.data?.length || 0,
         total_revenue: 125000,
@@ -138,10 +129,8 @@ export function DashboardOverview() {
         growth: 12.5,
       });
 
-      // Activities
       setActivities(activityRes.data || []);
 
-      // Hearings
       const hearingData = (hearingsRes.data || []).map((h: any) => ({
         id: h.id,
         name: h.name,
@@ -230,7 +219,6 @@ export function DashboardOverview() {
         
         {/* LEFT COLUMN: Hearings + Funnel (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Today's Hearings */}
           <Card className="border-l-4 border-l-gold">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -271,7 +259,6 @@ export function DashboardOverview() {
             </CardContent>
           </Card>
 
-          {/* Case Funnel */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -289,7 +276,6 @@ export function DashboardOverview() {
 
         {/* MIDDLE COLUMN: AI Prep + Financials (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* AI Prep Card */}
           <Card className="bg-gradient-to-br from-navy-deep to-background border-navy">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2 text-gold">
@@ -318,7 +304,6 @@ export function DashboardOverview() {
             </CardContent>
           </Card>
 
-          {/* Financial Snapshot */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -351,7 +336,6 @@ export function DashboardOverview() {
 
         {/* RIGHT COLUMN: Client Pulse + Calendar + News (3 cols) */}
         <div className="lg:col-span-3 space-y-6">
-          {/* Client Pulse */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -384,7 +368,6 @@ export function DashboardOverview() {
             </CardContent>
           </Card>
 
-          {/* Mini Calendar */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -397,7 +380,6 @@ export function DashboardOverview() {
             </CardContent>
           </Card>
 
-          {/* Legal News */}
           <Card className="bg-muted/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">LEGAL BRIEFS</CardTitle>
