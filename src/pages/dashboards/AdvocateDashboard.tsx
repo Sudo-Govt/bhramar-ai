@@ -24,7 +24,8 @@ import {
 
 const nav: NavItem[] = [
   { to: "/dashboard/advocate", label: "Overview", icon: LayoutDashboard },
-  { to: "/dashboard/advocate/cases", label: "Cases", icon: Briefcase },
+  { to: "/cases", label: "Bhramar Cases", icon: Briefcase },
+  { to: "/dashboard/advocate/cases", label: "Legacy Cases", icon: FolderClosed },
   { to: "/dashboard/advocate/clients", label: "Clients", icon: Users },
   { to: "/teams", label: "Team Up", icon: UsersRound },
   { to: "/network", label: "Court Cells", icon: NetworkIcon },

@@ -176,6 +176,113 @@ export type Database = {
           },
         ]
       }
+      bhramar_chats: {
+        Row: {
+          case_id: string
+          client_id: string | null
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_type: string
+        }
+        Insert: {
+          case_id: string
+          client_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_type: string
+        }
+        Update: {
+          case_id?: string
+          client_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bhramar_chats_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bhramar_chats_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "case_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_clients: {
+        Row: {
+          age: number | null
+          case_id: string
+          client_access_pin: string | null
+          created_at: string
+          custody_location: string | null
+          district: string | null
+          gender: string | null
+          id: string
+          is_in_custody: boolean
+          legal_aid_eligible: string | null
+          name: string
+          occupation: string | null
+          preferred_language: string
+          relationship_to_case: string
+          state: string | null
+        }
+        Insert: {
+          age?: number | null
+          case_id: string
+          client_access_pin?: string | null
+          created_at?: string
+          custody_location?: string | null
+          district?: string | null
+          gender?: string | null
+          id?: string
+          is_in_custody?: boolean
+          legal_aid_eligible?: string | null
+          name: string
+          occupation?: string | null
+          preferred_language?: string
+          relationship_to_case?: string
+          state?: string | null
+        }
+        Update: {
+          age?: number | null
+          case_id?: string
+          client_access_pin?: string | null
+          created_at?: string
+          custody_location?: string | null
+          district?: string | null
+          gender?: string | null
+          id?: string
+          is_in_custody?: boolean
+          legal_aid_eligible?: string | null
+          name?: string
+          occupation?: string | null
+          preferred_language?: string
+          relationship_to_case?: string
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_clients_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_deletion_logs: {
         Row: {
           ai_summary: string | null
@@ -223,6 +330,198 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      case_documents: {
+        Row: {
+          ai_summary: string | null
+          case_id: string
+          created_at: string
+          doc_date: string | null
+          doc_type: string
+          filename: string
+          id: string
+          storage_path: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          case_id: string
+          created_at?: string
+          doc_date?: string | null
+          doc_type: string
+          filename: string
+          id?: string
+          storage_path?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          case_id?: string
+          created_at?: string
+          doc_date?: string | null
+          doc_type?: string
+          filename?: string
+          id?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_files: {
+        Row: {
+          advocate_id: string
+          case_number: string | null
+          case_title: string
+          case_type: string
+          court: string | null
+          created_at: string
+          current_stage: string
+          date_of_arrest: string | null
+          date_of_charge_sheet: string | null
+          date_of_fir: string | null
+          id: string
+          io_name: string | null
+          is_bailable: string | null
+          is_cognizable: string | null
+          judge: string | null
+          key_facts: string | null
+          limitation_deadline: string | null
+          next_date: string | null
+          next_date_purpose: string | null
+          opposing_counsel: string | null
+          police_station: string | null
+          pp_name: string | null
+          primary_act: string | null
+          sections_charged: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          advocate_id: string
+          case_number?: string | null
+          case_title: string
+          case_type?: string
+          court?: string | null
+          created_at?: string
+          current_stage?: string
+          date_of_arrest?: string | null
+          date_of_charge_sheet?: string | null
+          date_of_fir?: string | null
+          id?: string
+          io_name?: string | null
+          is_bailable?: string | null
+          is_cognizable?: string | null
+          judge?: string | null
+          key_facts?: string | null
+          limitation_deadline?: string | null
+          next_date?: string | null
+          next_date_purpose?: string | null
+          opposing_counsel?: string | null
+          police_station?: string | null
+          pp_name?: string | null
+          primary_act?: string | null
+          sections_charged?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          advocate_id?: string
+          case_number?: string | null
+          case_title?: string
+          case_type?: string
+          court?: string | null
+          created_at?: string
+          current_stage?: string
+          date_of_arrest?: string | null
+          date_of_charge_sheet?: string | null
+          date_of_fir?: string | null
+          id?: string
+          io_name?: string | null
+          is_bailable?: string | null
+          is_cognizable?: string | null
+          judge?: string | null
+          key_facts?: string | null
+          limitation_deadline?: string | null
+          next_date?: string | null
+          next_date_purpose?: string | null
+          opposing_counsel?: string | null
+          police_station?: string | null
+          pp_name?: string | null
+          primary_act?: string | null
+          sections_charged?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      case_hearings: {
+        Row: {
+          case_id: string
+          court: string | null
+          created_at: string
+          hearing_date: string
+          id: string
+          order_passed: string | null
+          what_happened: string | null
+        }
+        Insert: {
+          case_id: string
+          court?: string | null
+          created_at?: string
+          hearing_date: string
+          id?: string
+          order_passed?: string | null
+          what_happened?: string | null
+        }
+        Update: {
+          case_id?: string
+          court?: string | null
+          created_at?: string
+          hearing_date?: string
+          id?: string
+          order_passed?: string | null
+          what_happened?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_hearings_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_notes: {
+        Row: {
+          case_id: string
+          created_at: string
+          id: string
+          note_text: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          id?: string
+          note_text: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          id?: string
+          note_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_notes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       case_payments: {
         Row: {
@@ -2339,6 +2638,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      owns_case_file: { Args: { _case_id: string }; Returns: boolean }
       recompute_vakeel_score: {
         Args: { _advocate: string }
         Returns: undefined
