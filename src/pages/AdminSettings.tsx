@@ -1,5 +1,5 @@
 // FILE: src/pages/AdminSettings.tsx
-// Bhramar.ai — Admin Settings with AI Model Switcher + Document Uploader
+// Bhramar.ai — Admin Settings with working AI Model Switcher + Document Uploader
 
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
@@ -10,56 +10,83 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, ShieldCheck, FileText, RotateCcw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Save, ShieldCheck, FileText, RotateCcw, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AdminUploader } from "@/components/AdminUploader";
 
-// REMOVED: const SUPER_ADMIN = "bhramar123@gmail.com";
-// Now uses env-based check via edge functions
-
 const MODELS = [
-  { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (default, fast)" },
-  { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (deep reasoning)" },
-  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (cheapest)" },
-  { id: "openai/gpt-5", label: "GPT-5 (premium)" },
-  { id: "openai/gpt-5-mini", label: "GPT-5 Mini" },
-  { id: "openai/gpt-5.2", label: "GPT-5.2 (latest reasoning)" },
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (default, fast)", provider: "google" },
+  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (deep reasoning)", provider: "google" },
+  { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet", provider: "anthropic" },
+  { id: "anthropic/claude-3-opus", label: "Claude 3 Opus", provider: "anthropic" },
+  { id: "openai/gpt-4o", label: "GPT-4o", provider: "openai" },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini (cheap)", provider: "openai" },
+];
+
+const PROVIDER_STATUS = [
+  { key: "lovable", label: "Lovable Gateway", secretKey: "LOVABLE_API_KEY" },
+  { key: "google", label: "Google AI", secretKey: "GOOGLE_AI_API_KEY" },
+  { key: "anthropic", label: "Anthropic", secretKey: "ANTHROPIC_API_KEY" },
+  { key: "openai", label: "OpenAI", secretKey: "OPENAI_API_KEY" },
 ];
 
 export default function AdminSettings() {
   const { user, loading } = useAuth();
-  const [model, setModel] = useState("google/gemini-3-flash-preview");
+  const [model, setModel] = useState("google/gemini-2.5-flash");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [providerStatus, setProviderStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    (async () => {
-      // Check super admin status via edge function (secure, not hardcoded)
+    const init = async () => {
+      // Check super admin status
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data } = await supabase.functions.invoke("chat", {
-          body: { check_admin: true },
-        });
-        setIsSuperAdmin(data?.is_super_admin || false);
+        try {
+          const { data } = await supabase.functions.invoke("admin-dashboard", {
+            body: { action: "check_admin" },
+          });
+          setIsSuperAdmin(data?.is_super_admin || false);
+        } catch (e) {
+          console.error("Admin check failed:", e);
+        }
       }
 
+      // Load AI settings
       const { data } = await supabase.from("ai_settings").select("*").eq("id", 1).maybeSingle();
       if (data) {
-        setModel(data.model || "google/gemini-3-flash-preview");
+        setModel(data.model || "google/gemini-2.5-flash");
         setSystemPrompt(data.system_prompt || "");
       }
+
+      // Check provider status (which API keys are configured)
+      try {
+        const { data: configData } = await supabase.functions.invoke("admin-dashboard", {
+          body: { action: "config_list" },
+        });
+        const configs = configData?.items || [];
+        const status: Record<string, boolean> = {};
+        for (const provider of PROVIDER_STATUS) {
+          // Check if key exists in system_config or env vars
+          const hasKey = configs.some((c: any) => c.key === provider.secretKey || c.key === `${provider.secretKey}_configured`);
+          status[provider.key] = hasKey;
+        }
+        setProviderStatus(status);
+      } catch (e) {
+        console.error("Provider status check failed:", e);
+      }
+
       setLoaded(true);
-    })();
+    };
+    init();
   }, []);
 
   if (loading) return null;
   if (!user) return <Navigate to="/auth" replace />;
 
-  // If not super admin, show restricted message
   if (loaded && !isSuperAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -84,7 +111,13 @@ export default function AdminSettings() {
     try {
       const { error } = await supabase
         .from("ai_settings")
-        .upsert({ id: 1, model, system_prompt: systemPrompt, updated_at: new Date().toISOString() });
+        .upsert({ 
+          id: 1, 
+          model, 
+          system_prompt: systemPrompt, 
+          updated_at: new Date().toISOString(),
+          updated_by: user.id
+        });
 
       if (error) throw error;
       toast.success("AI settings saved");
@@ -96,9 +129,25 @@ export default function AdminSettings() {
   };
 
   const handleReset = () => {
-    setModel("google/gemini-3-flash-preview");
+    setModel("google/gemini-2.5-flash");
     setSystemPrompt("");
     toast.info("Reset to defaults — click Save to apply");
+  };
+
+  const testModel = async () => {
+    toast.info("Testing model connection...");
+    try {
+      const { data, error } = await supabase.functions.invoke("chat", {
+        body: {
+          messages: [{ role: "user", content: "Say 'Bhramar AI is working' and nothing else." }],
+          preferred_model: model,
+        },
+      });
+      if (error) throw error;
+      toast.success("Model responded successfully");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Model test failed");
+    }
   };
 
   if (!loaded) return null;
@@ -123,6 +172,30 @@ export default function AdminSettings() {
         </div>
 
         <div className="space-y-8">
+          {/* Provider Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Provider Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {PROVIDER_STATUS.map((p) => (
+                  <div key={p.key} className="flex items-center gap-2 p-2 rounded-lg border">
+                    {providerStatus[p.key] ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                    )}
+                    <span className="text-sm">{p.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Green = API key configured. Amber = not configured. Add keys in Lovable Secrets.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* AI Model Section */}
           <Card>
             <CardHeader>
@@ -141,7 +214,12 @@ export default function AdminSettings() {
                   <SelectContent>
                     {MODELS.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.label}
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">
+                            {m.provider}
+                          </Badge>
+                          {m.label}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -172,6 +250,9 @@ export default function AdminSettings() {
                 <Button variant="outline" onClick={handleReset}>
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Reset
+                </Button>
+                <Button variant="secondary" onClick={testModel}>
+                  Test Model
                 </Button>
               </div>
             </CardContent>
