@@ -65,10 +65,10 @@ export function DashboardOverview() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<<CaseStats>({ active: 0, draft: 0, closed: 0, total: 0, urgent: 0 });
-  const [clients, setClients] = useState<<ClientPulse[]>([]);
-  const [financials, setFinancials] = useState<<FinancialSnapshot>({ pending_invoices: 0, total_revenue: 0, this_month: 0, growth: 0 });
-  const [activities, setActivities] = useState<<ActivityItem[]>([]);
+  const [stats, setStats] = useState<CaseStats>({ active: 0, draft: 0, closed: 0, total: 0, urgent: 0 });
+  const [clients, setClients] = useState<ClientPulse[]>([]);
+  const [financials, setFinancials] = useState<FinancialSnapshot>({ pending_invoices: 0, total_revenue: 0, this_month: 0, growth: 0 });
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [hearings, setHearings] = useState<HearingItem[]>([]);
   const [notifications, setNotifications] = useState(3);
 
