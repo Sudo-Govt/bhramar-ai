@@ -6,6 +6,7 @@ import { BhramarLogo } from "@/components/BhramarLogo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MiniMarkdown, extractCitations } from "@/lib/markdown";
+import { DashboardOverview } from "@/components/DashboardOverview";
 import {
   Plus, Send, Paperclip, Mic, MessageSquare, FolderClosed,
   StickyNote, Copy, Bookmark, Share2, Save, Crown, History,
