@@ -194,7 +194,32 @@ export async function syncToCase(
       });
     } catch { /* non-fatal */ }
   }
+  // ADD THIS AT THE BOTTOM of src/components/AutoSyncToggle.tsx
 
+import { useState, useEffect } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+
+export function AutoSyncToggle() {
+  const [enabled, setEnabled] = useState(() => getAutoSync());
+
+  useEffect(() => {
+    setAutoSync(enabled);
+  }, [enabled]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        id="auto-sync"
+        checked={enabled}
+        onCheckedChange={setEnabled}
+      />
+      <Label htmlFor="auto-sync" className="text-sm cursor-pointer">
+        Auto Sync
+      </Label>
+    </div>
+  );
+}
   // Sync new deadlines (skip duplicates by due_date)
   for (const dl of extracted.deadlines) {
     try {
