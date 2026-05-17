@@ -27,6 +27,7 @@ import {
 import logoIcon from "@/assets/bhramar-logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EmergencyButton } from "@/components/EmergencyButton";
+import { TodayCases } from "@/components/TodayCases";
 
 // ─── Types ───────────────────────────────────────────────────────────
 type CaseRow = {
@@ -34,6 +35,25 @@ type CaseRow = {
   status: "Active" | "Closed" | "Draft";
   case_number?: string | null; archived_at?: string | null;
 };
+
+// ... rest of your existing code ...
+
+// Inside your return:
+<<main className="p-6 space-y-6">
+  {/* Top row: Today's Cases + Quick Actions */}
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="lg:col-span-2">
+      <TodayCases />
+    </div>
+    <div className="space-y-4">
+      <EmergencyButton />
+      <ThemeToggle />
+      {/* Add other quick widgets here */}
+    </div>
+  </div>
+  
+  {/* Rest of your dashboard */}
+</main>
 type ConvRow  = { id: string; case_id: string | null; title: string; updated_at: string };
 type MsgRow   = { id?: string; role: "user" | "assistant"; content: string; citations?: string[] };
 type TabType  =
