@@ -15,6 +15,7 @@ import {
   LayoutDashboard, UsersRound, Scale, Newspaper,
   IndianRupee, CalendarDays, Files, Bot, Video,
   Briefcase, FileText, Phone, AlertTriangle, CheckCircle2, Circle, X,
+  MicOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tier } from "@/hooks/useEffectiveTier";
@@ -40,6 +41,153 @@ type TabType  =
   | "courtcells" | "news" | "finance" | "calendar"
   | "notes" | "files" | "assistant" | "calls"
   | "darbar" | "profile";
+
+// ─── Speech to Text Hook ─────────────────────────────────────────────
+function useSpeechToText(onResult: (text: string) => void) {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const SpeechRecognition =
+    typeof window !== "undefined"
+      ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      : null;
+
+  const supported = !!SpeechRecognition;
+
+  const start = useCallback(() => {
+    if (!SpeechRecognition) return;
+    const r = new SpeechRecognition();
+    r.continuous = false;
+    r.interimResults = false;
+    r.lang = "hi-IN,en-IN";
+    r.onstart = () => setListening(true);
+    r.onend   = () => setListening(false);
+    r.onerror = () => setListening(false);
+    r.onresult = (e: any) => {
+      const transcript = Array.from(e.results as any[])
+        .map((r: any) => r[0].transcript)
+        .join(" ")
+        .trim();
+      if (transcript) onResult(transcript);
+    };
+    r.start();
+    recognitionRef.current = r;
+  }, [SpeechRecognition, onResult]);
+
+  const stop = useCallback(() => {
+    recognitionRef.current?.stop();
+    setListening(false);
+  }, []);
+
+  return { listening, supported, start, stop };
+}
+
+// ─── Extract text from uploaded file ─────────────────────────────────
+async function extractTextFromFile(
+  file: File,
+  supabaseUrl: string,
+  token: string,
+  anonKey: string,
+): Promise<string | null> {
+  const type = file.type;
+
+  if (type === "text/plain") {
+    return await file.text();
+  }
+
+  if (type === "application/pdf") {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const r = await fetch(`${supabaseUrl}/functions/v1/extract-text`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, apikey: anonKey },
+        body: form,
+      });
+      if (r.ok) {
+        const j = await r.json();
+        return j.text ? j.text.slice(0, 4000) : null;
+      }
+    } catch { /* fall through */ }
+    return `[PDF attached: ${file.name} — summarise based on filename and context]`;
+  }
+
+  if (type.startsWith("image/")) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        try {
+          const r = await fetch(`${supabaseUrl}/functions/v1/vision-ocr`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              apikey: anonKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ base64, mime_type: type, filename: file.name }),
+          });
+          if (r.ok) {
+            const j = await r.json();
+            resolve(j.text ? j.text.slice(0, 3000) : null);
+          } else {
+            resolve(`[Image attached: ${file.name} — describe and analyse in context of this legal matter]`);
+          }
+        } catch {
+          resolve(`[Image attached: ${file.name}]`);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (type.includes("wordprocessingml") || type.includes("msword")) {
+    return `[Document attached: ${file.name} — Word doc text extraction not yet supported]`;
+  }
+
+  return null;
+}
+
+// ─── Rolling conversation summary helper ─────────────────────────────
+async function getMessagesForAI(
+  allMessages: MsgRow[],
+  supabaseUrl: string,
+  token: string,
+  anonKey: string,
+  convSummaryRef: React.MutableRefObject<string>,
+): Promise<{ role: string; content: string }[]> {
+  const WINDOW = 6;
+  const formatted = allMessages.map((m) => ({ role: m.role, content: m.content }));
+  if (formatted.length <= WINDOW) return formatted;
+
+  if (!convSummaryRef.current) {
+    try {
+      const older = formatted.slice(0, formatted.length - WINDOW);
+      const r = await fetch(`${supabaseUrl}/functions/v1/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          apikey: anonKey,
+        },
+        body: JSON.stringify({ messages: older, summarize_history: true }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j.summary) convSummaryRef.current = j.summary;
+      }
+    } catch { /* fail-soft */ }
+  }
+
+  const recent = formatted.slice(-WINDOW);
+  if (convSummaryRef.current) {
+    return [
+      { role: "system", content: `[Earlier conversation summary]\n${convSummaryRef.current}` },
+      ...recent,
+    ];
+  }
+  return recent;
+}
 
 // ────────────────────────────────────────────────────────────────
 // PANEL 1 — Icon Rail
@@ -309,9 +457,7 @@ function MobileChatSheet({
 
   return (
     <div className="md:hidden fixed inset-0 z-50 flex flex-col">
-      {/* Backdrop */}
       <div className="flex-1 bg-black/60" onClick={onClose} />
-      {/* Sheet */}
       <div className="bg-card border-t border-border rounded-t-2xl flex flex-col" style={{ maxHeight: "72vh" }}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <span className="font-semibold text-sm">Chat History</span>
@@ -326,19 +472,13 @@ function MobileChatSheet({
           >
             <Plus className="h-4 w-4 mr-2" /> New chat
           </Button>
-
           {list.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">No chats yet. Start a new conversation.</p>
           )}
-
           {list.map((cv) => (
-            <button
-              key={cv.id}
-              onClick={() => openConv(cv)}
+            <button key={cv.id} onClick={() => openConv(cv)}
               className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${
-                activeConvId === cv.id
-                  ? "bg-primary/15 border-l-2 border-primary"
-                  : "hover:bg-accent/40"
+                activeConvId === cv.id ? "bg-primary/15 border-l-2 border-primary" : "hover:bg-accent/40"
               }`}
             >
               <div className="text-sm font-medium truncate">{cv.title}</div>
@@ -428,11 +568,16 @@ function ChatBody({ messages, saveNotes, notes, bottomRef }: {
 // ────────────────────────────────────────────────────────────────
 // INPUT BAR
 // ────────────────────────────────────────────────────────────────
-function InputBar({ input, setInput, send, streaming, handleFileUpload, profileName, profileState, activeCaseName, onPickCase }: {
+function InputBar({
+  input, setInput, send, streaming, handleFileUpload,
+  profileName, profileState, activeCaseName, onPickCase,
+  listening, onMicClick, micSupported,
+}: {
   input: string; setInput: (s: string) => void; send: () => void;
   streaming: boolean; handleFileUpload: (f: File) => void;
   profileName?: string | null; profileState?: string | null;
   activeCaseName?: string | null; onPickCase?: () => void;
+  listening: boolean; onMicClick: () => void; micSupported: boolean;
 }) {
   return (
     <div className="border-t border-border/60 p-3 md:p-4 glass-subtle">
@@ -452,37 +597,64 @@ function InputBar({ input, setInput, send, streaming, handleFileUpload, profileN
           <span className="text-muted-foreground/70 ml-auto hidden sm:inline">Bhramar uses your profile + case as context</span>
         </div>
         <div className="chat-input-wrap flex items-end gap-2">
+          {/* File attachment */}
           <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary shrink-0" asChild>
             <label className="cursor-pointer flex items-center justify-center">
               <Paperclip className="h-4 w-4" />
-              <input type="file" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.txt,.doc,.docx,image/*"
+                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+              />
             </label>
           </Button>
-          <Textarea value={input} onChange={(e) => setInput(e.target.value)}
+
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Ask Bhramar.ai anything about your case..." rows={1}
+            placeholder={listening ? "Listening…" : "Ask Bhramar.ai anything about your case..."}
+            rows={1}
             className="flex-1 min-h-[40px] max-h-32 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-1 py-2 text-sm"
           />
-          <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary shrink-0">
-            <Mic className="h-4 w-4" />
-          </Button>
+
+          {/* Mic button — only shown if browser supports it */}
+          {micSupported && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onMicClick}
+              title={listening ? "Stop recording" : "Voice input (Hindi / English)"}
+              className={`h-9 w-9 shrink-0 transition-all ${
+                listening
+                  ? "text-red-500 hover:text-red-400 animate-pulse"
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
+          )}
+
           <button onClick={send} disabled={!input.trim() || streaming} className="btn-send">
             <Send className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-[11px] text-muted-foreground text-center mt-2">Enter to send · Shift+Enter for newline</p>
+        <p className="text-[11px] text-muted-foreground text-center mt-2">
+          {listening
+            ? "🎙 Listening… click mic to stop"
+            : "Enter to send · Shift+Enter for newline"}
+        </p>
       </div>
     </div>
   );
 }
 
 // ────────────────────────────────────────────────────────────────
-// SECTION PANELS
+// SECTION PANELS (unchanged)
 // ────────────────────────────────────────────────────────────────
 
-function OverviewPanel({
-  cases, tier, daysLeft, profile, setActiveTab,
-}: {
+function OverviewPanel({ cases, tier, daysLeft, profile, setActiveTab }: {
   cases: CaseRow[]; tier: Tier; daysLeft: number | null; profile: any; setActiveTab: (t: TabType) => void;
 }) {
   const activeCases = cases.filter((c) => c.status === "Active"  && !c.archived_at).length;
@@ -901,6 +1073,9 @@ export default function Dashboard() {
   const [notes,         setNotes]         = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // ── New refs / state ──
+  const convSummaryRef = useRef<string>("");
+
   const [createCaseOpen,    setCreateCaseOpen]    = useState(false);
   const [freeChatHistory,   setFreeChatHistory]   = useState<ConvRow[]>([]);
   const [showArchived,      setShowArchived]      = useState(false);
@@ -908,7 +1083,18 @@ export default function Dashboard() {
   const [activeTab,         setActiveTab]         = useState<TabType>("overview");
   const [railExpanded,      setRailExpanded]      = useState(false);
   const [sideExpanded,      setSideExpanded]      = useState(true);
-  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false); // ← NEW
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+
+  // ── Voice to text ──
+  const { listening, supported: micSupported, start: startMic, stop: stopMic } =
+    useSpeechToText((transcript) => {
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    });
+
+  const handleMicClick = useCallback(() => {
+    if (listening) stopMic();
+    else startMic();
+  }, [listening, startMic, stopMic]);
 
   const isDevAccount = (user?.email || "").toLowerCase() === "bhramar123@gmail.com";
   const [devTier,    setDevTier]    = useState<Tier | null>(null);
@@ -998,11 +1184,16 @@ export default function Dashboard() {
       setNotes(noteRow?.body || "");
       setActiveConvId(null);
       setMessages([]);
+      convSummaryRef.current = ""; // reset summary on case change
     })();
   }, [activeCaseId, user]);
 
   useEffect(() => {
-    if (!activeConvId || !user) { setMessages([]); return; }
+    if (!activeConvId || !user) {
+      setMessages([]);
+      convSummaryRef.current = ""; // reset summary on conv change
+      return;
+    }
     (async () => {
       const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeConvId).order("created_at");
       setMessages((data || []).map((m: any) => ({ id: m.id, role: m.role, content: m.content, citations: m.citations || [] })));
@@ -1012,7 +1203,14 @@ export default function Dashboard() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streaming]);
 
   const activeCase = useMemo(() => cases.find((c) => c.id === activeCaseId), [cases, activeCaseId]);
-  const newChat = useCallback(() => { setActiveConvId(null); setMessages([]); setInput(""); }, []);
+
+  const newChat = useCallback(() => {
+    setActiveConvId(null);
+    setMessages([]);
+    setInput("");
+    convSummaryRef.current = ""; // reset summary on new chat
+  }, []);
+
   const newCase = useCallback(() => setCreateCaseOpen(true), []);
 
   const onCaseCreated = useCallback(async (caseId: string) => {
@@ -1031,15 +1229,46 @@ export default function Dashboard() {
     await supabase.from("notes").upsert({ user_id: user.id, case_id: activeCaseId, body: val }, { onConflict: "case_id" });
   }, [activeCaseId, user]);
 
+  // ── File upload with OCR / text extraction ──
   const handleFileUpload = useCallback(async (file: File) => {
-    if (!user || !activeCaseId) return toast.error("Select a case first");
+    if (!user) return toast.error("Please log in");
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+    // Extract text and inject into input
+    const extracted = await extractTextFromFile(file, supabaseUrl, token, anonKey);
+    if (extracted) {
+      setInput((prev) =>
+        prev
+          ? `${prev}\n\n[From ${file.name}]:\n${extracted}`
+          : `[From ${file.name}]:\n${extracted}`,
+      );
+      toast.success(`Text extracted from ${file.name}`);
+    }
+
+    // Save to storage if a case is active
+    if (!activeCaseId) {
+      if (!extracted) toast.info("Select a case to save this document.");
+      return;
+    }
     const path = `${user.id}/${activeCaseId}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from("case-documents").upload(path, file);
     if (error) return toast.error(error.message);
-    await supabase.from("documents").insert({ user_id: user.id, case_id: activeCaseId, filename: file.name, storage_path: path, mime_type: file.type, size_bytes: file.size });
-    toast.success("Document uploaded");
+    await supabase.from("documents").insert({
+      user_id: user.id,
+      case_id: activeCaseId,
+      filename: file.name,
+      storage_path: path,
+      mime_type: file.type,
+      size_bytes: file.size,
+    });
+    if (!extracted) toast.success("Document saved to case");
   }, [user, activeCaseId]);
 
+  // ── Send message ──
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || streaming || !user) return;
@@ -1069,12 +1298,25 @@ export default function Dashboard() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      // ── Rolling summary: send compressed history instead of full raw array ──
+      const aiMessages = await getMessagesForAI(
+        priorMessages,
+        supabaseUrl,
+        token,
+        anonKey,
+        convSummaryRef,
+      );
+
+      const resp = await fetch(`${supabaseUrl}/functions/v1/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: anonKey },
         body: JSON.stringify({
-          case_id: activeCaseId, conversation_id: convId,
-          messages: [...priorMessages.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: text }],
+          case_id: activeCaseId,
+          conversation_id: convId,
+          messages: [...aiMessages, { role: "user", content: text }],
         }),
       });
 
@@ -1110,7 +1352,10 @@ export default function Dashboard() {
       }
 
       if (!assistantText) assistantText = "_Could not generate a response. Please try again._";
-      const citations = Array.from(new Set([...finalSources.map((s: any) => s.label).filter(Boolean), ...extractCitations(assistantText)])).slice(0, 8);
+      const citations = Array.from(new Set([
+        ...finalSources.map((s: any) => s.label).filter(Boolean),
+        ...extractCitations(assistantText),
+      ])).slice(0, 8);
       setMessages((prev) => { const next = [...prev]; next[next.length - 1] = { role: "assistant", content: assistantText, citations }; return next; });
       await supabase.from("messages").insert({ user_id: user.id, conversation_id: convId, role: "assistant", content: assistantText, citations });
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
@@ -1202,7 +1447,7 @@ export default function Dashboard() {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col min-w-0 min-h-0 pb-16 md:pb-0 overflow-hidden">
-        {/* Header — History button shown on mobile when in chat tab */}
+        {/* Header */}
         <header className="border-b border-border/60 flex items-center justify-between px-4 glass-subtle shrink-0" style={{ minHeight: 52 }}>
           <div className="flex items-center gap-2 min-w-0">
             {activeTab === "chat" && (
@@ -1228,12 +1473,16 @@ export default function Dashboard() {
         {activeTab === "chat" && (
           <>
             <ChatBody messages={messages} saveNotes={saveNotes} notes={notes} bottomRef={bottomRef} />
-            <InputBar input={input} setInput={setInput} send={send} streaming={streaming}
+            <InputBar
+              input={input} setInput={setInput} send={send} streaming={streaming}
               handleFileUpload={handleFileUpload}
               profileName={profile?.full_name || user?.email?.split("@")[0]}
               profileState={profile?.state}
               activeCaseName={activeCase?.name || null}
               onPickCase={() => setActiveTab("cases")}
+              listening={listening}
+              onMicClick={handleMicClick}
+              micSupported={micSupported}
             />
           </>
         )}
