@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { MiniMarkdown } from "@/lib/markdown";
 import { ArrowLeft, Send, Plus, Trash2, Bot, User as UserIcon, Sparkles, Save, AlertCircle } from "lucide-react";
 import emblem from "@/assets/bhramar-emblem.png";
+import { ListenerMode } from "@/components/ListenerMode";
 
 const STAGES = ["FIR Filed","Under Investigation","Charge Sheet Filed","Bail Application","Cognizance","Charges Framed","Trial","Evidence Recording","Arguments","Judgment","Appeal","Revision","Execution","Closed"];
 
