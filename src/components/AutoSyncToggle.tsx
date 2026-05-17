@@ -32,7 +32,7 @@ export async function extractCaseData(
   token: string,
   supabaseUrl: string,
   anonKey: string,
-): Promise<<ExtractedCase | null> {
+): Promise<ExtractedCase | null> {
   const prompt = `You are a legal intake assistant for an Indian law firm. 
 Analyze the following conversation and extract structured case information.
 
