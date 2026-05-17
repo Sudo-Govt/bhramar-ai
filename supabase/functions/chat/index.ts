@@ -1,5 +1,5 @@
 // FILE: supabase/functions/chat/index.ts
-// Bhramar.ai — Hardened chat edge function with rate limiting + env-based super admin
+// Bhramar.ai — Multi-provider AI chat with RAG + rate limiting + super admin model override
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -20,6 +20,190 @@ import {
   jsonError,
   corsHeaders,
 } from "../_shared/config.ts";
+
+// ─── Provider Routing ──────────────────────────────────────────
+
+interface ProviderConfig {
+  url: string;
+  key: string;
+  modelPrefix: string;
+  headers: Record<string, string>;
+  bodyTransform: (model: string, messages: any[], systemPrompt: string, stream: boolean) => any;
+  responseTransform: (res: Response) => Promise<Response>;
+}
+
+function getProviderConfig(modelId: string): ProviderConfig {
+  // modelId format: "provider/model-name" or just "model-name" (defaults to lovable)
+  const [provider, ...modelParts] = modelId.split("/");
+  const modelName = modelParts.join("/") || provider;
+  
+  // Determine actual provider from prefix or default
+  let actualProvider = provider;
+  if (!["google", "anthropic", "openai", "lovable"].includes(provider)) {
+    actualProvider = "lovable"; // default fallback
+  }
+
+  switch (actualProvider) {
+    case "google": {
+      const key = CONFIG.GOOGLE_AI_KEY;
+      if (!key) throw new Error("Google AI API key not configured");
+      return {
+        url: "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent",
+        key,
+        modelPrefix: "google/",
+        headers: { "Content-Type": "application/json" },
+        bodyTransform: (model, messages, systemPrompt, stream) => ({
+          contents: [
+            { role: "user", parts: [{ text: systemPrompt }] },
+            ...messages.map((m: any) => ({
+              role: m.role === "assistant" ? "model" : "user",
+              parts: [{ text: m.content }]
+            }))
+          ],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+        }),
+        responseTransform: async (res) => {
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Google AI error: ${err}`);
+          }
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          // Convert to OpenAI-compatible streaming format
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`));
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+            }
+          });
+          return new Response(stream, {
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream" }
+          });
+        }
+      };
+    }
+
+    case "anthropic": {
+      const key = CONFIG.ANTHROPIC_KEY;
+      if (!key) throw new Error("Anthropic API key not configured");
+      return {
+        url: "https://api.anthropic.com/v1/messages",
+        key,
+        modelPrefix: "anthropic/",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+        },
+        bodyTransform: (model, messages, systemPrompt, stream) => {
+          const userMessages = messages.filter((m: any) => m.role !== "system");
+          const lastUserMsg = userMessages.pop();
+          return {
+            model: modelName,
+            max_tokens: 4096,
+            temperature: 0.3,
+            system: systemPrompt,
+            messages: [
+              ...userMessages.map((m: any) => ({ role: m.role, content: m.content })),
+              { role: "user", content: lastUserMsg?.content || "" }
+            ],
+            stream: false, // Anthropic streaming requires different handling
+          };
+        },
+        responseTransform: async (res) => {
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Anthropic error: ${err}`);
+          }
+          const data = await res.json();
+          const text = data.content?.[0]?.text || "";
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`));
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+            }
+          });
+          return new Response(stream, {
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream" }
+          });
+        }
+      };
+    }
+
+    case "openai": {
+      const key = CONFIG.OPENAI_KEY;
+      if (!key) throw new Error("OpenAI API key not configured");
+      return {
+        url: "https://api.openai.com/v1/chat/completions",
+        key,
+        modelPrefix: "openai/",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${key}`,
+        },
+        bodyTransform: (model, messages, systemPrompt, stream) => ({
+          model: modelName,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages
+          ],
+          temperature: 0.3,
+          max_tokens: 4096,
+          stream: true,
+        }),
+        responseTransform: async (res) => {
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`OpenAI error: ${err}`);
+          }
+          // Pass through OpenAI's SSE stream
+          return new Response(res.body, {
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream" }
+          });
+        }
+      };
+    }
+
+    case "lovable":
+    default: {
+      const key = CONFIG.LOVABLE_API_KEY;
+      if (!key) throw new Error("Lovable API key not configured");
+      return {
+        url: CONFIG.AI_GATEWAY + "/chat/completions",
+        key,
+        modelPrefix: "lovable/",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${key}`,
+        },
+        bodyTransform: (model, messages, systemPrompt, stream) => ({
+          model: modelId, // Lovable uses full model ID like "google/gemini-2.5-flash"
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages
+          ],
+          temperature: 0.3,
+          stream: true,
+        }),
+        responseTransform: async (res) => {
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Lovable Gateway error: ${err}`);
+          }
+          return new Response(res.body, {
+            headers: { ...corsHeaders, "Content-Type": "text/event-stream" }
+          });
+        }
+      };
+    }
+  }
+}
+
+// ─── Main Handler ──────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -51,7 +235,7 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) return jsonError("Unauthorized", 401);
 
-    // ─── 3. Super Admin Check (for future AI switcher) ───────
+    // ─── 3. Super Admin Check ────────────────────────────────
     const userIsSuperAdmin = isSuperAdmin(user.email);
 
     // ─── 4. Parse Request ────────────────────────────────────
@@ -68,25 +252,41 @@ serve(async (req) => {
       preferred_model?: string;
     };
 
+    // ─── Admin Check Endpoint ────────────────────────────────
+    if (body.check_admin) {
+      return new Response(
+        JSON.stringify({ is_super_admin: userIsSuperAdmin }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return jsonError("Messages array required", 400);
     }
 
-    // ─── 5. Super Admin: Allow Model Override ────────────────
+    // ─── 5. Determine Model ──────────────────────────────────
     let chatModel = CONFIG.DEFAULT_CHAT_MODEL;
+    
+    // Super admin override
     if (userIsSuperAdmin && preferred_model) {
-      // Validate against allowed models
-      const allowedModels = [
-        "google/gemini-2.5-flash",
-        "google/gemini-2.5-pro",
-        "anthropic/claude-3.5-sonnet",
-        "anthropic/claude-3-opus",
-        "openai/gpt-4o",
-        "openai/gpt-4o-mini",
-      ];
-      if (allowedModels.includes(preferred_model)) {
-        chatModel = preferred_model;
+      chatModel = preferred_model;
+    } else {
+      // Check user tier for model access
+      const { data: profile } = await createClient(supabaseUrl, serviceKey)
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", user.id)
+        .single();
+      
+      // Free tier: only basic models
+      if (profile?.subscription_tier === "Free") {
+        chatModel = "google/gemini-2.5-flash-lite";
       }
+      // Pro tier: standard models
+      else if (profile?.subscription_tier === "Pro") {
+        chatModel = "google/gemini-2.5-flash";
+      }
+      // Firm/Enterprise: any model (will use default or admin-set)
     }
 
     // ─── 6. Build Context ────────────────────────────────────
@@ -239,30 +439,33 @@ serve(async (req) => {
     let finalMessages = messages;
     if (summarize_history && messages.length > 20) {
       const summaryPrompt = buildChatHistorySummaryPrompt(messages.slice(0, -10));
-      // Summarize old messages (simplified — in production, call AI here)
       finalMessages = [
         { role: "system", content: `Previous conversation summary: ${summaryPrompt}` },
         ...messages.slice(-10),
       ];
     }
 
-    // ─── 9. Call AI Gateway ──────────────────────────────────
-    const lovableKey = CONFIG.LOVABLE_API_KEY;
-    if (!lovableKey) {
-      return jsonError("AI Gateway not configured", 500);
+    // ─── 9. Route to Provider ────────────────────────────────
+    const provider = getProviderConfig(chatModel);
+    const requestBody = provider.bodyTransform(chatModel, finalMessages, systemPrompt, true);
+
+    const aiRes = await fetch(provider.url, {
+      method: "POST",
+      headers: provider.headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!aiRes.ok) {
+      const err = await aiRes.text();
+      return jsonError(`AI error: ${err}`, 502);
     }
 
-    const aiRes = await fetch(CONFIG.AI_GATEWAY + "/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${lovableKey}`,
-      },
-      body: JSON.stringify({
-        model: chatModel,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...finalMessages,
-        ],
-        stream: true,
-        temperature
+    // ─── 10. Stream Response ─────────────────────────────────
+    const transformedRes = await provider.responseTransform(aiRes);
+    return transformedRes;
+
+  } catch (err) {
+    console.error("Chat function error:", err);
+    return jsonError(err instanceof Error ? err.message : "Internal error", 500);
+  }
+});
