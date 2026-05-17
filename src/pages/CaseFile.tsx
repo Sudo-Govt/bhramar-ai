@@ -227,7 +227,144 @@ function ChatPanel({ caseId, caseRow }: { caseId: string; caseRow: any }) {
     </div>
   );
 }
+import { extractCaseFromText } from "@/hooks/useAutoCaseCreation";
+import { toast } from "sonner";
 
+// Inside your chat message handler:
+const handleChatMessage = async (message: string, currentCaseId?: string) => {
+  // 1. Send to AI as usual
+  const aiResponse = await sendToAI(message, currentCaseId);
+  
+  // 2. Check Auto Sync
+  const autoSync = localStorage.getItem("bhramar.autoSync") !== "false";
+  
+  if (autoSync && !currentCaseId) {
+    // No case loaded - try to auto-create
+    try {
+      const extracted = await extractCaseFromText(message + "\n" + aiResponse);
+      
+      if (extracted.clientName || extracted.caseType) {
+        // Show confirmation toast with action
+        toast.info("Bhramar detected a potential case. Create it?", {
+          action: {
+            label: "Create Case",
+            onClick: () => createAutoCase(extracted, message, aiResponse)
+          },
+          duration: 10000
+        });
+      }
+    } catch (e) {
+      console.error("Auto-extract failed", e);
+    }
+  } else if (autoSync && currentCaseId) {
+    // Case exists - auto-sync notes, financials, deadlines
+    await syncToExistingCase(currentCaseId, message, aiResponse);
+  }
+  
+  return aiResponse;
+};
+
+const createAutoCase = async (data: ExtractedCaseData, originalMsg: string, aiResponse: string) => {
+  const { data: caseRow, error } = await supabase
+    .from("cases")
+    .insert({
+      user_id: user.id,
+      name: `${data.caseType || "General"} Matter - ${data.clientName || "Unknown Client"}`,
+      client_name: data.clientName,
+      status: "Active",
+      type: data.caseType,
+      state: data.location.state,
+      district: data.location.district,
+      ai_summary: data.description,
+      priority: data.priority,
+      auto_created: true,
+      source_chat: originalMsg
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Create initial note with full context
+  await supabase.from("notes").insert({
+    case_id: caseRow.id,
+    content: `🤖 **Auto-Generated from Chat**\n\n**Client:** ${data.clientName}\n**Type:** ${data.caseType}\n**Location:** ${data.location.state}${data.location.district ? `, ${data.location.district}` : ""}\n\n**Original Query:**\n${originalMsg}\n\n**Bhramar Response:**\n${aiResponse}`,
+    type: "auto_sync"
+  });
+
+  // Add financial mentions as payment records
+  for (const fin of data.financialMentions) {
+    await supabase.from("case_payments").insert({
+      case_id: caseRow.id,
+      amount: fin.amount,
+      currency: fin.currency,
+      description: fin.context,
+      status: "quoted",
+      type: "expected"
+    });
+  }
+
+  // Add deadlines as tasks
+  for (const deadline of data.deadlines) {
+    await supabase.from("tasks").insert({
+      case_id: caseRow.id,
+      title: deadline.description,
+      due_date: deadline.date,
+      status: "pending",
+      priority: "high",
+      auto_created: true
+    });
+  }
+
+  // Navigate to new case
+  navigate(`/cases/${caseRow.id}`);
+  toast.success(`Case auto-created: ${caseRow.name}`);
+};
+
+const syncToExistingCase = async (caseId: string, message: string, aiResponse: string) => {
+  // Extract any new financial mentions or deadlines
+  const extracted = await extractCaseFromText(message + "\n" + aiResponse);
+  
+  // Add as note
+  await supabase.from("notes").insert({
+    case_id: caseId,
+    content: `**Chat Update:**\n${message}\n\n**Response:**\n${aiResponse}`,
+    type: "chat_sync"
+  });
+
+  // Sync financials if new mentions found
+  for (const fin of extracted.financialMentions) {
+    await supabase.from("case_payments").insert({
+      case_id: caseId,
+      amount: fin.amount,
+      currency: fin.currency,
+      description: fin.context,
+      status: "quoted",
+      type: "expected"
+    });
+  }
+
+  // Sync deadlines
+  for (const deadline of extracted.deadlines) {
+    // Check if similar deadline exists
+    const { data: existing } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("case_id", caseId)
+      .eq("due_date", deadline.date)
+      .single();
+      
+    if (!existing) {
+      await supabase.from("tasks").insert({
+        case_id: caseId,
+        title: deadline.description,
+        due_date: deadline.date,
+        status: "pending",
+        auto_created: true
+      });
+    }
+  }
+};
 // ============ FILE PANEL ============
 function FilePanel({ caseRow, setCaseRow }: { caseRow: any; setCaseRow: (r: any) => void }) {
   const [form, setForm] = useState<any>(caseRow);
