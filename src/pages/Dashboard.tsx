@@ -37,10 +37,7 @@ type CaseRow = {
   case_number?: string | null; archived_at?: string | null;
 };
 
-// ... rest of your existing code ...
-
-// Inside your return:
-<<main className="p-6 space-y-6">
+<main className="p-6 space-y-6">
   {/* Top row: Today's Cases + Quick Actions */}
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div className="lg:col-span-2">
