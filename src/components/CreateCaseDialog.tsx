@@ -67,7 +67,61 @@ export function CreateCaseDialog({ open, onOpenChange, onCreated }: Props) {
           ai_summary: "Queued for AI analysis…",
         });
       }
+// Add to CreateCaseDialog or create new hook: useAutoCaseCreation.ts
 
+interface ExtractedCaseData {
+  clientName: string | null;
+  caseType: string | null;
+  location: { state: string | null; district: string | null };
+  description: string;
+  financialMentions: Array<{ amount: number; currency: string; context: string }>;
+  deadlines: Array<{ date: string; description: string }>;
+  ipcSections: string[];
+  priority: "low" | "medium" | "high" | "critical";
+}
+
+export async function extractCaseFromText(text: string): Promise<ExtractedCaseData> {
+  const prompt = `You are a legal intake assistant. Analyze this conversation/message and extract structured case information.
+
+Return ONLY a JSON object in this exact format:
+{
+  "clientName": "extracted name or null",
+  "caseType": "one of: Criminal, Civil, Family, Property, Corporate, Labour, Constitutional, Other or null",
+  "location": { "state": "state name or null", "district": "district or null" },
+  "description": "2-3 sentence case summary",
+  "financialMentions": [{"amount": 50000, "currency": "INR", "context": "settlement amount discussed"}],
+  "deadlines": [{"date": "YYYY-MM-DD", "description": "what the deadline is for"}],
+  "ipcSections": ["Section 420", "Section 406"],
+  "priority": "low|medium|high|critical"
+}
+
+If information is missing, use null. Be precise with dates (YYYY-MM-DD format).
+If no financial mentions, return empty array.
+If no deadlines, return empty array.
+
+Conversation:
+${text}`;
+
+  // Call your existing chat edge function with this prompt
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+    },
+    body: JSON.stringify({
+      messages: [{ role: "user", content: prompt }],
+      stream: false
+    })
+  });
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  
+  // Extract JSON from response (handle markdown code blocks)
+  const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/\{[\s\S]*\}/);
+  return jsonMatch ? JSON.parse(jsonMatch[1] || jsonMatch[0]) : null;
+}
       // Generate AI summary of complaint via chat fn (best-effort)
       if (complaint.trim()) {
         try {
