@@ -32,6 +32,8 @@ import Darbar from "./pages/Darbar.tsx";
 import LegalClock from "./pages/tools/LegalClock.tsx";
 import Admin from "./pages/Admin.tsx";
 import { DocsHome, DocsArticle } from "./pages/Docs.tsx";
+import CaseList from "./pages/CaseList.tsx";
+import CaseFile from "./pages/CaseFile.tsx";
 import SuperAdminButton from "@/components/SuperAdminButton";
 
 const queryClient = new QueryClient();
@@ -155,6 +157,8 @@ const App = () => (
                   <Route path="/network/browse" element={<ProtectedRoute><Network /></ProtectedRoute>} />
                   <Route path="/network/cell/:id" element={<ProtectedRoute><Network /></ProtectedRoute>} />
                   <Route path="/cases/:id/darbar" element={<ProtectedRoute><Darbar /></ProtectedRoute>} />
+                  <Route path="/cases" element={<ProtectedRoute><CaseList /></ProtectedRoute>} />
+                  <Route path="/case/:caseId" element={<ProtectedRoute><CaseFile /></ProtectedRoute>} />
                   <Route path="/tools/legal-clock" element={<LegalClock />} />
                   <Route path="/admin/*" element={<Admin />} />
                   <Route path="/docs" element={<DocsHome />} />
