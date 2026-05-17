@@ -88,6 +88,7 @@ function ChatPanel({ caseId, caseRow }: { caseId: string; caseRow: any }) {
   const [clients, setClients] = useState<any[]>([]);
   const [activeClient, setActiveClient] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  
 
   useEffect(() => {
     (async () => {
@@ -377,6 +378,7 @@ function FilePanel({ caseRow, setCaseRow }: { caseRow: any; setCaseRow: (r: any)
   const [newNote, setNewNote] = useState("");
   const [newHearing, setNewHearing] = useState<any>({ hearing_date: new Date().toISOString().slice(0,10), what_happened: "", order_passed: "" });
   const [newClient, setNewClient] = useState<any>({ name: "", relationship_to_case: "Accused", preferred_language: "en" });
+  const [listenerOpen, setListenerOpen] = useState(false);
 
   const loadAll = async () => {
     const [c, n, h, d] = await Promise.all([
