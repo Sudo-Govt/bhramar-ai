@@ -33,7 +33,7 @@ export function TodayCases() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [cases, setCases] = useState<TodayCase[]>([]);
-  const [aiPreps, setAiPreps] = useState<Record<string, AIPrep>>({});
+  const [aiPreps, setAiPreps] = useState<Record<string, AIPrep>({});
   const [loading, setLoading] = useState(true);
   const [generatingPrep, setGeneratingPrep] = useState<string | null>(null);
 
