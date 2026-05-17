@@ -13,8 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MiniMarkdown } from "@/lib/markdown";
 import { ArrowLeft, Send, Plus, Trash2, Bot, User as UserIcon, Sparkles, Save, AlertCircle } from "lucide-react";
 import emblem from "@/assets/bhramar-emblem.png";
 
@@ -205,7 +204,7 @@ function ChatPanel({ caseId, caseRow }: { caseId: string; caseRow: any }) {
                 {m.role === "assistant" && !m.content ? (
                   <div className="flex gap-1"><span className="h-2 w-2 rounded-full bg-current animate-bounce" /><span className="h-2 w-2 rounded-full bg-current animate-bounce [animation-delay:0.15s]" /><span className="h-2 w-2 rounded-full bg-current animate-bounce [animation-delay:0.3s]" /></div>
                 ) : (
-                  <div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div>
+                  <div className="prose prose-sm dark:prose-invert max-w-none"><MiniMarkdown text={m.content} /></div>
                 )}
               </Card>
             </div>
