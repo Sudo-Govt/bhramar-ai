@@ -1203,7 +1203,8 @@ export default function Dashboard() {
       ]);
       setProfile(p);
       setCases((cs as any) || []);
-      if (cs?.length) setActiveCaseId(cs[0].id);
+      // Only auto-select first case on initial load; never override an already-open case
+      setActiveCaseId((prev) => prev ?? (cs?.length ? cs[0].id : null));
     })();
   }, [user]);
 
@@ -1217,10 +1218,16 @@ export default function Dashboard() {
         .limit(50);
       setFreeChatHistory((data as any) || []);
     })();
-  }, [user, isPremium, messages.length]);
+  }, [user, isPremium]); // removed messages.length — no need to re-fetch on every reply
+
+  // Track previous case so we only reset the open conv when the case ACTUALLY changes,
+  // not on every re-render (e.g. switching tabs and back).
+  const prevCaseIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!activeCaseId || !user) { setConversations([]); setActiveConvId(null); setNotes(""); return; }
+    const caseChanged = prevCaseIdRef.current !== activeCaseId;
+    prevCaseIdRef.current = activeCaseId;
     (async () => {
       const [{ data: convs }, { data: noteRow }] = await Promise.all([
         supabase.from("conversations").select("*").eq("user_id", user.id).eq("case_id", activeCaseId).order("updated_at", { ascending: false }),
@@ -1228,9 +1235,12 @@ export default function Dashboard() {
       ]);
       setConversations((convs as any) || []);
       setNotes(noteRow?.body || "");
-      setActiveConvId(null);
-      setMessages([]);
-      convSummaryRef.current = ""; // reset summary on case change
+      // Only wipe the open conversation when the user actually switches to a different case
+      if (caseChanged) {
+        setActiveConvId(null);
+        setMessages([]);
+        convSummaryRef.current = "";
+      }
     })();
   }, [activeCaseId, user]);
 
