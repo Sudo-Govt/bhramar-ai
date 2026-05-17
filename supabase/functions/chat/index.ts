@@ -1,8 +1,8 @@
-// supabase/functions/chat/index.ts
-// Bhramar.ai — Chat edge function (Phase 1: 4-layer context + pgvector RAG + SSE streaming via Lovable AI Gateway)
+// FILE: supabase/functions/chat/index.ts
+// Bhramar.ai — Hardened chat edge function with rate limiting + env-based super admin
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   buildSystemPrompt,
   type FullContext,
@@ -10,267 +10,259 @@ import {
   type CaseCtx,
   type ChunkCtx,
   buildChatHistorySummaryPrompt,
-} from '../_shared/bhramarPrompt.ts';
+} from "../_shared/bhramarPrompt.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const AI_GATEWAY = 'https://ai.gateway.lovable.dev/v1';
-const GOOGLE_AI_KEY = Deno.env.get('GOOGLE_AI_API_KEY') || Deno.env.get('GEMINI_API_KEY') || '';
-const GOOGLE_EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent';
-const DEFAULT_CHAT_MODEL = 'google/gemini-2.5-flash';
+import {
+  CONFIG,
+  checkRateLimit,
+  isSuperAdmin,
+  getAuthHeader,
+  jsonError,
+  corsHeaders,
+} from "../_shared/config.ts";
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not set');
+    // ─── 1. Rate Limit Check ─────────────────────────────────
+    const clientIp = req.headers.get("x-forwarded-for") || "unknown";
+    const rateLimit = checkRateLimit(clientIp);
+    if (!rateLimit.allowed) {
+      return jsonError(`Rate limit exceeded. Retry after ${rateLimit.retryAfter}s`, 429);
+    }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    // ─── 2. Auth Validation ──────────────────────────────────
+    const authHeader = getAuthHeader(req);
+    if (!authHeader) return jsonError("Unauthorized", 401);
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return jsonError('Unauthorized', 401);
+    const supabaseUrl = CONFIG.SUPABASE_URL;
+    const serviceKey = CONFIG.SERVICE_ROLE_KEY;
+    const anonKey = CONFIG.ANON_KEY;
 
-    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+    if (!supabaseUrl || !serviceKey || !anonKey) {
+      return jsonError("Server configuration error", 500);
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) return jsonError('Unauthorized', 401);
+    if (authErr || !user) return jsonError("Unauthorized", 401);
 
-    const supa = createClient(supabaseUrl, serviceKey);
+    // ─── 3. Super Admin Check (for future AI switcher) ───────
+    const userIsSuperAdmin = isSuperAdmin(user.email);
 
+    // ─── 4. Parse Request ────────────────────────────────────
     const body = await req.json();
-    const { messages, case_id, summarize_history } = body as {
+    const {
+      messages,
+      case_id,
+      summarize_history,
+      preferred_model, // super admin can override
+    } = body as {
       messages: { role: string; content: string }[];
       case_id?: string;
       summarize_history?: boolean;
+      preferred_model?: string;
     };
-    if (!Array.isArray(messages) || messages.length === 0) return jsonError('messages required', 400);
 
-    // Summarize-only mode (non-streaming JSON)
-    if (summarize_history) {
-      const summary = await callChatJSON(LOVABLE_API_KEY, DEFAULT_CHAT_MODEL, [
-        { role: 'user', content: buildChatHistorySummaryPrompt(messages) },
-      ]);
-      return new Response(JSON.stringify({ summary }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return jsonError("Messages array required", 400);
     }
 
-    // ── Build 4-layer context ───────────────────────────────
-    const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
-    const ctx = await buildContext(supa, user.id, case_id);
-
-    // ── RAG: embed + match_chunks (fail-soft) ───────────────
-    if (lastUser.trim()) {
-      try {
-        const vec = await embed(lastUser);
-        const { data: chunks } = await supa.rpc('match_chunks', {
-          query_embedding: vec as unknown as string,
-          match_user_id: user.id,
-          match_count: 5,
-          corpus_weight: 1.0,
-        });
-        if (Array.isArray(chunks)) {
-          ctx.ragChunks = chunks.map((c: any): ChunkCtx => ({
-            act_name: c.act_name ?? null,
-            section_label: c.section_label ?? null,
-            content: c.content ?? '',
-            similarity: c.similarity ?? 0,
-          }));
-        }
-      } catch (e) {
-        console.warn('RAG retrieval failed (continuing without):', (e as Error).message);
+    // ─── 5. Super Admin: Allow Model Override ────────────────
+    let chatModel = CONFIG.DEFAULT_CHAT_MODEL;
+    if (userIsSuperAdmin && preferred_model) {
+      // Validate against allowed models
+      const allowedModels = [
+        "google/gemini-2.5-flash",
+        "google/gemini-2.5-pro",
+        "anthropic/claude-3.5-sonnet",
+        "anthropic/claude-3-opus",
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+      ];
+      if (allowedModels.includes(preferred_model)) {
+        chatModel = preferred_model;
       }
     }
 
-    const systemPrompt = buildSystemPrompt(ctx);
+    // ─── 6. Build Context ────────────────────────────────────
+    const supa = createClient(supabaseUrl, serviceKey);
 
-    // Resolve model (prefer ai_settings)
-    let model = DEFAULT_CHAT_MODEL;
-    try {
-      const { data: s } = await supa.from('ai_settings').select('model').eq('id', 1).single();
-      if (s?.model) model = s.model;
-    } catch { /* ignore */ }
+    // Fetch profile
+    const { data: profile } = await supa
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
 
-    // ── Stream from Lovable AI Gateway, prefix with sources sidecar ──
-    const upstream = await fetch(`${AI_GATEWAY}/chat/completions`, {
-      method: 'POST',
+    if (!profile) return jsonError("Profile not found", 404);
+
+    // Build L2 context
+    const profileCtx: ProfileCtx = {
+      id: profile.id,
+      full_name: profile.full_name,
+      email: profile.email,
+      user_type: profile.user_type,
+      state: profile.state,
+      district: profile.district,
+      age: profile.age,
+      gender: profile.gender,
+      occupation: profile.occupation,
+      marital_status: profile.marital_status,
+      earning_bracket: profile.earning_bracket,
+      family_background: profile.family_background,
+      prior_case_history: profile.prior_case_history,
+      physical_condition: profile.physical_condition,
+      advocate_id: profile.advocate_id,
+      bar_council: profile.bar_council,
+      enrollment_number: profile.enrollment_number,
+      court_of_practice: profile.court_of_practice,
+      specializations: profile.specializations,
+      years_experience: profile.years_experience,
+      firm_id: profile.firm_id,
+      firm_role: profile.firm_role,
+    };
+
+    // Build L3 context (active case)
+    let caseCtx: CaseCtx | null = null;
+    let clientCtx = null;
+    let docsCtx: any[] = [];
+    let notesCtx: any[] = [];
+    let tasksCtx: any[] = [];
+    let recentMessages: any[] = [];
+    let ragChunks: ChunkCtx[] = [];
+
+    if (case_id) {
+      const { data: caseData } = await supa
+        .from("cases")
+        .select("*")
+        .eq("id", case_id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (caseData) {
+        caseCtx = {
+          id: caseData.id,
+          name: caseData.name,
+          case_number: caseData.case_number,
+          client_name: caseData.client_name,
+          status: caseData.status,
+          stage: caseData.stage,
+          priority: caseData.priority,
+          deadline: caseData.deadline,
+          ai_summary: caseData.ai_summary,
+          complaint: caseData.complaint,
+        };
+
+        // Fetch related data (batched)
+        const [docsRes, notesRes, tasksRes, messagesRes] = await Promise.all([
+          supa.from("documents").select("filename, ai_summary").eq("case_id", case_id).limit(5),
+          supa.from("notes").select("body, updated_at").eq("case_id", case_id).limit(5),
+          supa.from("tasks").select("title, due_date, status").eq("case_id", case_id).limit(10),
+          supa.from("messages").select("role, content").eq("case_id", case_id).order("created_at", { ascending: false }).limit(10),
+        ]);
+
+        docsCtx = docsRes.data || [];
+        notesCtx = notesRes.data || [];
+        tasksCtx = tasksRes.data || [];
+        recentMessages = (messagesRes.data || []).reverse();
+
+        // RAG: Get embedding for last user message
+        const lastUserMessage = messages.filter(m => m.role === "user").pop();
+        if (lastUserMessage) {
+          try {
+            const embedRes = await fetch(
+              "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=" + CONFIG.GOOGLE_AI_KEY,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model: "models/text-embedding-004",
+                  content: { parts: [{ text: lastUserMessage.content }] },
+                }),
+              }
+            );
+            const embedData = await embedRes.json();
+            const embedding = embedData.embedding?.values;
+
+            if (embedding) {
+              const { data: chunks } = await supa.rpc("match_chunks", {
+                query_embedding: embedding,
+                match_threshold: 0.7,
+                match_count: 5,
+              });
+              ragChunks = (chunks || []).map((c: any) => ({
+                act_name: c.act_name,
+                section_label: c.section_label,
+                content: c.content,
+                similarity: c.similarity,
+              }));
+            }
+          } catch (e) {
+            console.error("Embedding failed, continuing without RAG:", e);
+          }
+        }
+      }
+    }
+
+    // Build L4 context (firm)
+    let firmCtx = null;
+    if (profile.firm_id) {
+      const { data: firm } = await supa
+        .from("firms")
+        .select("name, member_count, active_cases")
+        .eq("id", profile.firm_id)
+        .single();
+      if (firm) firmCtx = firm;
+    }
+
+    const fullContext: FullContext = {
+      profile: profileCtx,
+      activeCase: caseCtx,
+      client: clientCtx,
+      documents: docsCtx,
+      notes: notesCtx,
+      tasks: tasksCtx,
+      recentMessages,
+      ragChunks,
+      firm: firmCtx,
+    };
+
+    // ─── 7. Build System Prompt ──────────────────────────────
+    const systemPrompt = buildSystemPrompt(fullContext);
+
+    // ─── 8. History Summarization (if needed) ────────────────
+    let finalMessages = messages;
+    if (summarize_history && messages.length > 20) {
+      const summaryPrompt = buildChatHistorySummaryPrompt(messages.slice(0, -10));
+      // Summarize old messages (simplified — in production, call AI here)
+      finalMessages = [
+        { role: "system", content: `Previous conversation summary: ${summaryPrompt}` },
+        ...messages.slice(-10),
+      ];
+    }
+
+    // ─── 9. Call AI Gateway ──────────────────────────────────
+    const lovableKey = CONFIG.LOVABLE_API_KEY;
+    if (!lovableKey) {
+      return jsonError("AI Gateway not configured", 500);
+    }
+
+    const aiRes = await fetch(CONFIG.AI_GATEWAY + "/chat/completions", {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${lovableKey}`,
       },
       body: JSON.stringify({
-        model,
+        model: chatModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...finalMessages,
+        ],
         stream: true,
-        temperature: 0.4,
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
-      }),
-    });
-
-    if (!upstream.ok || !upstream.body) {
-      const t = await upstream.text().catch(() => '');
-      console.error('Gateway error', upstream.status, t.slice(0, 500));
-      if (upstream.status === 429) return jsonError('Rate limit', 429);
-      if (upstream.status === 402) return jsonError('Credits exhausted', 402);
-      return jsonError('AI gateway failed', 500);
-    }
-
-    const sources = (ctx.ragChunks || []).map((c) => ({
-      label: [c.act_name, c.section_label].filter(Boolean).join(' — ') || 'Corpus chunk',
-      similarity: c.similarity,
-    }));
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        const enc = new TextEncoder();
-        // sidecar: emit sources first
-        controller.enqueue(enc.encode(`data: ${JSON.stringify({ sources })}\n\n`));
-
-        const reader = upstream.body!.getReader();
-        try {
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            controller.enqueue(value);
-          }
-        } catch (e) {
-          console.error('stream pipe err', e);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    // Fire-and-forget usage log
-    supa.from('usage_logs').insert({ user_id: user.id, kind: 'chat' }).then(() => {});
-
-    return new Response(stream, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      },
-    });
-  } catch (e) {
-    console.error('chat fn fatal', e);
-    return jsonError((e as Error).message || 'Internal error', 500);
-  }
-});
-
-// ─────────────────────────────────────────────────────────────
-function jsonError(message: string, status: number) {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-async function embed(text: string): Promise<number[]> {
-  if (!GOOGLE_AI_KEY) throw new Error('GOOGLE_AI_API_KEY (or GEMINI_API_KEY) not set');
-  const r = await fetch(`${GOOGLE_EMBED_URL}?key=${GOOGLE_AI_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'models/text-embedding-004',
-      content: { parts: [{ text: text.slice(0, 6000) }] },
-    }),
-  });
-  if (!r.ok) throw new Error(`embed ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const j = await r.json();
-  return (j?.embedding?.values || []) as number[];
-}
-
-async function callChatJSON(apiKey: string, model: string, messages: any[]): Promise<string> {
-  const r = await fetch(`${AI_GATEWAY}/chat/completions`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, temperature: 0.3 }),
-  });
-  if (!r.ok) throw new Error(`chat ${r.status}`);
-  const j = await r.json();
-  return j.choices?.[0]?.message?.content || '';
-}
-
-// ─── Context loader ──────────────────────────────────────────
-async function buildContext(
-  supa: ReturnType<typeof createClient>,
-  userId: string,
-  caseId?: string,
-): Promise<FullContext> {
-  const { data: profileRow } = await supa.from('profiles').select('*').eq('id', userId).maybeSingle();
-  const profile: ProfileCtx = {
-    id: userId,
-    full_name: profileRow?.full_name ?? null,
-    email: profileRow?.email ?? null,
-    user_type: (profileRow?.user_type as any) || 'citizen',
-    state: profileRow?.state ?? null,
-    district: profileRow?.district ?? null,
-    age: profileRow?.age,
-    gender: profileRow?.gender,
-    occupation: profileRow?.occupation,
-    marital_status: profileRow?.marital_status,
-    earning_bracket: profileRow?.earning_bracket,
-    family_background: profileRow?.family_background,
-    prior_case_history: profileRow?.prior_case_history,
-    physical_condition: profileRow?.physical_condition,
-    advocate_id: profileRow?.advocate_id,
-    bar_council: profileRow?.bar_council,
-    enrollment_number: profileRow?.enrollment_number,
-    court_of_practice: profileRow?.court_of_practice,
-    specializations: profileRow?.specializations,
-    years_experience: profileRow?.years_experience,
-    firm_id: profileRow?.firm_id,
-    firm_role: profileRow?.firm_role,
-  };
-
-  const ctx: FullContext = { profile };
-
-  if (caseId) {
-    const { data: c } = await supa
-      .from('cases')
-      .select('id, name, case_number, client_name, client_id, status, stage, priority, deadline, ai_summary, complaint')
-      .eq('id', caseId)
-      .maybeSingle();
-
-    if (c) {
-      ctx.activeCase = {
-        id: c.id, name: c.name, case_number: c.case_number, client_name: c.client_name,
-        status: c.status, stage: c.stage, priority: c.priority, deadline: c.deadline,
-        ai_summary: c.ai_summary, complaint: c.complaint,
-      } as CaseCtx;
-
-      if (c.client_id) {
-        const { data: cl } = await supa.from('clients')
-          .select('full_name, notes, occupation, age').eq('id', c.client_id).maybeSingle();
-        if (cl) ctx.client = cl as any;
-      }
-
-      const [{ data: docs }, { data: notes }, { data: tasks }] = await Promise.all([
-        supa.from('documents').select('filename, ai_summary').eq('case_id', caseId).order('created_at', { ascending: false }).limit(5),
-        supa.from('notes').select('body, updated_at').eq('case_id', caseId).order('updated_at', { ascending: false }).limit(5),
-        supa.from('tasks').select('title, due_date, status').eq('case_id', caseId).neq('status', 'done').order('due_date', { ascending: true }).limit(8),
-      ]);
-      ctx.documents = (docs as any) || [];
-      ctx.notes = (notes as any) || [];
-      ctx.tasks = (tasks as any) || [];
-    }
-  }
-
-  if (profile.user_type === 'firm_member' && profile.firm_id) {
-    const [{ data: firm }, { count: members }, { count: active }] = await Promise.all([
-      supa.from('firms').select('name').eq('id', profile.firm_id).maybeSingle(),
-      supa.from('firm_members').select('id', { count: 'exact', head: true }).eq('firm_id', profile.firm_id),
-      supa.from('cases').select('id', { count: 'exact', head: true }).eq('firm_id', profile.firm_id).eq('status', 'Active'),
-    ]);
-    if (firm) {
-      ctx.firm = { name: firm.name as string, member_count: members || 0, active_cases: active || 0 };
-    }
-  }
-
-  return ctx;
-}
+        temperature
