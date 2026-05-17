@@ -1,17 +1,21 @@
+// FILE: src/pages/AdminSettings.tsx
+// Bhramar.ai — Admin Settings with AI Model Switcher + Document Uploader
+
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, ShieldCheck, FileText, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-// BHRAMAR_DEFAULT_PROMPT removed — system prompt is now built dynamically per-user
+import { AdminUploader } from "@/components/AdminUploader";
 
-const SUPER_ADMIN = "bhramar123@gmail.com";
+// REMOVED: const SUPER_ADMIN = "bhramar123@gmail.com";
+// Now uses env-based check via edge functions
 
 const MODELS = [
   { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (default, fast)" },
@@ -30,9 +34,19 @@ export default function AdminSettings() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
+      // Check super admin status via edge function (secure, not hardcoded)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase.functions.invoke("chat", {
+          body: { check_admin: true },
+        });
+        setIsSuperAdmin(data?.is_super_admin || false);
+      }
+
       const { data } = await supabase.from("ai_settings").select("*").eq("id", 1).maybeSingle();
       if (data) {
         setModel(data.model || "google/gemini-3-flash-preview");
@@ -44,91 +58,145 @@ export default function AdminSettings() {
 
   if (loading) return null;
   if (!user) return <Navigate to="/auth" replace />;
-  if ((user.email || "").toLowerCase() !== SUPER_ADMIN) {
+
+  // If not super admin, show restricted message
+  if (loaded && !isSuperAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <Card className="max-w-md p-8 text-center">
-          <ShieldCheck className="h-10 w-10 text-gold mx-auto mb-3" />
-          <h1 className="font-display text-xl font-bold mb-2">Restricted</h1>
-          <p className="text-sm text-muted-foreground mb-4">
-            This area is only accessible to the Bhramar super-admin.
-          </p>
-          <Link to="/app"><Button variant="outline">Back to app</Button></Link>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 text-center">
+            <ShieldCheck className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Admin Access Required</h2>
+            <p className="text-muted-foreground mb-4">
+              You don't have permission to access admin settings.
+            </p>
+            <Button asChild>
+              <Link to="/dashboard">Go to Dashboard</Link>
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
   }
 
-  const save = async () => {
+  const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase
-      .from("ai_settings")
-      .update({ model, system_prompt: systemPrompt || null, updated_at: new Date().toISOString(), updated_by: user.id })
-      .eq("id", 1);
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("AI settings updated. New chats will use these immediately.");
+    try {
+      const { error } = await supabase
+        .from("ai_settings")
+        .upsert({ id: 1, model, system_prompt: systemPrompt, updated_at: new Date().toISOString() });
+
+      if (error) throw error;
+      toast.success("AI settings saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
     }
   };
 
+  const handleReset = () => {
+    setModel("google/gemini-3-flash-preview");
+    setSystemPrompt("");
+    toast.info("Reset to defaults — click Save to apply");
+  };
+
+  if (!loaded) return null;
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/app" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5">
-            <ArrowLeft className="h-4 w-4" /> Back to app
-          </Link>
-          <div className="text-xs text-gold font-semibold flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5" /> Super-admin
+      <div className="container max-w-4xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/dashboard">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <ShieldCheck className="h-6 w-6 text-gold" />
+              Admin Settings
+            </h1>
+            <p className="text-muted-foreground">Manage AI engine and training documents</p>
           </div>
-        </div>
-      </header>
-      <main className="container mx-auto px-6 py-10 max-w-3xl space-y-6">
-        <div>
-          <h1 className="font-display text-3xl font-bold">AI engine controls</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Live-edit the AI model and the master system prompt used by every chat. Changes take effect on the next message.
-          </p>
         </div>
 
-        <Card className="p-6 space-y-4">
-          <div>
-            <Label className="text-sm">AI model</Label>
-            <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {MODELS.map((m) => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1.5">All models route through Lovable AI Gateway — no API key needed.</p>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <Label className="text-sm">System prompt override</Label>
-              <div className="flex gap-2">
-                <Button type="button" variant="ghost" size="sm" onClick={() => setSystemPrompt("")}>
-                  <RotateCcw className="h-3.5 w-3.5" /> Reset to built-in
+        <div className="space-y-8">
+          {/* AI Model Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                AI Engine Configuration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Default Chat Model</Label>
+                <Select value={model} onValueChange={setModel}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MODELS.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  This model will be used for all new chat sessions. Super admin can override per-message.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>System Prompt Override (Optional)</Label>
+                <Textarea
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  placeholder="Leave empty to use default Bhramar legal prompt..."
+                  rows={6}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Advanced: Override the L1 Master Identity prompt. Empty = use default.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button onClick={handleSave} disabled={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? "Saving..." : "Save Settings"}
+                </Button>
+                <Button variant="outline" onClick={handleReset}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset
                 </Button>
               </div>
-            </div>
-            <Textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              rows={20}
-              placeholder="Leave empty to use the built-in Bhramar Master Prompt (senior-advocate persona). Anything you write here completely replaces it."
-              className="font-mono text-xs"
-            />
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {systemPrompt ? `${systemPrompt.length} chars — will replace built-in prompt.` : "Empty — built-in Bhramar Master Prompt (senior-advocate persona) is in use."}
-            </p>
-          </div>
-          <Button onClick={save} disabled={!loaded || saving} className="bg-gold hover:bg-gold-bright text-primary-foreground">
-            <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save changes"}
-          </Button>
-        </Card>
-      </main>
+            </CardContent>
+          </Card>
+
+          {/* Document Uploader Section */}
+          <AdminUploader />
+
+          {/* Stats / Info */}
+          <Card className="bg-muted/50">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Logged in as:</span>
+                  <p className="font-medium">{user.email}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Admin Status:</span>
+                  <p className="font-medium text-green-600">Super Admin</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
