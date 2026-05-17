@@ -80,7 +80,7 @@ interface ExtractedCaseData {
   priority: "low" | "medium" | "high" | "critical";
 }
 
-export async function extractCaseFromText(text: string): Promise<ExtractedCaseData> {
+async function extractCaseFromText(text: string): Promise<ExtractedCaseData> {
   const prompt = `You are a legal intake assistant. Analyze this conversation/message and extract structured case information.
 
 Return ONLY a JSON object in this exact format:
