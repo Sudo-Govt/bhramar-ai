@@ -593,6 +593,7 @@ export type Database = {
           ai_summary: string | null
           archived_at: string | null
           assigned_to: string | null
+          auto_created: boolean | null
           case_number: string | null
           client_id: string | null
           client_name: string | null
@@ -603,6 +604,7 @@ export type Database = {
           id: string
           name: string
           priority: string | null
+          source_chat: string | null
           stage: string | null
           status: Database["public"]["Enums"]["case_status"]
           updated_at: string
@@ -612,6 +614,7 @@ export type Database = {
           ai_summary?: string | null
           archived_at?: string | null
           assigned_to?: string | null
+          auto_created?: boolean | null
           case_number?: string | null
           client_id?: string | null
           client_name?: string | null
@@ -622,6 +625,7 @@ export type Database = {
           id?: string
           name: string
           priority?: string | null
+          source_chat?: string | null
           stage?: string | null
           status?: Database["public"]["Enums"]["case_status"]
           updated_at?: string
@@ -631,6 +635,7 @@ export type Database = {
           ai_summary?: string | null
           archived_at?: string | null
           assigned_to?: string | null
+          auto_created?: boolean | null
           case_number?: string | null
           client_id?: string | null
           client_name?: string | null
@@ -641,6 +646,7 @@ export type Database = {
           id?: string
           name?: string
           priority?: string | null
+          source_chat?: string | null
           stage?: string | null
           status?: Database["public"]["Enums"]["case_status"]
           updated_at?: string
@@ -1542,6 +1548,59 @@ export type Database = {
         }
         Relationships: []
       }
+      listener_sessions: {
+        Row: {
+          ai_summary: string | null
+          audio_url: string | null
+          case_id: string | null
+          created_at: string | null
+          duration_seconds: number
+          entities: Json | null
+          id: string
+          status: string
+          title: string
+          transcript: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          audio_url?: string | null
+          case_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number
+          entities?: Json | null
+          id?: string
+          status?: string
+          title: string
+          transcript?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_summary?: string | null
+          audio_url?: string | null
+          case_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number
+          entities?: Json | null
+          id?: string
+          status?: string
+          title?: string
+          transcript?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listener_sessions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           citations: Json | null
@@ -1585,6 +1644,8 @@ export type Database = {
           body: string
           case_id: string
           id: string
+          note_type: string | null
+          type: string | null
           updated_at: string
           user_id: string
         }
@@ -1592,6 +1653,8 @@ export type Database = {
           body?: string
           case_id: string
           id?: string
+          note_type?: string | null
+          type?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1599,6 +1662,8 @@ export type Database = {
           body?: string
           case_id?: string
           id?: string
+          note_type?: string | null
+          type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2017,6 +2082,7 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          auto_created: boolean | null
           case_id: string | null
           client_id: string | null
           completed_at: string | null
@@ -2033,6 +2099,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          auto_created?: boolean | null
           case_id?: string | null
           client_id?: string | null
           completed_at?: string | null
@@ -2049,6 +2116,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          auto_created?: boolean | null
           case_id?: string | null
           client_id?: string | null
           completed_at?: string | null
