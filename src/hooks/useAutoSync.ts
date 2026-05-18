@@ -104,14 +104,11 @@ export async function createAutoCase(
       user_id:      userId,
       name:         caseName,
       client_name:  extracted.clientName,
-      status:       "Active",
-      type:         extracted.caseType,
-      state:        extracted.state,
-      district:     extracted.district,
+      status:       "active",
       auto_created: true,
       source_chat:  originalMessage.slice(0, 500),
       priority:     extracted.priority,
-    })
+    } as never)
     .select("id")
     .single();
 
