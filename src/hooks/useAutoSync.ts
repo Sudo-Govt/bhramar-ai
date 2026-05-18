@@ -104,14 +104,11 @@ export async function createAutoCase(
       user_id:      userId,
       name:         caseName,
       client_name:  extracted.clientName,
-      status:       "Active",
-      type:         extracted.caseType,
-      state:        extracted.state,
-      district:     extracted.district,
+      status:       "active",
       auto_created: true,
       source_chat:  originalMessage.slice(0, 500),
       priority:     extracted.priority,
-    })
+    } as never)
     .select("id")
     .single();
 
@@ -131,16 +128,13 @@ export async function createAutoCase(
   // Save financial mentions
   for (const fin of extracted.financials) {
     try {
-      // Uses the payments table if it exists, else silently skips
       await supabase.from("case_payments").insert({
-        case_id:     caseId,
-        amount:      fin.amount,
-        currency:    fin.currency,
-        description: fin.context,
-        status:      "quoted",
-        type:        "expected",
-      });
-    } catch { /* table may not exist yet */ }
+        case_id:    caseId,
+        user_id:    userId,
+        fee_quoted: fin.amount,
+        note:       `${fin.context} (${fin.currency})`,
+      } as never);
+    } catch { /* non-fatal */ }
   }
 
   // Save deadlines as tasks
@@ -148,12 +142,13 @@ export async function createAutoCase(
     try {
       await supabase.from("tasks").insert({
         case_id:      caseId,
+        user_id:      userId,
         title:        dl.description,
         due_date:     dl.date,
         status:       "pending",
         priority:     "high",
         auto_created: true,
-      });
+      } as never);
     } catch { /* non-fatal */ }
   }
 
@@ -185,13 +180,11 @@ export async function syncToCase(
   for (const fin of extracted.financials) {
     try {
       await supabase.from("case_payments").insert({
-        case_id:     caseId,
-        amount:      fin.amount,
-        currency:    fin.currency,
-        description: fin.context,
-        status:      "quoted",
-        type:        "expected",
-      });
+        case_id:    caseId,
+        user_id:    userId,
+        fee_quoted: fin.amount,
+        note:       `${fin.context} (${fin.currency})`,
+      } as never);
     } catch { /* non-fatal */ }
   }
 
@@ -207,11 +200,12 @@ export async function syncToCase(
       if (!existing) {
         await supabase.from("tasks").insert({
           case_id:      caseId,
+          user_id:      userId,
           title:        dl.description,
           due_date:     dl.date,
           status:       "pending",
           auto_created: true,
-        });
+        } as never);
       }
     } catch { /* non-fatal */ }
   }

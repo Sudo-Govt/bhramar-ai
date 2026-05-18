@@ -118,7 +118,7 @@ export function DashboardOverview() {
         full_name: c.full_name || "Unknown",
         case_count: c.cases?.[0]?.count || 0,
         last_active: new Date(c.created_at).toLocaleDateString(),
-        status: c.case_count > 0 ? "active" : "new",
+        status: (c.case_count > 0 ? "active" : "new") as "active" | "idle" | "new",
       }));
       setClients(clientData);
 
