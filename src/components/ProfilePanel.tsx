@@ -118,7 +118,7 @@ export function ProfilePanel() {
         physical_condition:          profile.physical_condition,
         prior_case_history:          profile.prior_case_history,
         updated_at: new Date().toISOString(),
-      })
+      } as never)
       .eq("id", user.id);
     setSaving(false);
     if (error) toast.error(error.message);
